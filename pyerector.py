@@ -1,8 +1,8 @@
 #!/usr/bin/python
-# Copyright @ 2010 Michael P. Reilly All rights reserved
-# pymakelib.py
+# Copyright @ 2010 Michael P. Reilly. All rights reserved.
+# pyerector.py
 #
-# from pymakelib import *
+# from pyerector import *
 # Compile.dependencies = ('PythonPrecompile',)
 # class PreCompile_utd(Uptodate):
 #     sources = ('*.py',)
@@ -128,6 +128,9 @@ def pymain(*args):
         try:
             target(basedir)()
         except target.Error:
+            e = exc_info()[1]
+            raise SystemExit(e)
+        except KeyboardInterrupt:
             e = exc_info()[1]
             raise SystemExit(e)
 
@@ -380,6 +383,7 @@ class Task(_Initer):
 
 class Spawn(Task):
     cmd = ''
+    infile = None
     outfile = None
     errfile = None
     def run(self):
@@ -387,6 +391,10 @@ class Spawn(Task):
             cmd = self.args[0]
         else:
             cmd = self.cmd
+        if 'infile' in self.kwargs:
+            infile = self.kwargs['infile']
+        else:
+            infile = self.infile
         if 'outfile' in self.kwargs:
             outfile = self.kwargs['outfile']
         elif len(self.args) > 1:
@@ -402,7 +410,9 @@ class Spawn(Task):
         from os import WIFSIGNALED, WTERMSIG, WEXITSTATUS
         try:
             from subprocess import call
-            of = ef = None
+            ifl = of = ef = None
+            if infile:
+                ifl = open(infile, 'r')
             if outfile:
                 of = open(outfile, 'w')
             if errfile == outfile:
@@ -410,7 +420,7 @@ class Spawn(Task):
             elif errfile:
                 ef = open(errfile, 'w')
             verbose('spawn("' + str(cmd) + '")')
-            rc = call(cmd, shell=True, stdout=of, stderr=ef, bufsize=0)
+            rc = call(cmd, shell=True, stdin=ifl, stdout=of, stderr=ef, bufsize=0)
             if rc < 0:
                 raise self.Error(str(self), 'signal ' + str(abs(rc)) + 'raised')
             elif rc > 0:
@@ -470,8 +480,10 @@ class Copy(Task):
 class CopyTree(Task):
     srcdir = None
     dstdir = None
+    excludes = ('.svn',)
     def run(self):
-        from os.path import exists, isdir, normpath
+        from fnmatch import fnmatch
+        from os.path import exists, join, isdir, normpath
         import os
         if self.args:
             srcdir, dstdir = self.args
@@ -481,7 +493,6 @@ class CopyTree(Task):
             raise os.error(2, "No such file or directory: " + str(srcdir))
         elif not isdir(self.join(srcdir)):
             raise os.error(20, "Not a directory: " + str(srcdir))
-        print(repr(srcdir), repr(dstdir))
         copy_t = Copy()
         mkdir_t = Mkdir()
         copy_t.noglob = True
@@ -489,14 +500,23 @@ class CopyTree(Task):
         while dirs:
             dir = dirs[0]
             del dirs[0]
-            mkdir_t(normpath(self.join(dstdir, dir)))
-            for fname in os.listdir(self.join(srcdir, dir)):
-                spath = self.join(srcdir, dir, fname)
-                dpath = self.join(dstdir, dir, fname)
-                if isdir(spath):
-                    dirs.append(join(dir, fname))
-                else:
-                    copy_t(spath, dpath)
+            if self.check_exclusion(dir):
+                mkdir_t(normpath(self.join(dstdir, dir)))
+                for fname in os.listdir(self.join(srcdir, dir)):
+                    if self.check_exclusion(fname):
+                        spath = self.join(srcdir, dir, fname)
+                        dpath = self.join(dstdir, dir, fname)
+                        if isdir(spath):
+                            dirs.append(join(dir, fname))
+                        else:
+                            copy_t(spath, dpath)
+    def check_exclusion(self, filename):
+        from fnmatch import fnmatch
+        for excl in self.excludes:
+            if fnmatch(filename, excl):
+                return False
+        else:
+            return True
 class Mkdir(Task):
     files = ()
     def run(self):
