@@ -27,7 +27,7 @@
 # Future Py3000 work prevents the use of string formatting using '%'
 # trying to use both string formatting and ''.format is UGLY!!!!
 # A LOT of the code below will be using the less efficient string
-# concatentation which is supposed across both sets of releases.
+# concatentation which is supported across both sets of releases.
 try:
     ''.format
 except AttributeError:
