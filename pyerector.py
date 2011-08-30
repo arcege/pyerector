@@ -459,18 +459,21 @@ class Remove(Task):
                 rmtree(fname)
 class Copy(Task):
     files = ()
-    destination = None
+    dest = None
     noglob = False
     def run(self):
         from shutil import copy2
-        if self.args:
-            srcs = self.get_files(self.args[:-1])
-            dst = self.join(self.args[-1])
-        elif not self.destination:
+        verbose('starting Copy')
+        if 'dest' in self.kwargs:
+            dst = self.join(self.kwargs['dest'])
+        elif not self.dest:
             raise RuntimeError('configuration error: Copy missing destination')
         else:
+            dst = self.join(self.dest)
+        if self.args:
+            srcs = self.get_files(self.args)
+        else:
             srcs = self.get_files(self.files)
-            dst = self.join(self.destination)
         if ('noglob' in self.kwargs and self.kwargs['noglob']) or \
            self.noglob:
             glob = lambda x: [x]
@@ -539,12 +542,14 @@ class Chmod(Task):
     mode = int('666', 8) # gets around Python 2.x vs 3.x octal issue
     def run(self):
         from os import chmod
+        if 'mode' in self.kwargs:
+            mode = self.kwargs['mode']
+        else:
+            mode = self.mode
         if self.args:
-            files = self.args[:-1]
-            mode = self.args[-1]
+            files = self.args
         else:
             files = self.files
-            mode = self.mode
         for fname in self.get_files(files):
             verbose('chmod(' + str(fname) + ', ' + oct(mode) + ')')
             chmod(fname, mode)
@@ -556,11 +561,18 @@ class Tar(Task):
     def run(self):
         from tarfile import open
         from os.path import join
-        if self.args:
-            name, root = self.args[0], self.args[1]
-            files = tuple(self.args[2:])
+        if 'name' in self.kwargs:
+            name = self.kwargs['name']
         else:
-            name, root, files = self.name, self.root, self.files
+            name = self.name
+        if 'root' in self.kwargs:
+            root = self.kwargs['root']
+        else:
+            root = self.root
+        if self.args:
+            files = tuple(self.args)
+        else:
+            files = self.files
         if 'exclude' in self.kwargs:
             excludes = self.kwargs['exclude']
         else:
@@ -594,8 +606,6 @@ class Tar(Task):
         file = open(self.join(name), 'w:gz')
         for fname in toadd:
             fn = fname.replace(
-                self.config['basedir'] + os.sep, ''
-            ).replace(
                 root + os.sep, ''
             )
             verbose('tar.add(' +
