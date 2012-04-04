@@ -22,7 +22,7 @@
 #         for file in self.get_files():
 #             compile(file)
 #
-# $Id$
+# $Id: pyerector.py 7 2012-04-04 19:17:36Z arcege $
 
 _RCS_VERSION = '$Revision$'
 
