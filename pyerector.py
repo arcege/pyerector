@@ -24,6 +24,8 @@
 #
 # $Id$
 
+_RCS_VERSION = '$Revision$'
+
 # Future Py3000 work prevents the use of string formatting using '%'
 # trying to use both string formatting and ''.format is UGLY!!!!
 # A LOT of the code below will be using the less efficient string
@@ -768,7 +770,7 @@ class Default(Target):
     dependencies = ("Dist",)
 
 # test code
-if __name__ == '__main__':
+def test():
     from os.path import join
     import os, tempfile
     from sys import exc_info
@@ -812,3 +814,17 @@ With three very lovely girls.
         finally:
             Remove()(tmpdir)
 
+def get_version():
+    return _RCS_VERSION.replace('Revision: ', '').replace('$', '')
+
+if __name__ == '__main__':
+    import os, sys
+    progname = os.path.splitext(os.path.basename(sys.argv[0]))[0]
+    if len(sys.argv) == 1 or sys.argv[1] == 'help':
+        print progname, 'help|version|test'
+    elif sys.argv[1] == 'version':
+        print progname, get_version()
+    elif sys.argv[1] == 'test':
+        test()
+    else:
+        print 'Error: %s: Invalid argument: %s' % (progname, sys.argv[1])
