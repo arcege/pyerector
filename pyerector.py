@@ -38,13 +38,13 @@ else:
     hasformat = True
 
 __all__ = [
-  'Target', 'Uptodate', 'pymain',
+  'Target', 'Uptodate', 'pymain', 'symbols_to_global',
   # standard targets
   'All', 'Default', 'Help', 'Clean', 'Init', 'InitDirs',
-  'Build', 'Compile', 'Dist',
+  'Build', 'Compile', 'Dist', 'Packaging',
   # tasks
   'Task', 'Spawn', 'Remove', 'Copy', 'CopyTree', 'Mkdir', 'Chmod', 'Java',
-  'Tar', 'Untar', 'Zip', 'Unzip',
+  'Shebang', 'Tar', 'Untar', 'Zip', 'Unzip',
 ]
 
 Config = {
@@ -76,14 +76,15 @@ verbose = Verbose()
 # the main program, to be called by pymake
 def pymain(*args):
     global verbose
+    showhelp = False
     from sys import argv, exc_info
     # need to "import __main__" and not "from __main__ import Default"
     import getopt
     basedir = None
     targets = []
     try:
-        opts, args = getopt.getopt(args or argv[1:], 'd:v', [
-                'directory=', 'verbose',
+        opts, args = getopt.getopt(args or argv[1:], 'd:hv', [
+                'directory=', 'help', 'verbose',
             ]
         )
     except getopt.error:
@@ -93,6 +94,8 @@ def pymain(*args):
         for opt, val in opts:
             if opt == '--':
                 break
+            elif opt in ('-h', '--help'):
+                showhelp = True
             elif opt in ('-d', '--directory'):
                 basedir = val
             elif opt in ('-v', '--verbose'):
@@ -100,7 +103,10 @@ def pymain(*args):
             else:
                 raise SystemExit('invalid option: ' + str(opt))
     # map arguments into classes above: e.g. 'all' into All
-    if len(args) == 0:
+    if showhelp:
+        import __main__
+        targets[:] = [__main__.Help]
+    elif len(args) == 0:
         try:
             import __main__
             targets.append(__main__.Default)
@@ -135,11 +141,21 @@ def pymain(*args):
         except KeyboardInterrupt:
             e = exc_info()[1]
             raise SystemExit(e)
+        except AssertionError:
+            e = exc_info()[1]
+            raise SystemExit('AssertionError: %s' % e)
+
+# helper function to reference classes in current scope
+def symbols_to_global(*classes):
+    from sys import modules
+    moddict = modules[__name__].__dict__
+    for klass in classes:
+        moddict[klass.__name__] = klass
 
 # the classes
 
 # the base class to set up the others
-class _Initer:
+class _Initer(object):
     global Config
     config = Config
     from os import curdir
@@ -163,17 +179,36 @@ class _Initer:
             files = self.files
         filelist = []
         for entry in files:
-            s = glob(join(self.config['basedir'], subdir, entry))
+            s = glob(self.join(subdir, entry))
             filelist.extend(s)
         return filelist
     def join(self, *path):
         from os.path import join
         return join(self.config['basedir'], *path)
+    def asserttype(self, value, typeval, valname):
+        import types
+        if isinstance(typeval, types.TypeType):
+            text = "Must supply %%s to '%s' in '%s'" % (valname,
+                                                        self.__class__.__name__)
+            assert isinstance(value, typeval), text % typeval.__name__
+        else:
+            text = "Must supply %s to '%s' in '%s'" % (
+                ' or '.join(t.__name__ for t in typeval),
+                valname,
+                self.__class__.__name__
+            )
+            for tval in typeval:
+                if isinstance(value, tval):
+                    break
+            else:
+                raise AssertionError(text)
+
 
 class Uptodate(_Initer):
     sources = ()
     destinations = ()
     def __call__(self, *args):
+        klsname = self.__class__.__name__
         from os.path import getmtime
         try:
             from sys import maxsize as maxint
@@ -182,11 +217,13 @@ class Uptodate(_Initer):
         self.srcs = []
         self.dsts = []
         if not self.sources or not self.destinations:
+            verbose(klsname, '*>', False)
             return False
         self.srcs = self.get_files(self.sources)
         self.dsts = self.get_files(self.destinations)
         # if no actual destination files then nothing is uptodate
         if not self.dsts and self.destinations:
+            verbose(klsname, '+>', False)
             return False
         # compare the latest mtime of the sources with the earliest
         # mtime of the destinations
@@ -196,7 +233,9 @@ class Uptodate(_Initer):
             latest_src = max(latest_src, getmtime(src))
         for dst in self.dsts:
             earliest_dst = min(earliest_dst, getmtime(dst))
-        return earliest_dst >= latest_src
+        result = int(earliest_dst) >= int(latest_src)
+        verbose(klsname, '=>', result or "False" or "True")
+        return result
 
 class Target(_Initer):
     class Error(Exception):
@@ -453,6 +492,7 @@ class Remove(Task):
         from os.path import isdir, isfile, islink
         from shutil import rmtree
         for fname in self.get_files(self.args or None, self.noglob):
+            self.asserttype(fname, str, 'files')
             if isfile(fname) or islink(fname):
                 verbose('remove(' + str(fname) + ')')
                 remove(fname)
@@ -463,25 +503,66 @@ class Copy(Task):
     files = ()
     dest = None
     noglob = False
+    def wantnoglob(self):
+        return (('noglob' in self.kwargs and self.kwargs['noglob']) or
+                self.noglob)
     def run(self):
         from shutil import copy2
         verbose('starting Copy')
         if 'dest' in self.kwargs:
-            dst = self.join(self.kwargs['dest'])
+            dst = self.kwargs['dest']
         elif not self.dest:
             raise RuntimeError('configuration error: Copy missing destination')
         else:
-            dst = self.join(self.dest)
+            dst = self.dest
+        self.asserttype(dst, str, 'dest')
+        dst = self.join(dst)
         if self.args:
-            srcs = self.get_files(self.args)
+            srcs = self.get_files(self.args, noglob=self.wantnoglob())
         else:
-            srcs = self.get_files(self.files)
-        if ('noglob' in self.kwargs and self.kwargs['noglob']) or \
-           self.noglob:
-            glob = lambda x: [x]
+            srcs = self.get_files(self.files, noglob=self.wantnoglob())
         for fname in srcs:
+            self.asserttype(fname, str, 'files')
             verbose('copy2(' + str(fname) + ', ' + str(dst) + ')')
             copy2(fname, dst)
+class Shebang(Copy):
+    files = ()
+    token = '#!'
+    def run(self):
+        from shutil import copyfileobj
+        verbose('starting Shebang')
+        if 'program' in self.kwargs:
+            program = self.kwargs['program']
+            self.asserttype(program, str, 'program')
+        else:
+            raise RuntimeError('No program value supplied')
+        if self.args:
+            srcs = self.get_files(self.args, noglob=self.wantnoglob())
+        else:
+            srcs = self.get_files(self.files, noglob=self.wantnoglob())
+        try:
+            from cStringIO import StringIO
+        except ImportError:
+            from StringIO import StringIO
+        from os import linesep
+        for fname in srcs:
+            inf = open(fname, 'r')
+            outf = StringIO()
+            first = inf.readline()
+            if first.startswith(self.token):
+                if ' ' in first:
+                    w = first.find(' ')
+                else:
+                    w = first.find(linesep)
+                first = first.replace(first[len(self.token):w], program)
+                outf.write(first)
+            else:
+                outf.write(first)
+            copyfileobj(inf, outf)
+            inf.close()
+            outf.seek(0)
+            inf = open(fname, 'w')
+            copyfileobj(outf, inf)
 class CopyTree(Task):
     srcdir = None
     dstdir = None
@@ -494,12 +575,15 @@ class CopyTree(Task):
             srcdir, dstdir = self.args
         else:
             srcdir, dstdir = self.srcdir, self.dstdir
+        self.asserttype(srcdir, str, 'srcdir')
+        self.asserttype(dstdir, str, 'dstdir')
         if not srcdir or not exists(self.join(srcdir)):
-            raise os.error(2, "No such file or directory: " + str(srcdir))
+            raise os.error(2, "No such file or directory: " + srcdir)
         elif not isdir(self.join(srcdir)):
-            raise os.error(20, "Not a directory: " + str(srcdir))
+            raise os.error(20, "Not a directory: " + srcdir)
         copy_t = Copy()
         mkdir_t = Mkdir()
+        # override what is set in the class definition
         copy_t.noglob = True
         dirs = [os.curdir]
         while dirs:
@@ -526,6 +610,7 @@ class Mkdir(Task):
     files = ()
     def run(self):
         for arg in (self.args or self.files):
+            self.asserttype(arg, str, 'files')
             self.mkdir(self.join(arg))
     def mkdir(klass, path):
         from os import mkdir, remove
@@ -548,18 +633,21 @@ class Chmod(Task):
             mode = self.kwargs['mode']
         else:
             mode = self.mode
+        self.asserttype(mode, int, 'mode')
         if self.args:
             files = self.args
         else:
             files = self.files
+        self.asserttype(files, (tuple, list), 'files')
         for fname in self.get_files(files):
-            verbose('chmod(' + str(fname) + ', ' + oct(mode) + ')')
+            self.asserttype(fname, str, 'files')
+            verbose('chmod(' + fname + ', ' + oct(mode) + ')')
             chmod(fname, mode)
 class Tar(Task):
     name = None
     root = None
     files = ()
-    exclude = None
+    exclude = ()
     def run(self):
         from tarfile import open
         from os.path import join
@@ -571,6 +659,9 @@ class Tar(Task):
             root = self.kwargs['root']
         else:
             root = self.root
+        self.asserttype(name, str, 'name')
+        self.asserttype(root, str, 'root')
+        root = self.join(root)
         if self.args:
             files = tuple(self.args)
         else:
@@ -579,6 +670,7 @@ class Tar(Task):
             excludes = self.kwargs['exclude']
         else:
             excludes = self.exclude
+        self.asserttype(excludes, (tuple, list), 'exclude')
         if excludes:
             exctest = lambda t, e=excludes: [v for v in e if t.endswith(v)]
             filter = lambda t, e=exctest: not e(t.name) and t or None
@@ -598,7 +690,7 @@ class Tar(Task):
             entry = queue[0]
             del queue[0]
             for fn in glob(self.join(root, entry)):
-                if exctest and exctest(fn):  # if pass, then ignore
+                if exctest and exctest(fn):  # if true, then ignore
                     pass
                 elif os.path.islink(fn) or os.path.isfile(fn):
                     toadd.append(fn)
@@ -629,6 +721,9 @@ class Untar(Task):
             files = tuple(self.args[2:])
         else:
             name, root, files = self.name, self.root, self.files
+        self.asserttype(name, str, 'name')
+        self.asserttype(root, str, 'root')
+        self.asserttype(files, (tuple, list), 'files')
         file = open(tarname, 'r:gz')
         fileset = []
         for member in file.getmembers():
@@ -695,6 +790,7 @@ class Java(Task):
             jar = self.kwargs['jar']
         else:
             jar = self.jar
+        self.asserttype(jar, str, 'jar')
         if self.properties:
             if hasformat:
                 sp = ' ' + ' '.join(
@@ -745,20 +841,24 @@ class InitDirs(Target):
         Mkdir()(*self.files)
 
 class Init(Target):
-    """Initialize the build"""
+    """Initialize the build."""
     dependencies = ("InitDirs",)
 
 class Compile(Target):
-    """Do something interesting"""
+    """Do something interesting."""
     # meant to be overriden
 
 class Build(Target):
-    """The primary build"""
+    """The primary build."""
     dependencies = ("Init", "Compile")
 
+class Packaging(Target):
+    """Do something interesting."""
+    # meant to be overriden
+
 class Dist(Target):
-    """The primary packaging"""
-    dependencies = ("Build",)
+    """The primary packaging."""
+    dependencies = ("Build", "Packaging")
     # may be overriden
 
 # default target
@@ -781,11 +881,7 @@ def test():
         raise SystemExit(e)
     else:
         try:
-            open(join(tmpdir, 'foobar'), 'w').write("""\
-This is a story,
-Of a lovely lady,
-With three very lovely girls.
-""")
+            # setup
             class Foobar_utd(Uptodate):
                 sources = ('foobar',)
                 destinations = (join('build', 'foobar'),)
@@ -797,14 +893,21 @@ With three very lovely girls.
                 def run(self):
                     Copy()(
                         'foobar',
-                        join('build', 'foobar')
+                        dest=join('build', 'foobar')
                     )
             class DistTar_t(Tar):
                 name = join('dist', 'xyzzy.tgz')
                 root = 'build'
                 files = ('foobar',)
-            Dist.tasks = ('DistTar_t',)
-            Dist.uptodates = ('DistTar_utd',)
+            symbols_to_global(Foobar_utd, DistTar_utd, DistTar_t, Compile)
+            # end setup
+            open(join(tmpdir, 'foobar'), 'w').write("""\
+This is a story,
+Of a lovely lady,
+With three very lovely girls.
+""")
+            Packaging.tasks = ('DistTar_t',)
+            Packaging.uptodates = ('DistTar_utd',)
             Clean.files = ('build', 'dist')
             InitDirs.files = ('build', 'dist')
             tmpdiropt = '--directory=' + str(tmpdir)
