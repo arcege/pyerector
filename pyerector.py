@@ -2,6 +2,18 @@
 # Copyright @ 2010 Michael P. Reilly. All rights reserved.
 # pyerector.py
 #
+# Options available to pymain():
+#    -h|--help               call the 'help' target and exit
+#    -v|--verbose            display debugging output
+#    -N|--dry-run            do not perform actual steps (bypass 'run()' method)
+#    -d=DIR|--directory=DIR  change the basedir value
+# Options available to pyerector.py:
+#    help                    call the 'help' target and exit
+#    version                 display library version
+#    test                    run test of pyerector.py
+#
+# Example code:
+# ---------------------------------------------
 # from pyerector import *
 # Compile.dependencies = ('PythonPrecompile',)
 # class PreCompile_utd(Uptodate):
@@ -22,9 +34,13 @@
 #         for file in self.get_files():
 #             compile(file)
 #
+# pymain()
+# ---------------------------------------------
 # $Id$
 
 _RCS_VERSION = '$Revision$'
+
+import unittest
 
 # Future Py3000 work prevents the use of string formatting using '%'
 # trying to use both string formatting and ''.format is UGLY!!!!
@@ -53,12 +69,13 @@ Config = {
 }
 
 class Verbose(object):
-    import os, sys
-    stream = sys.stdout
-    eoln = os.linesep
-    del os, sys
+    from os import linesep as eoln
+    from sys import stdout as stream
     def __init__(self, state=False):
         self.state = state
+    def __bool__(self):
+        return self.state
+    __nonzero__ = __bool__
     def on(self):
         self.state = True
     def off(self):
@@ -72,10 +89,11 @@ class Verbose(object):
     def __call__(self, *args):
         self._write(' '.join([str(s) for s in args]))
 verbose = Verbose()
+noop = Verbose()
 
-# the main program, to be called by pymake
+# the main program, to be called by pyerect program
 def pymain(*args):
-    global verbose
+    global verbose, noop
     showhelp = False
     from sys import argv, exc_info
     # need to "import __main__" and not "from __main__ import Default"
@@ -83,8 +101,8 @@ def pymain(*args):
     basedir = None
     targets = []
     try:
-        opts, args = getopt.getopt(args or argv[1:], 'd:hv', [
-                'directory=', 'help', 'verbose',
+        opts, args = getopt.getopt(args or argv[1:], 'd:hNv', [
+                'directory=', 'dry-run', 'help', 'verbose',
             ]
         )
     except getopt.error:
@@ -98,6 +116,8 @@ def pymain(*args):
                 showhelp = True
             elif opt in ('-d', '--directory'):
                 basedir = val
+            elif opt in ('-N', '--dry-run'):
+                noop.on()
             elif opt in ('-v', '--verbose'):
                 verbose.on()
             else:
@@ -146,9 +166,13 @@ def pymain(*args):
             raise SystemExit('AssertionError: %s' % e)
 
 # helper function to reference classes in current scope
-def symbols_to_global(*classes):
+def symbols_to_global(*classes, **kwargs):
     from sys import modules
-    moddict = modules[__name__].__dict__
+    if 'modname' in kwargs:
+        modname = kwargs['modname']
+    else:
+        modname = __name__
+    moddict = modules[modname].__dict__
     for klass in classes:
         moddict[klass.__name__] = klass
 
@@ -156,6 +180,14 @@ def symbols_to_global(*classes):
 
 # the base class to set up the others
 class _Initer(object):
+    class Error(Exception):
+        def __str__(self):
+            return str(self[0]) + ': ' + str(self[1])
+        def __format__(self, format_spec):
+            if isinstance(spec, unicode):
+                return unicode(str(self))
+            else:
+                return str(self)
     global Config
     config = Config
     from os import curdir
@@ -166,6 +198,7 @@ class _Initer(object):
         if not self.config['initialized']:
             self.config['basedir'] = normpath(realpath(basedir))
             self.config['initialized'] = True
+        self.basedir = normpath(realpath(basedir))
     del curdir
     def get_files(self, files=None, noglob=False, subdir=None):
         from glob import glob
@@ -184,7 +217,7 @@ class _Initer(object):
         return filelist
     def join(self, *path):
         from os.path import join
-        return join(self.config['basedir'], *path)
+        return join(self.basedir, *path)
     def asserttype(self, value, typeval, valname):
         import types
         if isinstance(typeval, types.TypeType):
@@ -203,6 +236,108 @@ class _Initer(object):
             else:
                 raise AssertionError(text)
 
+class Test_Initer(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from tempfile import mkdtemp
+        cls.dir = mkdtemp()
+    @classmethod
+    def tearDownClass(cls):
+        from shutil import rmtree
+        rmtree(cls.dir)
+    def test_initialized(self):
+        #"""Is system initialized on first instantiation."""
+        try:
+            _Initer.config = Config.copy()
+            _Initer.config['initialized'] = False
+            self.assertFalse(_Initer.config['initialized'])
+            obj = _Initer()
+            self.assertTrue(_Initer.config['initialized'])
+        finally:
+            _Initer.config = Config
+    def test_basedir(self):
+        from os import curdir, getcwd
+        from os.path import normpath, realpath
+        obj = _Initer()
+        self.assertEqual(obj.basedir, normpath(realpath(getcwd())))
+        obj = _Initer(basedir=self.dir)
+        self.assertEqual(obj.basedir, self.dir)
+    def test_join(self):
+        #"""Ensure that join() method returns proper values."""
+        from os.path import join
+        obj = _Initer(basedir=self.dir)
+        self.assertEqual(obj.join('foobar'), join(self.dir, 'foobar'))
+        self.assertEqual(obj.join('xyzzy', 'foobar'),
+                         join(self.dir, 'xyzzy', 'foobar'))
+    def test_asserttype(self):
+        obj = _Initer(basedir=self.dir)
+        self.assertIsNone(obj.asserttype('foo', str, 'foobar'))
+        for test in (('foo', int, 'name'), (1, str, 'foobar')):
+            self.assertRaises(AssertionError, obj.asserttype, *test)
+        with self.assertRaises(AssertionError) as cm:
+            obj.asserttype(1, str, 'foobar')
+        exc = cm.exception
+        self.assertEqual(str(exc), "Must supply str to 'foobar' in '_Initer'")
+    def test_get_files_simple(self):
+        #"""Retrieve files in basedir properly."""
+        from os import mkdir, curdir
+        from os.path import join
+        obj = _Initer(basedir=self.dir)
+        # no files
+        self.assertEqual(obj.get_files(('get_files_simple-*',)), [])
+        subdir = curdir
+        open(join(self.dir, subdir, 'get_files_simple-bar'), 'w')
+        open(join(self.dir, subdir, 'get_files_simple-far'), 'w')
+        open(join(self.dir, subdir, 'get_files_simple-tar'), 'w')
+        # test simple glob
+        self.assertEqual(sorted(obj.get_files(('get_files_simple-*',))),
+                         [join(self.dir, subdir, 'get_files_simple-bar'),
+                          join(self.dir, subdir, 'get_files_simple-far'),
+                          join(self.dir, subdir, 'get_files_simple-tar')])
+        # test glob pattern against noglob
+        self.assertEqual(obj.get_files(('get_files_simple-*',), noglob=True),
+                         [join(self.dir, subdir, 'get_files_simple-*')])
+        # test single file
+        self.assertEqual(obj.get_files(('get_files_simple-bar',)),
+                         [join(self.dir, subdir, 'get_files_simple-bar')])
+        # test single file, no glob
+        self.assertEqual(obj.get_files(('get_files_simple-tar',), noglob=True),
+                         [join(self.dir, subdir, 'get_files_simple-tar')])
+        # test simple file tuple, with glob
+        self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-tar'))),
+                         [join(self.dir, subdir, 'get_files_simple-bar'),
+                          join(self.dir, subdir, 'get_files_simple-tar')])
+        # test glob file tuple, with glob
+        self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-t*'))),
+                         [join(self.dir, subdir, 'get_files_simple-bar'),
+                          join(self.dir, subdir, 'get_files_simple-tar')])
+        # test globl file tuple, no glob
+        self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-t*'),
+                                              noglob=True)),
+                         [join(self.dir, subdir, 'get_files_simple-bar'),
+                          join(self.dir, subdir, 'get_files_simple-t*')])
+    def test_get_files_subdir(self):
+        from os import mkdir, curdir
+        from os.path import join
+        obj = _Initer(basedir=self.dir)
+        # test subdir value
+        subdir = 'subdir'
+        mkdir(join(self.dir, subdir))
+        open(join(self.dir, subdir, 'get_files_subdir-par'), 'w')
+        open(join(self.dir, subdir, 'get_files_subdir-rar'), 'w')
+        self.assertEqual(sorted(obj.get_files(('get_files_subdir-*',),
+                                              subdir=subdir)),
+                         [join(self.dir, subdir, 'get_files_subdir-par'),
+                          join(self.dir, subdir, 'get_files_subdir-rar')])
+        self.assertEqual(sorted(obj.get_files(('get_files_subdir-par',
+                                               'get_files_subdir-rar'),
+                                              subdir=subdir)),
+                         [join(self.dir, subdir, 'get_files_subdir-par'),
+                          join(self.dir, subdir, 'get_files_subdir-rar')])
+        self.assertEqual(obj.get_files(('get_files_subdir-par',),
+                                       noglob=True,
+                                       subdir=subdir),
+                         [join(self.dir, subdir, 'get_files_subdir-par')])
 
 class Uptodate(_Initer):
     sources = ()
@@ -233,32 +368,163 @@ class Uptodate(_Initer):
             latest_src = max(latest_src, getmtime(src))
         for dst in self.dsts:
             earliest_dst = min(earliest_dst, getmtime(dst))
-        result = int(earliest_dst) >= int(latest_src)
+        result = round(earliest_dst, 4) >= round(latest_src, 4)
         verbose(klsname, '=>', result or "False" or "True")
         return result
 
+class TestUptodate(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        cls.dir = tempfile.mkdtemp()
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        shutil.rmtree(cls.dir)
+    def test_older(self):
+        #"""Test that newer files indeed do trigger the test."""
+        import os, time
+        older = os.path.join(self.dir, 'older-older')
+        newer = os.path.join(self.dir, 'older-newer')
+        open(older, 'w')
+        open(newer, 'w')
+        now = time.time()
+        then = now - 600 # 10 minutes
+        os.utime(older, (then, then))
+        os.utime(newer, (now, now))
+        utd = Uptodate(basedir=self.dir)
+        utd.sources = (older,)
+        utd.destinations = (newer,)
+        self.assertTrue(utd())
+    def test_newer(self):
+        #"""Test that older files indeed do not trigger the test."""
+        import os, time
+        older = os.path.join(self.dir, 'newer-older')
+        newer = os.path.join(self.dir, 'newer-newer')
+        open(older, 'w')
+        open(newer, 'w')
+        now = time.time()
+        then = now - 600 # 10 minutes
+        os.utime(older, (now, now))
+        os.utime(newer, (then, then))
+        utd = Uptodate(basedir=self.dir)
+        utd.sources = (older,)
+        utd.destinations = (newer,)
+        self.assertFalse(utd())
+    def test_same(self):
+        #"""Test that files of the same age do trigger the test."""
+        import os, time
+        older = os.path.join(self.dir, 'same-older')
+        newer = os.path.join(self.dir, 'same-newer')
+        open(older, 'w')
+        open(newer, 'w')
+        now = time.time()
+        then = now  # no change
+        os.utime(older, (then, then))
+        os.utime(newer, (now, now))
+        utd = Uptodate(basedir=self.dir)
+        utd.sources = (older,)
+        utd.destinations = (newer,)
+        self.assertTrue(utd())
+    def test_multi_older(self):
+        #"""Test that files in directories are handled properly."""
+        import os, time
+        older_d = os.path.join(self.dir, 'multi_older-older')
+        newer_d = os.path.join(self.dir, 'multi_older-newer')
+        os.mkdir(older_d)
+        os.mkdir(newer_d)
+        now = time.time()
+        then = now - 600 # 10 minutes
+        files = {older_d: [], newer_d: []}
+        for dir, when in ((older_d, then), (newer_d, now)):
+            for i in range(0, 3):
+                fn = os.path.join(dir, str(i))
+                files[dir].append(fn)
+                open(fn, 'w')
+                os.utime(fn, (when-(i * 60), when-(i*60)))
+        utd = Uptodate(basedir=self.dir)
+        utd.sources = tuple(files[older_d])
+        utd.destinations = tuple(files[newer_d])
+        self.assertTrue(utd())
+    def test_multi_newer(self):
+        import os, time
+        older_d = os.path.join(self.dir, 'multi_newer-older')
+        newer_d = os.path.join(self.dir, 'multi_newer-newer')
+        os.mkdir(older_d)
+        os.mkdir(newer_d)
+        now = time.time()
+        then = now - 600 # 10 minutes
+        files = {older_d: [], newer_d: []}
+        for dir, when in ((older_d, now), (newer_d, then)):
+            for i in range(0, 3):
+                fn = os.path.join(dir, str(i))
+                files[dir].append(fn)
+                open(fn, 'w')
+                os.utime(fn, (when-(i * 60), when-(i*60)))
+        utd = Uptodate(basedir=self.dir)
+        utd.sources = tuple(files[older_d])
+        utd.destinations = tuple(files[newer_d])
+        self.assertFalse(utd())
+    def test_multi_same(self):
+        import os, time
+        older_d = os.path.join(self.dir, 'multi_same-older')
+        newer_d = os.path.join(self.dir, 'multi_same-newer')
+        os.mkdir(older_d)
+        os.mkdir(newer_d)
+        now = time.time()
+        then = now - 600 # 10 minutes
+        files = {older_d: [], newer_d: []}
+        for dir, when in ((older_d, then), (newer_d, now)):
+            for i in range(0, 11, 5):
+                fn = os.path.join(dir, str(i))
+                files[dir].append(fn)
+                open(fn, 'w')
+                os.utime(fn, (when-(i * 60), when-(i*60)))
+        utd = Uptodate(basedir=self.dir)
+        utd.sources = tuple(files[older_d])
+        utd.destinations = tuple(files[newer_d])
+        self.assertTrue(utd())
+    def test_multi_mixed(self):
+        import os, time
+        older_d = os.path.join(self.dir, 'multi_mixed-older')
+        newer_d = os.path.join(self.dir, 'multi_mixed-newer')
+        os.mkdir(older_d)
+        os.mkdir(newer_d)
+        now = time.time()
+        then = now - 600 # 10 minutes
+        files = {older_d: [], newer_d: []}
+        for dir, when in ((older_d, now), (newer_d, then)):
+            for i in range(0, 16, 5):
+                fn = os.path.join(dir, str(i))
+                files[dir].append(fn)
+                open(fn, 'w')
+                os.utime(fn, (when-(i * 60), when-(i*60)))
+        utd = Uptodate(basedir=self.dir)
+        utd.sources = tuple(files[older_d])
+        utd.destinations = tuple(files[newer_d])
+        self.assertFalse(utd())
+
 class Target(_Initer):
-    class Error(Exception):
-        def __str__(self):
-            return str(self[0]) + ': ' + str(self[1])
-        def __format__(self, format_spec):
-            if isinstance(spec, unicode):
-                return unicode(str(self))
-            else:
-                return str(self)
+    from sys import stdout as stream
     dependencies = ()
     uptodates = ()
     tasks = ()
+    # if True, then 'been_called' always returns False, allowing for
+    # reexecution
+    allow_reexec = False
+    # if True, then 'been_called' returns True, preventing
+    # reexecution
     _been_called = False
     def get_been_called(self):
+        return not self.allow_reexec and self.__class__._been_called
+        if self.allow_reexec:
+            return False
         return self.__class__._been_called
     def set_been_called(self, value):
         self.__class__._been_called = value
     been_called = property(get_been_called, set_been_called)
     def __str__(self):
         return self.__class__.__name__
-    #def __repr__(self):
-    #    return '<%s>' % self
     def validate_tree(klass):
         name = klass.__name__
         targets = klass.get_targets()
@@ -302,21 +568,21 @@ class Target(_Initer):
             klass = uptodates[klassname]
         except KeyError:
             raise self.Error(str(self), 'no such uptodate: ' + str(klassname))
-        return klass()()
+        return klass(basedir=self.basedir)()
     def call_dependency(self, klassname):
         targets = self.get_targets()
         try:
             klass = targets[klassname]
         except KeyError:
             raise self.Error(str(self), 'no such dependency: ' + str(klassname))
-        klass()()
+        klass(basedir=self.basedir)()
     def call_task(self, klassname, args):
         tasks = self.get_tasks()
         try:
             klass = tasks[klassname]
         except KeyError:
             raise self.Error(str(self), 'no such task: ' + str(klassname))
-        return klass()(*args)
+        return klass(basedir=self.basedir)(*args)
     def __call__(self, *args):
         from sys import exc_info
         if self.been_called:
@@ -354,12 +620,11 @@ class Target(_Initer):
     def run(self):
         pass
     def verbose(self, *args):
-        from sys import stdout
-        stdout.write(str(self))
-        stdout.write(': ')
-        stdout.write(' '.join([str(s) for s in args]))
-        stdout.write('\n')
-        stdout.flush()
+        self.stream.write(str(self))
+        self.stream.write(': ')
+        self.stream.write(' '.join([str(s) for s in args]))
+        self.stream.write('\n')
+        self.stream.flush()
     def get_tasks():
         import __main__
         if not hasattr(__main__, '_tasks_cache'):
@@ -400,20 +665,183 @@ class Target(_Initer):
         return getattr(__main__, '_uptodates_cache')
     get_uptodates = staticmethod(get_uptodates)
 
+class TestTarget(unittest.TestCase):
+    maxDiff = None
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        cls.dir = tempfile.mkdtemp()
+        Target.allow_reexec = True
+        class TestBeenCalled(Target):
+            allow_reexec = False
+        class TestUptodate_utd(Uptodate):
+            pass
+        class TestCallUptodate_utd(Uptodate):
+            sources = ('call_uptodate,older',)
+            destinations = ('call_uptodate.newer',)
+        class TestCallUptodate_T(Target):
+            uptodates = ("TestCallUptodate_utd",)
+        class TestCallTask_t(Task):
+            def run(self):
+                verbose('Creating', self.join(self.args[0]))
+                open(self.join(self.args[0]), 'w')
+        class TestCallTask_T(Target):
+            tasks = ("TestCallTask_t",)
+        class TestCallDependency_t(Task):
+            def run(self):
+                open(self.join('calldependency'), 'w')
+        class TestCallDependency_T1(Target):
+            tasks = ("TestCallDependency_t",)
+        class TestCallDependency_T(Target):
+            dependencies = ("TestCallDependency_T1",)
+        class TestE2E_t1(Task):
+            def run(self):
+                from time import sleep
+                open(self.join('e2e_t1'), 'w')
+                #sleep(1)
+        class TestE2E_t2(Task):
+            def run(self):
+                open(self.join('e2e_t2'), 'w')
+        class TestE2E_utd(Uptodate):
+            sources = ('e2e_t1',)
+            destinations = ('e2e_t2',)
+        class TestE2E_T(Target):
+            uptodates = ('TestE2E_utd',)
+            tasks = ('TestE2E_t1', 'TestE2E_t2')
+        cls.uptodate_classes = {
+            'TestUptodate_utd': TestUptodate_utd,
+            'TestCallUptodate_utd': TestCallUptodate_utd,
+            'TestE2E_utd': TestE2E_utd,
+        }
+        cls.target_classes = {
+            'Help': Help, 'All': All, 'Default': Default, 'Dist': Dist,
+            'Packaging': Packaging, 'Build': Build, 'Compile': Compile,
+            'Init': Init, 'InitDirs': InitDirs, 'Clean': Clean,
+            'TestCallUptodate_T': TestCallUptodate_T,
+            'TestBeenCalled': TestBeenCalled,
+            'TestCallTask_T': TestCallTask_T,
+            'TestCallDependency_T1': TestCallDependency_T1,
+            'TestCallDependency_T': TestCallDependency_T,
+            'TestE2E_T': TestE2E_T,
+        }
+        cls.task_classes = {
+            'Spawn': Spawn, 'Unzip': Unzip, 'Java': Java, 'Tar': Tar,
+            'Zip': Zip, 'Shebang': Shebang, 'Untar': Untar,
+            'Mkdir': Mkdir, 'Remove': Remove, 'Chmod': Chmod,
+            'CopyTree': CopyTree, 'Copy': Copy,
+            'TestCallTask_t': TestCallTask_t,
+            'TestCallDependency_t': TestCallDependency_t,
+            'TestE2E_t1': TestE2E_t1, 'TestE2E_t2': TestE2E_t2,
+        }
+        # if called from ./pyerector.py, use mod1, if called
+        # from unittest itself, then use mod1 and mod2
+        mod1 = {'modname': '__main__'}
+        if __name__ != '__main__':
+            mod2 = {'modname': __name__}
+        else:
+            mod2 = {}
+        symbols_to_global(*cls.uptodate_classes.values(), **mod1)
+        symbols_to_global(*cls.uptodate_classes.values(), **mod2)
+        symbols_to_global(*cls.target_classes.values(), **mod1)
+        symbols_to_global(*cls.target_classes.values(), **mod2)
+        symbols_to_global(*cls.task_classes.values(), **mod1)
+        symbols_to_global(*cls.task_classes.values(), **mod2)
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        shutil.rmtree(cls.dir)
+    def setUp(self):
+        global Config
+        from StringIO import StringIO
+        self.real_stream = Target.stream
+        Target.stream = StringIO()
+    def tearDown(self):
+        if hasattr(self, 'real_stream'):
+            Target.stream = getattr(self, 'real_stream')
+    def test_been_called(self):
+        target = TestBeenCalled()
+        self.assertFalse(target.been_called)
+        target()
+        self.assertTrue(target.been_called)
+    def test_get_uptodates(self):
+        global TestUptodate_utd
+        import __main__
+        result = Target.get_uptodates()
+        self.assertEqual(Target.get_uptodates(), self.uptodate_classes)
+    def test_get_targets(self):
+        self.assertEqual(Target.get_targets(), self.target_classes)
+    def test_get_tasks(self):
+        self.assertEqual(Target.get_tasks(), self.task_classes)
+    def test_verbose(self):
+        from StringIO import StringIO
+        target = Target()
+        target.stream = StringIO()
+        target.verbose('hi there')
+        self.assertEqual(target.stream.getvalue(), 'Target: hi there\n')
+        target.stream = StringIO()
+        target.verbose('hi', 'there')
+        self.assertEqual(target.stream.getvalue(), 'Target: hi there\n')
+    def test_nothing(self):
+        class NothingTarget(Target):
+            pass
+        target = NothingTarget()
+        self.assertIsNone(NothingTarget.validate_tree())
+        self.assertIsNone(target())
+    def test_call_uptodate(self):
+        import __main__, tempfile, time
+        from os.path import join, isfile
+        open(join(self.dir, 'call_uptodate.older'), 'w')
+        #time.sleep(1)
+        open(join(self.dir, 'call_uptodate.newer'), 'w')
+        self.assertTrue(TestCallUptodate_utd(basedir=self.dir)())
+        target = TestCallUptodate_T(basedir=self.dir)
+        self.assertTrue(target.call_uptodate('TestCallUptodate_utd'))
+    def test_call_task(self):
+        import os
+        from os.path import join, isfile
+        self.assertFalse(isfile(join(self.dir, 'calltask')))
+        target = TestCallTask_T(basedir=self.dir)
+        self.assertIsNone(target.call_task("TestCallTask_t", ('calltask',)))
+        self.assertTrue(isfile(join(self.dir, 'calltask')))
+    def test_call_dependency(self):
+        from os.path import join, isfile
+        self.assertFalse(isfile(join(self.dir, 'calldependency')))
+        target = TestCallDependency_T(basedir=self.dir)
+        self.assertIsNone(target.call_dependency("TestCallDependency_T"))
+        self.assertTrue(isfile(join(self.dir, 'calldependency')))
+    def test_end_to_end(self):
+        from os.path import join, isfile, getmtime
+        self.assertFalse(isfile(join(self.dir, 'e2e_t1')))
+        self.assertFalse(isfile(join(self.dir, 'e2e_t2')))
+        target = TestE2E_T(basedir=self.dir)
+        self.assertIsNone(target())
+        self.assertTrue(isfile(join(self.dir, 'e2e_t1')))
+        self.assertTrue(isfile(join(self.dir, 'e2e_t2')))
+        t1 = getmtime(join(self.dir, 'e2e_t1'))
+        t2 = getmtime(join(self.dir, 'e2e_t2'))
+        target = TestE2E_T(basedir=self.dir)
+        self.assertIsNone(target())
+        self.assertEqual(round(t1, 4), round(getmtime(join(self.dir, 'e2e_t1')), 4))
+        self.assertEqual(round(t2, 4), round(getmtime(join(self.dir, 'e2e_t2')), 4))
+
 # Tasks
 class Task(_Initer):
-    Error = Target.Error
     args = []
     def __str__(self):
         return self.__class__.__name__
     def __call__(self, *args, **kwargs):
+        from sys import exc_info
         self.handle_args(args, kwargs)
+        if noop:
+            noop('Calling %s(*%s, **%s)' % (self, args, kwargs))
+            return
         try:
             rc = self.run()
         except (TypeError, RuntimeError):
             raise
         except Exception:
-            raise #raise self.Error(str(self), e)
+            e = exc_info()[1]
+            raise self.Error(str(self), e)
         if rc:
             raise self.Error(str(self), 'return error = ' + str(rc))
     def run(self):
@@ -421,6 +849,62 @@ class Task(_Initer):
     def handle_args(self, args, kwargs):
         self.args = list(args)
         self.kwargs = dict(kwargs)
+
+class TestTask(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        cls.dir = tempfile.mkdtemp()
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        shutil.rmtree(cls.dir)
+    def test_instantiation(self):
+        obj = Task()
+        self.assertEqual(str(obj), Task.__name__)
+        self.assertIsNone(obj('foobar', 'xyzzy', widget=True))
+        # after calling __call__()
+        self.assertEqual(obj.args, ['foobar', 'xyzzy'])
+        self.assertEqual(obj.kwargs, {'widget': True})
+    def test_failure(self):
+        class SuccessTask(Task):
+            def run(self):
+                return 0
+        class FailureTask(Task):
+            def run(self):
+                return 255
+        self.assertIsNone(SuccessTask()())
+        self.assertRaises(Task.Error, FailureTask())
+    def test_exception(self):
+        class TypeErrorTask(Task):
+            def run(self):
+                raise TypeError
+        class ValueErrorTask(Task):
+            def run(self):
+                raise ValueError
+        self.assertRaises(TypeError, TypeErrorTask())
+        self.assertRaises(Task.Error, ValueErrorTask())
+    def test_noop(self):
+        global noop
+        from StringIO import StringIO
+        old_noop = noop
+        try:
+            noop = Verbose()
+            noop.on()
+            noop.stream = StringIO()
+            class NoopTask(Task):
+                foobar = False
+                def run(self):
+                    self.foobar = True
+            obj = NoopTask()
+            obj()
+            self.assertEqual(noop.stream.getvalue(),
+                             'Calling NoopTask(*(), **{})\n')
+            self.assertFalse(obj.foobar)
+        finally:
+            noop = old_noop
+
+# standard tasks
 
 class Spawn(Task):
     cmd = ''
@@ -512,7 +996,7 @@ class Copy(Task):
         if 'dest' in self.kwargs:
             dst = self.kwargs['dest']
         elif not self.dest:
-            raise RuntimeError('configuration error: Copy missing destination')
+            raise Task.Error('configuration error: Copy missing destination')
         else:
             dst = self.dest
         self.asserttype(dst, str, 'dest')
@@ -535,7 +1019,7 @@ class Shebang(Copy):
             program = self.kwargs['program']
             self.asserttype(program, str, 'program')
         else:
-            raise RuntimeError('No program value supplied')
+            raise Task.Error('No program value supplied')
         if self.args:
             srcs = self.get_files(self.args, noglob=self.wantnoglob())
         else:
@@ -569,8 +1053,8 @@ class CopyTree(Task):
     excludes = ('.svn',)
     def run(self):
         from fnmatch import fnmatch
+        from os import curdir, error, listdir
         from os.path import exists, join, isdir, normpath
-        import os
         if self.args:
             srcdir, dstdir = self.args
         else:
@@ -578,27 +1062,27 @@ class CopyTree(Task):
         self.asserttype(srcdir, str, 'srcdir')
         self.asserttype(dstdir, str, 'dstdir')
         if not srcdir or not exists(self.join(srcdir)):
-            raise os.error(2, "No such file or directory: " + srcdir)
+            raise error(2, "No such file or directory: " + srcdir)
         elif not isdir(self.join(srcdir)):
-            raise os.error(20, "Not a directory: " + srcdir)
+            raise error(20, "Not a directory: " + srcdir)
         copy_t = Copy()
         mkdir_t = Mkdir()
         # override what is set in the class definition
         copy_t.noglob = True
-        dirs = [os.curdir]
+        dirs = [curdir]
         while dirs:
             dir = dirs[0]
             del dirs[0]
             if self.check_exclusion(dir):
                 mkdir_t(normpath(self.join(dstdir, dir)))
-                for fname in os.listdir(self.join(srcdir, dir)):
+                for fname in listdir(self.join(srcdir, dir)):
                     if self.check_exclusion(fname):
                         spath = self.join(srcdir, dir, fname)
                         dpath = self.join(dstdir, dir, fname)
                         if isdir(spath):
                             dirs.append(join(dir, fname))
                         else:
-                            copy_t(spath, dpath)
+                            copy_t(spath, dest=dpath)
     def check_exclusion(self, filename):
         from fnmatch import fnmatch
         for excl in self.excludes:
@@ -644,13 +1128,14 @@ class Chmod(Task):
             verbose('chmod(' + fname + ', ' + oct(mode) + ')')
             chmod(fname, mode)
 class Tar(Task):
+    from os import curdir as root
     name = None
-    root = None
     files = ()
     exclude = ()
     def run(self):
         from tarfile import open
-        from os.path import join
+        from os import sep, listdir
+        from os.path import join, islink, isfile, isdir
         if 'name' in self.kwargs:
             name = self.kwargs['name']
         else:
@@ -659,13 +1144,16 @@ class Tar(Task):
             root = self.kwargs['root']
         else:
             root = self.root
-        self.asserttype(name, str, 'name')
+        if name is not None:
+            self.asserttype(name, str, 'name')
+        else:
+            raise ValueError("no 'name' for '%s'" % self.__class__.__name__)
         self.asserttype(root, str, 'root')
         root = self.join(root)
         if self.args:
             files = tuple(self.args)
         else:
-            files = self.files
+            files = tuple(self.files)
         if 'exclude' in self.kwargs:
             excludes = self.kwargs['exclude']
         else:
@@ -679,9 +1167,6 @@ class Tar(Task):
             exctest = None
             filter = None
             exclusion = None
-        import os
-        if not root:
-            root = os.curdir
         toadd = []
         # do not use Task.get_files()
         from glob import glob
@@ -692,15 +1177,15 @@ class Tar(Task):
             for fn in glob(self.join(root, entry)):
                 if exctest and exctest(fn):  # if true, then ignore
                     pass
-                elif os.path.islink(fn) or os.path.isfile(fn):
+                elif islink(fn) or isfile(fn):
                     toadd.append(fn)
-                elif os.path.isdir(fn):
-                    fnames = [os.path.join(fn, f) for f in os.listdir(fn)]
+                elif isdir(fn):
+                    fnames = [join(fn, f) for f in listdir(fn)]
                     queue.extend(fnames)
         file = open(self.join(name), 'w:gz')
         for fname in toadd:
             fn = fname.replace(
-                root + os.sep, ''
+                root + sep, ''
             )
             verbose('tar.add(' +
                     str(fname) + ', ' +
@@ -714,8 +1199,8 @@ class Untar(Task):
     files = ()
     def run(self):
         from tarfile import open
-        from os.path import join
         from os import pardir, sep
+        from os.path import join
         if self.args:
             name, root = self.args[0], self.args[1]
             files = tuple(self.args[2:])
@@ -748,8 +1233,8 @@ class Zip(Task):
 class Unzip(Task):
     def unzip(self, zipname, root, *files):
         from zipfile import ZipFile
-        from os.path import dirname, join
         from os import pardir, sep
+        from os.path import dirname, join
         file = open(zipname, 'r')
         fileset = []
         for member in file.namelist():
@@ -771,6 +1256,7 @@ class Java(Task):
     jar = None
     def __init__(self):
         Task.__init__(self)
+        from os import access, X_OK
         from os.path import expanduser, exists, join
         import os
         if exists(self.java_home):
@@ -780,9 +1266,9 @@ class Java(Task):
                 join('~', 'java', 'bin', 'java')
             )
         else:
-            raise RuntimeError("no java program to execute")
-        if not os.access(self.java_prog, os.X_OK):
-            raise RuntimeError("no java program to execute")
+            raise Task.Error("no java program to execute")
+        if not access(self.java_prog, X_OK):
+            raise Task.Error("no java program to execute")
     def addprop(self, var, val):
         self.properties.append( (var, val) )
     def run(self):
@@ -827,48 +1313,87 @@ class Help(Target):
                 )
             else:
                 print('%-20s  %s' % (obj.__name__.lower(), obj.__doc__ or ""))
-
 class Clean(Target):
     """Clean directories and files used by the build"""
     files = ()
     def run(self):
         Remove()(*self.files)
-
 class InitDirs(Target):
     """Create initial directories"""
     files = ()
     def run(self):
         Mkdir()(*self.files)
-
 class Init(Target):
     """Initialize the build."""
     dependencies = ("InitDirs",)
-
 class Compile(Target):
     """Do something interesting."""
     # meant to be overriden
-
 class Build(Target):
     """The primary build."""
     dependencies = ("Init", "Compile")
-
 class Packaging(Target):
     """Do something interesting."""
     # meant to be overriden
-
 class Dist(Target):
     """The primary packaging."""
     dependencies = ("Build", "Packaging")
     # may be overriden
-
 # default target
 class All(Target):
     """Do it all"""
     dependencies = ("Clean", "Dist")
-
 class Default(Target):
     dependencies = ("Dist",)
 
+@unittest.skip('conflict with other TestCase classes')
+class TestStandardTargets(unittest.TestCase):
+    long_output = """\
+InitDirs: done.
+Init: done.
+Compile: done.
+Build: done.
+Packaging: done.
+Dist: done.
+"""
+    clean_output = """\
+Clean: done.
+"""
+    default_output = """\
+Default: done.
+"""
+    all_output = """\
+All: done.
+"""
+    def setUp(self):
+        from StringIO import StringIO
+        self.stream = StringIO
+        self.real_stream = verbose.stream
+        verbose.stream = self.stream
+    def tearDown(self):
+        verbose.stream = self.real_stream
+    def test_all(self):
+        pymain("all")
+        output = self.stream.getvalue()
+        long_output = self.clean_output + self.long_output + self.all_output
+        short_output = self.clean_output + self.all_output
+        if output == long_output:
+            self.assertEqual(output, long_output)
+        elif output == short_output:
+            self.assertEqual(output, short_output)
+        else:
+            self.assertEqual(output, '')
+    def test_default(self):
+        pymain("default")
+        output = self.stream.getvalue()
+        long_output = self.long_output + self.default_output
+        short_output = self.default_output
+        if output == long_output:
+            self.assertEqual(output, long_output)
+        elif output == short_output:
+            self.assertEqual(output, short_output)
+        else:
+            self.assertEqual(output, '')
 # test code
 def test():
     from os.path import join
@@ -921,13 +1446,17 @@ def get_version():
     return _RCS_VERSION.replace('Revision: ', '').replace('$', '')
 
 if __name__ == '__main__':
-    import os, sys
-    progname = os.path.splitext(os.path.basename(sys.argv[0]))[0]
-    if len(sys.argv) == 1 or sys.argv[1] == 'help':
-        print progname, 'help|version|test'
-    elif sys.argv[1] == 'version':
+    from os.path import splitext, basename
+    from sys import argv
+    progname = splitext(basename(argv[0]))[0]
+    if len(argv) == 1 or argv[1] == 'help':
+        print progname, 'help|version|test|unit'
+    elif argv[1] == 'version':
         print progname, get_version()
-    elif sys.argv[1] == 'test':
+    elif argv[1] == 'test':
         test()
+    elif argv[1] == 'unit':
+        argv[1:] = []
+        unittest.main()
     else:
-        print 'Error: %s: Invalid argument: %s' % (progname, sys.argv[1])
+        print 'Error: %s: Invalid argument: %s' % (progname, argv[1])
