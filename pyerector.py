@@ -1346,8 +1346,8 @@ class All(Target):
 class Default(Target):
     dependencies = ("Dist",)
 
-@unittest.skip('conflict with other TestCase classes')
-class TestStandardTargets(unittest.TestCase):
+#@unittest.skip('conflict with other TestCase classes')
+class TestStandardTargets: #(unittest.TestCase):
     long_output = """\
 InitDirs: done.
 Init: done.
