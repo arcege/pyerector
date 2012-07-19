@@ -90,6 +90,8 @@ class Verbose(object):
         self._write(' '.join([str(s) for s in args]))
 verbose = Verbose()
 noop = Verbose()
+from os import environ
+debug = Verbose('DEBUG' in environ and environ['DEBUG'] != '')
 
 # the main program, to be called by pyerect program
 def pymain(*args):
@@ -149,21 +151,33 @@ def pymain(*args):
         try:
             target.validate_tree()
         except ValueError:
-            e = exc_info()[1]
-            raise SystemExit('Error: ' + str(e))
+            if not debug:
+                e = exc_info()[1]
+                raise SystemExit('Error: ' + str(e))
+            else:
+                raise
     # run all the targets in the tree of each argument
     for target in targets:
         try:
             target(basedir)()
         except target.Error:
-            e = exc_info()[1]
-            raise SystemExit(e)
+            if not debug:
+                e = exc_info()[1]
+                raise SystemExit(e)
+            else:
+                raise
         except KeyboardInterrupt:
-            e = exc_info()[1]
-            raise SystemExit(e)
+            if not debug:
+                e = exc_info()[1]
+                raise SystemExit(e)
+            else:
+                raise
         except AssertionError:
-            e = exc_info()[1]
-            raise SystemExit('AssertionError: %s' % e)
+            if not debug:
+                e = exc_info()[1]
+                raise SystemExit('AssertionError: %s' % e)
+            else:
+                raise
 
 # helper function to reference classes in current scope
 def symbols_to_global(*classes, **kwargs):
@@ -600,20 +614,29 @@ class Target(_Initer):
             try:
                 self.call_task(task, args) # usually args would be (), but...
             except self.Error:
-                e = exc_info()[1]
-                raise self.Error(str(self) + ':' + str(e[0]), e[1])
+                if not debug:
+                    e = exc_info()[1]
+                    raise self.Error(str(self) + ':' + str(e[0]), e[1])
+                else:
+                    raise
         try:
             self.run()
         except (TypeError, RuntimeError, AttributeError):
             raise
         except Task.Error:
-            e = exc_info()[1]
-            raise self.Error(str(self) + ':' + str(e[0]), e[1])
+            if not debug:
+                e = exc_info()[1]
+                raise self.Error(str(self) + ':' + str(e[0]), e[1])
+            else:
+                raise
         except self.Error:
             raise
         except Exception:
-            e = exc_info()[1]
-            raise self.Error(str(self), e)
+            if not debug:
+                e = exc_info()[1]
+                raise self.Error(str(self), e)
+            else:
+                raise
         else:
             self.verbose('done.')
             self.been_called = True
@@ -840,8 +863,11 @@ class Task(_Initer):
         except (TypeError, RuntimeError):
             raise
         except Exception:
-            e = exc_info()[1]
-            raise self.Error(str(self), e)
+            if not debug:
+                e = exc_info()[1]
+                raise self.Error(str(self), e)
+            else:
+                raise
         if rc:
             raise self.Error(str(self), 'return error = ' + str(rc))
     def run(self):
