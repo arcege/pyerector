@@ -1078,12 +1078,9 @@ class Shebang(Copy):
         else:
             srcs = self.get_files(self.files, noglob=self.wantnoglob())
         try:
-            from cStringIO import StringIO
+            from io import StringIO
         except ImportError:
-            try:
-                from io import StringIO
-            except ImportError:
-                from StringIO import StringIO
+            from StringIO import StringIO
         from os import linesep
         for fname in srcs:
             inf = open(fname, 'r')
@@ -1373,12 +1370,12 @@ class Clean(Target):
     """Clean directories and files used by the build"""
     files = ()
     def run(self):
-        Remove()(*self.files)
+        Remove(basedir=self.basedir)(*self.files)
 class InitDirs(Target):
     """Create initial directories"""
     files = ()
     def run(self):
-        Mkdir()(*self.files)
+        Mkdir(basedir=self.basedir)(*self.files)
 class Init(Target):
     """Initialize the build."""
     dependencies = ("InitDirs",)
@@ -1465,6 +1462,7 @@ def test():
         raise SystemExit(e)
     else:
         try:
+            Target.allow_reexec = True
             # setup
             class Foobar_utd(Uptodate):
                 sources = ('foobar',)
@@ -1497,9 +1495,18 @@ With three very lovely girls.
             Clean.files = ('build', 'dist')
             InitDirs.files = ('build', 'dist')
             tmpdiropt = '--directory=' + str(tmpdir)
+            debug('pymain("-v", "' + tmpdiropt + '", "clean")')
             pymain('-v', tmpdiropt, 'clean')
+            if debug:
+                os.system('ls -lAtr ' + str(tmpdir))
+            debug('pymain("-v", "' + tmpdiropt + '")')
             pymain('-v', tmpdiropt) # default
+            if debug:
+                os.system('ls -lAtr ' + str(tmpdir))
+            debug('pymain("-v", "' + tmpdiropt + '")')
             pymain('-v', tmpdiropt) # default with uptodate
+            if debug:
+                os.system('ls -lAtr ' + str(tmpdir))
         finally:
             Remove()(tmpdir)
 
