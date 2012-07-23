@@ -215,6 +215,70 @@ def symbols_to_global(*classes, **kwargs):
 
 # the classes
 
+# a helper class to handle file/directory lists better
+class FileIterator(object):
+    def __init__(self, path, exclude=None, basedir=None):
+        from os import curdir
+        super(FileIterator, self).__init__()
+        if isinstance(path, (tuple, list)):
+            self.pool = list(path)
+        else:
+            self.pool = [path]
+        self.pos = 0
+        self.exclude = exclude
+        if basedir is None:
+            basedir = _Initer.config.basedir or curdir
+        self.basedir = basedir
+    def __iter__(self):
+        self.pos = 0
+        return self
+    def next(self):
+        from os.path import normpath, join
+        while True:
+            if self.pos >= len(self.pool):
+                raise StopIteration
+            item = self.pool[self.pos]
+            self.pos += 1
+            if not self.apply_exclusion(item):
+                return item
+    def apply_exclusion(self, filename):
+        from fnmatch import fnmatch
+        result = self.exclude and fnmatch(filename, self.exclude)
+        debug('apply_exclusion(%s, %s) =' % (filename, self.exclude),
+                result)
+        return result
+class FileList(FileIterator):
+    def __init__(self, *args, **kwargs):
+        super(FileList, self).__init__(path=args, **kwargs)
+
+class DirList(FileIterator):
+    def __init__(self, path, recurse=False, filesonly=True, **kwargs):
+        super(DirList, self).__init__(path, **kwargs)
+        self.recurse = bool(recurse)
+        self.filesonly = bool(filesonly)
+        self.update_dirpath()
+    def update_dirpath(self):
+        from os import listdir
+        from os.path import basename, isdir, isfile, islink, join
+        dirs = self.pool[:]
+        paths = []
+        while dirs:
+            thisdir = dirs[0]
+            del dirs[0]
+            if not self.filesonly:
+                paths.append(thisdir)
+            if not self.apply_exclusion(basename(thisdir)):
+                for name in listdir(join(self.basedir, thisdir)):
+                    spath = join(thisdir, name)
+                    dpath = join(self.basedir, thisdir, name)
+                    if self.apply_exclusion(name):
+                        pass
+                    elif islink(dpath) or isfile(dpath):
+                        paths.append(spath)
+                    elif self.recurse:
+                        dirs.append(spath)
+        self.pool[:] = paths # replace the pool with the gathered set
+
 # the base class to set up the others
 class _Initer(object):
     class Error(Exception):
@@ -248,7 +312,10 @@ class _Initer(object):
             files = self.files
         filelist = []
         for entry in files:
-            s = glob(self.join(subdir, entry))
+            if isinstance(entry, FileIterator):
+                s = [self.join(e) for e in entry]
+            else:
+                s = glob(self.join(subdir, entry))
             filelist.extend(s)
         return filelist
     def join(self, *path):
