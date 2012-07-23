@@ -1278,16 +1278,16 @@ class Unzip(Task):
     def run(self):
         from zipfile import ZipFile
         from os import pardir, sep
-        from os.path import join
+        from os.path import dirname, join
         name = self.get_kwarg('name', str, noNone=True)
         root = self.get_kwarg('root', str)
         files = tuple(self.get_args('files'))
         file = ZipFile(name, 'r')
         fileset = []
         for member in file.namelist():
-            if member.name.startswith(sep) or member.name.startswith(pardir):
+            if member.startswith(sep) or member.startswith(pardir):
                 pass
-            elif not files or member.name in files:
+            elif not files or member in files:
                 fileset.append(member)
         for member in fileset:
             dname = join(root, member)
