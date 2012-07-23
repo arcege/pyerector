@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2010 Michael P. Reilly. All rights reserved.
+# Copyright @ 2010-2012 Michael P. Reilly. All rights reserved.
 # pyerector.py
 #
 # Options available to pymain():
@@ -268,9 +268,9 @@ class _Initer(object):
             value = self.kwargs[name]
         else:
             value = getattr(self, name)
-        if not noNone or value is not None:
+        if noNone or value is not None:
             self.asserttype(value, typeval, name)
-        else:
+        elif noNone and value is None:
             raise ValueError("no '%s' for '%s'" %
                                 (name, self.__class__.__name__))
         return value
@@ -983,14 +983,14 @@ class TestTask(unittest.TestCase):
 # standard tasks
 
 class Spawn(Task):
-    cmd = ''
+    cmd = ()
     infile = None
     outfile = None
     errfile = None
     def run(self):
         infile = self.get_kwarg('infile', str)
-        outfile = self.get_kwargs('outfile', str)
-        errfile = self.get_kwargs('errfile', str)
+        outfile = self.get_kwarg('outfile', str)
+        errfile = self.get_kwarg('errfile', str)
         cmd = self.get_args('cmd')
         from os import WIFSIGNALED, WTERMSIG, WEXITSTATUS
         try:
@@ -1005,7 +1005,8 @@ class Spawn(Task):
             elif errfile:
                 ef = open(errfile, 'w')
             verbose('spawn("' + str(cmd) + '")')
-            rc = call(cmd, shell=True, stdin=ifl, stdout=of, stderr=ef, bufsize=0)
+            shellval = not isinstance(cmd, tuple)
+            rc = call(cmd, shell=shellval, stdin=ifl, stdout=of, stderr=ef, bufsize=0)
             if rc < 0:
                 raise self.Error(str(self), 'signal ' + str(abs(rc)) + 'raised')
             elif rc > 0:
@@ -1013,6 +1014,8 @@ class Spawn(Task):
             pass
         except ImportError:
             from popen2 import Popen3
+            if isinstance(cmd, tuple):
+                pcmd = ' '.join('"%s"' % str(s) for s in cmd)
             pcmd = cmd
             if outfile:
                 pcmd += '>"' + str(outfile) + '"'
@@ -1323,22 +1326,13 @@ class Java(Task):
         jar = self.get_kwarg('jar', str, noNone=True)
         if self.properties:
             if hasformat:
-                sp = ' ' + ' '.join(
-                    ['-D{0}={1}'.format(x[0], x[1]) for x in self.properties]
-                )
+                sp = ['-D{0}={1}'.format(x[0], x[1]) for x in self.properties]
             else:
-                sp = ' ' + ' '.join(['-D%s=%s' % x for x in self.properties])
+                sp = ['-D%s=%s' % x for x in self.properties]
         else:
-            sp = ''
-        if hasformat:
-            cmd = '{prog}{sp} -jar {jar} {args}'.format(
-                prog=self.java_prog, sp=sp, jar=jar,
-                args=' '.join([str(s) for s in self.args])
-            )
-        else:
-            cmd = '%s%s -jar %s %s' % (
-                self.java_prog, sp, jar, ' '.join([str(s) for s in self.args])
-            )
+            sp = ()
+        cmd = (self.java_prog,) + tuple(sp) + (jar,) + \
+            tuple([str(s) for s in self.args])
         Spawn()(
             cmd
         )
