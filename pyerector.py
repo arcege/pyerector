@@ -73,10 +73,23 @@ __all__ = [
   'Shebang', 'Tar', 'Untar', 'Zip', 'Unzip',
 ]
 
-Config = {
-    'initialized': False,
-    'basedir': None,
-}
+class Config:
+    initialized = False
+    _basedir = None
+    def __init__(self, basedir=None):
+        from os import curdir
+        if basedir is not None:
+            self.basedir = basedir
+    def _get_basedir(self, value):
+        return self._basedir
+    def _set_basedir(self, value):
+        from os.path import normpath, realpath, isdir
+        dir = normpath(realpath(value))
+        if isdir(dir):
+            self._basedir = dir
+        else:
+            raise ValueError('no such file or directory: %s' % dir)
+    basedir = property(_get_basedir, _set_basedir)
 
 class Verbose(object):
     from os import linesep as eoln
@@ -212,16 +225,15 @@ class _Initer(object):
                 return unicode(str(self))
             else:
                 return str(self)
-    global Config
-    config = Config
+    config = Config()
     from os import curdir
     def __init__(self, basedir=None, curdir=curdir):
         from os.path import normpath, realpath
         if basedir is None:
             basedir = curdir
-        if not self.config['initialized']:
-            self.config['basedir'] = normpath(realpath(basedir))
-            self.config['initialized'] = True
+        if not self.config.initialized:
+            self.config.basedir = normpath(realpath(basedir))
+            self.config.initialized = True
         self.basedir = normpath(realpath(basedir))
     del curdir
     def get_files(self, files=None, noglob=False, subdir=None):
@@ -270,14 +282,15 @@ class Test_Initer(unittest.TestCase):
         rmtree(cls.dir)
     def test_initialized(self):
         #"""Is system initialized on first instantiation."""
+        old_config = _Initer.config
         try:
-            _Initer.config = Config.copy()
-            _Initer.config['initialized'] = False
-            self.assertFalse(_Initer.config['initialized'])
+            _Initer.config = Config()
+            _Initer.config.initialized = False
+            self.assertFalse(_Initer.config.initialized)
             obj = _Initer()
-            self.assertTrue(_Initer.config['initialized'])
+            self.assertTrue(_Initer.config.initialized)
         finally:
-            _Initer.config = Config
+            _Initer.config = old_config
     def test_basedir(self):
         from os import curdir, getcwd
         from os.path import normpath, realpath
@@ -792,7 +805,6 @@ class TestTarget(unittest.TestCase):
         import shutil
         shutil.rmtree(cls.dir)
     def setUp(self):
-        global Config
         try:
             from io import StringIO
         except ImportError:
