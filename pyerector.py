@@ -256,20 +256,31 @@ class _Initer(object):
         return join(self.basedir, *path)
     def asserttype(self, value, typeval, valname):
         if isinstance(typeval, type):
-            text = "Must supply %%s to '%s' in '%s'" % (valname,
-                                                        self.__class__.__name__)
-            assert isinstance(value, typeval), text % typeval.__name__
+            typename = typeval.__name__
         else:
-            text = "Must supply %s to '%s' in '%s'" % (
-                ' or '.join(t.__name__ for t in typeval),
-                valname,
-                self.__class__.__name__
-            )
-            for tval in typeval:
-                if isinstance(value, tval):
-                    break
-            else:
-                raise AssertionError(text)
+            typename = ' or '.join(t.__name__ for t in typeval)
+        text = "Must supply %s to '%s' in '%s'" % (
+            typename, valname, self.__class__.__name__
+        )
+        assert isinstance(value, typeval), text
+    def get_kwarg(self, name, typeval, noNone=False):
+        if name in self.kwargs:
+            value = self.kwargs[name]
+        else:
+            value = getattr(self, name)
+        if not noNone or value is not None:
+            self.asserttype(value, typeval, name)
+        else:
+            raise ValueError("no '%s' for '%s'" %
+                                (name, self.__class__.__name__))
+        return value
+    def get_args(self, name):
+        if self.args:
+            value = self.args
+        else:
+            value = getattr(self, name)
+        self.asserttype(value, (tuple, list), name)
+        return value
 
 class Test_Initer(unittest.TestCase):
     @classmethod
@@ -977,26 +988,10 @@ class Spawn(Task):
     outfile = None
     errfile = None
     def run(self):
-        if self.args:
-            cmd = self.args[0]
-        else:
-            cmd = self.cmd
-        if 'infile' in self.kwargs:
-            infile = self.kwargs['infile']
-        else:
-            infile = self.infile
-        if 'outfile' in self.kwargs:
-            outfile = self.kwargs['outfile']
-        elif len(self.args) > 1:
-            outfile = self.args[1]
-        else:
-            outfile = self.outfile
-        if 'errfile' in self.kwargs:
-            errfile = self.kwargs['errfile']
-        elif len(self.args) > 2:
-            errfile = self.args[2]
-        else:
-            errfile = self.errfile
+        infile = self.get_kwarg('infile', str)
+        outfile = self.get_kwargs('outfile', str)
+        errfile = self.get_kwargs('errfile', str)
+        cmd = self.get_args('cmd')
         from os import WIFSIGNALED, WTERMSIG, WEXITSTATUS
         try:
             from subprocess import call
@@ -1040,7 +1035,8 @@ class Remove(Task):
         from os import remove
         from os.path import isdir, isfile, islink
         from shutil import rmtree
-        for fname in self.get_files(self.args or None, self.noglob):
+        files = tuple(self.get_args('files'))
+        for fname in self.get_files(files, self.noglob):
             self.asserttype(fname, str, 'files')
             if isfile(fname) or islink(fname):
                 verbose('remove(' + str(fname) + ')')
@@ -1058,18 +1054,8 @@ class Copy(Task):
     def run(self):
         from shutil import copy2
         verbose('starting Copy')
-        if 'dest' in self.kwargs:
-            dst = self.kwargs['dest']
-        elif not self.dest:
-            raise Task.Error('configuration error: Copy missing destination')
-        else:
-            dst = self.dest
-        self.asserttype(dst, str, 'dest')
-        dst = self.join(dst)
-        if self.args:
-            srcs = self.get_files(self.args, noglob=self.wantnoglob())
-        else:
-            srcs = self.get_files(self.files, noglob=self.wantnoglob())
+        dst = self.join(self.get_kwarg('dest', str, noNone=True))
+        srcs = self.get_files(self.get_args('files'), noglob=self.wantnoglob())
         for fname in srcs:
             self.asserttype(fname, str, 'files')
             verbose('copy2(' + str(fname) + ', ' + str(dst) + ')')
@@ -1080,15 +1066,8 @@ class Shebang(Copy):
     def run(self):
         from shutil import copyfileobj
         verbose('starting Shebang')
-        if 'program' in self.kwargs:
-            program = self.kwargs['program']
-            self.asserttype(program, str, 'program')
-        else:
-            raise Task.Error('No program value supplied')
-        if self.args:
-            srcs = self.get_files(self.args, noglob=self.wantnoglob())
-        else:
-            srcs = self.get_files(self.files, noglob=self.wantnoglob())
+        program = self.get_kwarg('program', str, noNone=True)
+        srcs = self.get_files(self.get_args('files'), noglob=self.wantnoglob())
         try:
             from io import StringIO
         except ImportError:
@@ -1120,13 +1099,9 @@ class CopyTree(Task):
         from fnmatch import fnmatch
         from os import curdir, error, listdir
         from os.path import exists, join, isdir, normpath
-        if self.args:
-            srcdir, dstdir = self.args
-        else:
-            srcdir, dstdir = self.srcdir, self.dstdir
-        self.asserttype(srcdir, str, 'srcdir')
-        self.asserttype(dstdir, str, 'dstdir')
-        if not srcdir or not exists(self.join(srcdir)):
+        srcdir = self.get_kwarg('srcdir', str, noNone=True)
+        dstdir = self.get_kwarg('dstdir', str, noNone=True)
+        if not exists(self.join(srcdir)):
             raise error(2, "No such file or directory: " + srcdir)
         elif not isdir(self.join(srcdir)):
             raise error(20, "Not a directory: " + srcdir)
@@ -1158,7 +1133,7 @@ class CopyTree(Task):
 class Mkdir(Task):
     files = ()
     def run(self):
-        for arg in (self.args or self.files):
+        for arg in self.get_args('files'):
             self.asserttype(arg, str, 'files')
             self.mkdir(self.join(arg))
     def mkdir(klass, path):
@@ -1178,17 +1153,8 @@ class Chmod(Task):
     mode = int('666', 8) # gets around Python 2.x vs 3.x octal issue
     def run(self):
         from os import chmod
-        if 'mode' in self.kwargs:
-            mode = self.kwargs['mode']
-        else:
-            mode = self.mode
-        self.asserttype(mode, int, 'mode')
-        if self.args:
-            files = self.args
-        else:
-            files = self.files
-        self.asserttype(files, (tuple, list), 'files')
-        for fname in self.get_files(files):
+        mode = self.get_kwarg('mode', int)
+        for fname in self.get_files(self.get_args('files')):
             self.asserttype(fname, str, 'files')
             verbose('chmod(' + fname + ', ' + oct(mode) + ')')
             chmod(fname, mode)
@@ -1201,29 +1167,9 @@ class Tar(Task):
         from tarfile import open
         from os import sep, listdir
         from os.path import join, islink, isfile, isdir
-        if 'name' in self.kwargs:
-            name = self.kwargs['name']
-        else:
-            name = self.name
-        if 'root' in self.kwargs:
-            root = self.kwargs['root']
-        else:
-            root = self.root
-        if name is not None:
-            self.asserttype(name, str, 'name')
-        else:
-            raise ValueError("no 'name' for '%s'" % self.__class__.__name__)
-        self.asserttype(root, str, 'root')
-        root = self.join(root)
-        if self.args:
-            files = tuple(self.args)
-        else:
-            files = tuple(self.files)
-        if 'exclude' in self.kwargs:
-            excludes = self.kwargs['exclude']
-        else:
-            excludes = self.exclude
-        self.asserttype(excludes, (tuple, list), 'exclude')
+        name = self.get_kwarg('name', str, noNone=True)
+        root = self.join(self.get_kwarg('root', str))
+        excludes = self.get_kwarg('exclude', (tuple, list))
         if excludes:
             exctest = lambda t, e=excludes: [v for v in e if t.endswith(v)]
             filter = lambda t, e=exctest: not e(t.name) and t or None
@@ -1235,7 +1181,7 @@ class Tar(Task):
         toadd = []
         # do not use Task.get_files()
         from glob import glob
-        queue = list(files)
+        queue = list(self.get_args('files'))
         while queue:
             entry = queue[0]
             del queue[0]
@@ -1266,15 +1212,11 @@ class Untar(Task):
         from tarfile import open
         from os import pardir, sep
         from os.path import join
-        if self.args:
-            name, root = self.args[0], self.args[1]
-            files = tuple(self.args[2:])
-        else:
-            name, root, files = self.name, self.root, self.files
-        self.asserttype(name, str, 'name')
-        self.asserttype(root, str, 'root')
-        self.asserttype(files, (tuple, list), 'files')
-        file = open(tarname, 'r:gz')
+        name = self.get_kwarg('name', str, noNone=True)
+        root = self.get_kwarg('root', str)
+        self.asserttype(root, str,'root')
+        files = tuple(self.get_args('files'))
+        file = open(name, 'r:gz')
         fileset = []
         for member in file.getmembers():
             if member.name.startswith(sep) or member.name.startswith(pardir):
@@ -1285,31 +1227,72 @@ class Untar(Task):
             verbose('tar.extract(' + str(fileinfo.name) + ')')
             file.extract(fileinfo, path=(root or ""))
         file.close()
-        return True
 class Zip(Task):
-    def zip(self, zipname, root, *files):
+    from os import curdir as root
+    name = None
+    files = ()
+    exclude = ()
+    def run(self):
         from zipfile import ZipFile
-        from os.path import join
-        file = ZipFile(zipname, 'w')
-        for filename in files:
-            verbose('zip.add(' + str(join(root, filename)) + ')')
-            file.write(join(root, filename), filename)
+        from os import listdir, sep
+        from os.path import isdir, isfile, islink, join
+        name = self.get_kwarg('name', str, noNone=True)
+        root = self.join(self.get_kwarg('root', str))
+        excludes = tuple(self.get_kwarg('exclude', (tuple, list)))
+        files = tuple(self.get_args('files'))
+        if excludes:
+            exctest = lambda t, e=excludes: [v for v in e if t.endswith(v)]
+            filter = lambda t, e=exctest: not e(t.name) and f or None
+            exclusion = lambda t, e=exctest: e(t)
+        else:
+            exctest = None
+            filter = None
+            exclusion = None
+        toadd = []
+        # do not use Task.get_files()
+        from glob import glob
+        queue = list(files)
+        while queue:
+            entry = queue[0]
+            del queue[0]
+            for fn in glob(self.join(root, entry)):
+                if exctest and exctest(fn): # if true then ignore
+                    pass
+                elif islink(fn) or isfile(fn):
+                    toadd.append(fn)
+                elif isdir(fn):
+                    files = [join(fn, f) for f in listdir(fn)]
+                    queue.extend(files)
+        file = ZipFile(self.join(name), 'w')
+        for fname in toadd:
+            fn = fname.replace(
+                root + sep, ''
+            )
+            verbose('zip.add(' + str(fname) + ', ' + str(fn) + ')' )
+            file.write(fname, fn)
         file.close()
 class Unzip(Task):
-    def unzip(self, zipname, root, *files):
+    name = None
+    root = None
+    files = ()
+    def run(self):
         from zipfile import ZipFile
         from os import pardir, sep
-        from os.path import dirname, join
-        file = open(zipname, 'r')
+        from os.path import join
+        name = self.get_kwarg('name', str, noNone=True)
+        root = self.get_kwarg('root', str)
+        files = tuple(self.get_args('files'))
+        file = ZipFile(name, 'r')
         fileset = []
         for member in file.namelist():
-            if member.startswith(sep) or member.startswith(pardir):
+            if member.name.startswith(sep) or member.name.startswith(pardir):
                 pass
-            elif not files or member in files:
+            elif not files or member.name in files:
                 fileset.append(member)
         for member in fileset:
             dname = join(root, member)
-            self.mkdir(dirname(dname))
+            Mkdir.mkdir(dirname(dname))
+            verbose('zip.extract(' + str(member) + ')')
             dfile = open(dname, 'wb')
             dfile.write(file.read(member))
         file.close()
@@ -1337,11 +1320,7 @@ class Java(Task):
     def addprop(self, var, val):
         self.properties.append( (var, val) )
     def run(self):
-        if 'jar' in self.kwargs:
-            jar = self.kwargs['jar']
-        else:
-            jar = self.jar
-        self.asserttype(jar, str, 'jar')
+        jar = self.get_kwarg('jar', str, noNone=True)
         if self.properties:
             if hasformat:
                 sp = ' ' + ' '.join(
