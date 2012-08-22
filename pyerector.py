@@ -116,91 +116,81 @@ from os import environ
 debug = Verbose('DEBUG' in environ and environ['DEBUG'] != '')
 del environ
 
-# the main program, to be called by pyerect program
-def pymain(*args):
-    global verbose, noop
-    showhelp = False
-    from sys import argv, exc_info
-    # need to "import __main__" and not "from __main__ import Default"
-    import getopt
-    basedir = None
-    targets = []
-    try:
-        opts, args = getopt.getopt(args or argv[1:], 'd:hNv', [
-                'directory=', 'dry-run', 'help', 'verbose',
-            ]
-        )
-    except getopt.error:
-        e = exc_info()[1]
-        raise SystemExit(e)
-    else:
-        for opt, val in opts:
-            if opt == '--':
-                break
-            elif opt in ('-h', '--help'):
-                showhelp = True
-            elif opt in ('-d', '--directory'):
-                basedir = val
-            elif opt in ('-N', '--dry-run'):
-                noop.on()
-            elif opt in ('-v', '--verbose'):
-                verbose.on()
-            else:
-                raise SystemExit('invalid option: ' + str(opt))
-    # map arguments into classes above: e.g. 'all' into All
-    if showhelp:
+# the main program, an instance to be called by pyerect program
+class Main(object):
+    import argparse
+    parser = argparse.ArgumentParser('Pyerector build system')
+    del argparse
+    parser.add_argument('targets', metavar='TARGET', nargs='*',
+                        help='names of targets to call')
+    parser.add_argument('--directory', '-d',
+                        help='base directory')
+    parser.add_argument('--dry-run', '-N', dest='noop', action='store_true',
+                        help='do not perform operations')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                        help='more verbose output')
+    def __call__(self, *args):
+        from sys import argv
+        self.basedir = None
+        self.targets = []
+        self.arguments(args or argv[1:])
+        self.validate_targets()
+        self.run()
+    def arguments(self, args):
+        global verbose, noop
         import __main__
-        targets[:] = [__main__.Help]
-    elif len(args) == 0:
-        try:
-            import __main__
-            targets.append(__main__.Default)
-        except AttributeError:
-            raise SystemExit('Must supply at least a Default target')
-    else:
-        all_targets = Target.get_targets()
-        for name in args:
-            try:
-                obj = all_targets[name.capitalize()]
-            except KeyError:
-                raise SystemExit('Error: unknown target: ' + str(name))
-            else:
-                if not issubclass(obj, Target):
+        args = self.parser.parse_args(args)
+        if args.verbose:
+            verbose.on()
+        if args.noop:
+            noop.on()
+        if args.directory:
+            self.basedir = args.directory
+        if args.targets:
+            self.targets = []
+            all_targets = Target.get_targets()
+            for name in args.targets:
+                try:
+                    obj = all_targets[name.capitalize()]
+                except KeyError:
                     raise SystemExit('Error: unknown target: ' + str(name))
-                targets.append(obj)
-    # validate the dependency tree, make sure that all are subclasses of
-    # Target, validate all Uptodate values and all Task values
-    for target in targets:
-        try:
-            target.validate_tree()
-        except ValueError:
-            if not debug:
-                e = exc_info()[1]
-                raise SystemExit('Error: ' + str(e))
+                else:
+                    if not issubclass(obj, Target):
+                        raise SystemExit('Error: unknown target: ' + str(name))
+                    self.targets.append(obj)
+        else:
+            self.targets = [__main__.Default]
+    def handle_error(self, text=''):
+        from sys import argv, exc_info
+        if debug:
+            raise
+        else:
+            e = exc_info()[1]
+            if text:
+                raise SystemExit('%s: %s' % (text, e))
             else:
-                raise
-    # run all the targets in the tree of each argument
-    for target in targets:
-        try:
-            target(basedir=basedir)()
-        except target.Error:
-            if not debug:
-                e = exc_info()[1]
-                raise SystemExit(e)
-            else:
-                raise
-        except KeyboardInterrupt:
-            if not debug:
-                e = exc_info()[1]
-                raise SystemExit(e)
-            else:
-                raise
-        except AssertionError:
-            if not debug:
-                e = exc_info()[1]
-                raise SystemExit('AssertionError: %s' % e)
-            else:
-                raise
+                raise SystemExit(str(e))
+    def validate_targets(self):
+        # validate the dependency tree, make sure that all are subclasses of
+        # Target, validate all Uptodate values and all Task values
+        for target in self.targets:
+            try:
+                target.validate_tree()
+            except ValueError:
+                self.handle_error('Error')
+    def run(self):
+        # run all targets in the tree of each argument
+        for target in self.targets:
+            try:
+                target(basedir=self.basedir)()
+            except ValueError:
+                self.handle_error()
+            except KeyboardInterrupt:
+                self.handle_error()
+            except AssertionError:
+                self.handle_error('AssertionError')
+
+pymain = Main()
 
 # helper function to reference classes in current scope
 def symbols_to_global(*classes, **kwargs):
