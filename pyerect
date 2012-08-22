@@ -22,14 +22,16 @@ class Unzip_t(Unzip):
     name = 'pyerector.zip'
 class CleanTest_t(Remove):
     files = ('testdir',)
-class Test(Target):
+class Localtest(Target):
     tasks = ('Untar_t', 'Unzip_t')
     dependencies = ('InitDirs', 'Packaging',)
 class Cleantest(Target):
     tasks = ('CleanTest_t',)
 class Unittest_t(Spawn):
     cmd = ('python', '-munittest', 'pyerector')
-class Unittest(Target):
+class Unittest_T(Target):
     tasks = ('Unittest_t',)
+#Unittest.modules = ('pyerector',)
+Test.dependencies = ('Localtest',) + Test.dependencies
 
 pymain()
