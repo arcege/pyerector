@@ -67,10 +67,10 @@ __all__ = [
   'Target', 'Uptodate', 'pymain', 'symbols_to_global',
   # standard targets
   'All', 'Default', 'Help', 'Clean', 'Init', 'InitDirs',
-  'Build', 'Compile', 'Dist', 'Packaging',
+  'Build', 'Compile', 'Dist', 'Packaging', 'Test',
   # tasks
   'Task', 'Spawn', 'Remove', 'Copy', 'CopyTree', 'Mkdir', 'Chmod', 'Java',
-  'Shebang', 'Tar', 'Untar', 'Zip', 'Unzip',
+  'Shebang', 'Tar', 'Unittest', 'Untar', 'Unzip', 'Zip',
 ]
 
 class Config:
@@ -848,7 +848,7 @@ class TestTarget(unittest.TestCase):
         cls.target_classes = {
             'Help': Help, 'All': All, 'Default': Default, 'Dist': Dist,
             'Packaging': Packaging, 'Build': Build, 'Compile': Compile,
-            'Init': Init, 'InitDirs': InitDirs, 'Clean': Clean,
+            'Init': Init, 'InitDirs': InitDirs, 'Clean': Clean, 'Test': Test,
             'TestCallUptodate_T': TestCallUptodate_T,
             'TestBeenCalled': TestBeenCalled,
             'TestCallTask_T': TestCallTask_T,
@@ -860,7 +860,7 @@ class TestTarget(unittest.TestCase):
             'Spawn': Spawn, 'Unzip': Unzip, 'Java': Java, 'Tar': Tar,
             'Zip': Zip, 'Shebang': Shebang, 'Untar': Untar,
             'Mkdir': Mkdir, 'Remove': Remove, 'Chmod': Chmod,
-            'CopyTree': CopyTree, 'Copy': Copy,
+            'CopyTree': CopyTree, 'Copy': Copy, 'Unittest': Unittest,
             'TestCallTask_t': TestCallTask_t,
             'TestCallDependency_t': TestCallDependency_t,
             'TestE2E_t1': TestE2E_t1, 'TestE2E_t2': TestE2E_t2,
@@ -1071,6 +1071,8 @@ class Spawn(Task):
                 ef = of
             elif errfile:
                 ef = open(errfile, 'w')
+            if isinstance(cmd, list) and len(cmd) == 1:
+                cmd = cmd[0]
             verbose('spawn("' + str(cmd) + '")')
             shellval = not isinstance(cmd, tuple)
             rc = call(cmd, shell=shellval, stdin=ifl, stdout=of, stderr=ef, bufsize=0)
@@ -1369,6 +1371,7 @@ class Unzip(Task):
 class Java(Task):
     from os import environ
     java_home = environ['JAVA_HOME']
+    classpath = ()
     properties = []
     del environ
     jar = None
@@ -1390,6 +1393,8 @@ class Java(Task):
     def addprop(self, var, val):
         self.properties.append( (var, val) )
     def run(self):
+        from os import environ
+        from os.path import pathsep
         jar = self.get_kwarg('jar', str, noNone=True)
         if self.properties:
             if hasformat:
@@ -1398,11 +1403,38 @@ class Java(Task):
                 sp = ['-D%s=%s' % x for x in self.properties]
         else:
             sp = ()
-        cmd = (self.java_prog,) + tuple(sp) + (jar,) + \
+        cmd = (self.java_prog,) + tuple(sp) + ('-jar', jar,) + \
             tuple([str(s) for s in self.args])
+        env = environ.copy()
+        if self.classpath:
+            env['CLASSPATH'] = pathsep.join(self.classpath)
         Spawn()(
-            cmd
+            cmd,
+            env=env,
         )
+class Unittest(Task):
+    modules = ()
+    path = ()
+    def run(self):
+        modules = list(self.get_args('modules'))
+        import imp, unittest
+        from sys import argv
+        from os.path import realpath
+        loader = unittest.loader.TestLoader()
+        runner = unittest.runner.TextTestRunner()
+        real_sys_name = argv[0]
+        try:
+            path = [realpath(p) for p in self.path]
+            if not path:
+                path = ['.']
+            for modname in modules:
+                argv[0] = modname
+                packet = imp.find_module(modname, path)
+                mod = imp.load_module(modname, *packet)
+                tests = loader.loadTestsFromModule(mod)
+                runner.run(tests)
+        finally:
+            argv[0] = real_sys_name
 
 # standard targets
 
@@ -1444,10 +1476,13 @@ class Dist(Target):
     """The primary packaging."""
     dependencies = ("Build", "Packaging")
     # may be overriden
+class Test(Target):
+    """Run (unit)tests."""
+    tasks = ("Unittest",)
 # default target
 class All(Target):
     """Do it all"""
-    dependencies = ("Clean", "Dist")
+    dependencies = ("Clean", "Dist", "Test")
 class Default(Target):
     dependencies = ("Dist",)
 
