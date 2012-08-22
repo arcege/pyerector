@@ -629,6 +629,7 @@ class Target(_Initer):
     been_called = property(get_been_called, set_been_called)
     def __str__(self):
         return self.__class__.__name__
+    @classmethod
     def validate_tree(klass):
         name = klass.__name__
         targets = klass.get_targets()
@@ -665,7 +666,6 @@ class Target(_Initer):
                     raise ValueError(
                         str(name) + ': invalid task: ' + str(tsk)
                     )
-    validate_tree = classmethod(validate_tree)
     def call_uptodate(self, klassname):
         uptodates = self.get_uptodates()
         try:
@@ -747,6 +747,7 @@ class Target(_Initer):
         self.stream.write(u(' ').join([u(str(s)) for s in args]))
         self.stream.write(u('\n'))
         self.stream.flush()
+    @staticmethod
     def get_tasks():
         import __main__
         if not hasattr(__main__, '_tasks_cache'):
@@ -759,7 +760,7 @@ class Target(_Initer):
                     tasks[name] = obj
             setattr(__main__, '_tasks_cache', tasks)
         return getattr(__main__, '_tasks_cache')
-    get_tasks = staticmethod(get_tasks)
+    @staticmethod
     def get_targets():
         import __main__
         if not hasattr(__main__, '_targets_cache'):
@@ -772,7 +773,7 @@ class Target(_Initer):
                     targets[name] = obj
             setattr(__main__, '_targets_cache', targets)
         return getattr(__main__, '_targets_cache')
-    get_targets = staticmethod(get_targets)
+    @staticmethod
     def get_uptodates():
         import __main__
         if not hasattr(__main__, '_uptodates_cache'):
@@ -785,7 +786,6 @@ class Target(_Initer):
                     uptodates[name] = obj
             setattr(__main__, '_uptodates_cache', uptodates)
         return getattr(__main__, '_uptodates_cache')
-    get_uptodates = staticmethod(get_uptodates)
 
 class TestTarget(unittest.TestCase):
     maxDiff = None
@@ -1198,6 +1198,7 @@ class Mkdir(Task):
         for arg in self.get_args('files'):
             self.asserttype(arg, str, 'files')
             self.mkdir(self.join(arg))
+    @classmethod
     def mkdir(klass, path):
         from os import mkdir, remove
         from os.path import dirname, isdir, isfile, islink
@@ -1209,7 +1210,6 @@ class Mkdir(Task):
             klass.mkdir(dirname(path))
             verbose('mkdir(' + str(path) + ')')
             mkdir(path)
-    mkdir = classmethod(mkdir)
 class Chmod(Task):
     files = ()
     mode = int('666', 8) # gets around Python 2.x vs 3.x octal issue
@@ -1406,7 +1406,7 @@ class Unittest(Task):
     modules = ()
     path = ()
     def run(self):
-        modules = list(self.get_args('modules'))
+        modules = tuple(self.get_args('modules'))
         import imp, unittest
         from sys import argv
         from os.path import realpath
