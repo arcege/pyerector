@@ -34,4 +34,4 @@ class Unittest_T(Target):
 #Unittest.modules = ('pyerector',)
 Test.dependencies = ('Localtest',) + Test.dependencies
 
-pymain()
+PyErector()

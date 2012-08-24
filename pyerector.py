@@ -2,8 +2,8 @@
 # Copyright @ 2010-2012 Michael P. Reilly. All rights reserved.
 # pyerector.py
 #
-# Options available to pymain():
-#    -h|--help               call the 'help' target and exit
+# Options available to PyErector():
+#    -h|--help               display arguments and options
 #    -v|--verbose            display debugging output
 #    -N|--dry-run            do not perform actual steps (bypass 'run()' method)
 #    -d=DIR|--directory=DIR  change the basedir value
@@ -34,7 +34,7 @@
 #         for file in self.get_files():
 #             compile(file)
 #
-# pymain()
+# PyErector()
 # ---------------------------------------------
 # $Id$
 
@@ -64,7 +64,7 @@ else:
     hasformat = True
 
 __all__ = [
-  'Target', 'Uptodate', 'pymain', 'symbols_to_global',
+  'Target', 'Uptodate', 'pymain', 'PyErector', 'symbols_to_global',
   # standard targets
   'All', 'Default', 'Help', 'Clean', 'Init', 'InitDirs',
   'Build', 'Compile', 'Dist', 'Packaging', 'Test',
@@ -117,19 +117,19 @@ debug = Verbose('DEBUG' in environ and environ['DEBUG'] != '')
 del environ
 
 # the main program, an instance to be called by pyerect program
-class Main(object):
+class PyErector(object):
     import argparse
-    parser = argparse.ArgumentParser('Pyerector build system')
+    parser = argparse.ArgumentParser(description='Pyerector build system')
     del argparse
     parser.add_argument('targets', metavar='TARGET', nargs='*',
-                        help='names of targets to call')
+                        help='name of target to call, default is "default"')
     parser.add_argument('--directory', '-d',
                         help='base directory')
     parser.add_argument('--dry-run', '-N', dest='noop', action='store_true',
                         help='do not perform operations')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='more verbose output')
-    def __call__(self, *args):
+    def __init__(self, *args):
         from sys import argv
         self.basedir = None
         self.targets = []
@@ -189,8 +189,7 @@ class Main(object):
                 self.handle_error()
             except AssertionError:
                 self.handle_error('AssertionError')
-
-pymain = Main()
+pymain = PyErector
 
 # helper function to reference classes in current scope
 def symbols_to_global(*classes, **kwargs):
@@ -1506,7 +1505,7 @@ All: done.
     def tearDown(self):
         verbose.stream = self.real_stream
     def test_all(self):
-        pymain("all")
+        PyErector("all")
         output = self.stream.getvalue()
         long_output = self.clean_output + self.long_output + self.all_output
         short_output = self.clean_output + self.all_output
@@ -1517,7 +1516,7 @@ All: done.
         else:
             self.assertEqual(output, '')
     def test_default(self):
-        pymain("default")
+        PyErector("default")
         output = self.stream.getvalue()
         long_output = self.long_output + self.default_output
         short_output = self.default_output
@@ -1572,16 +1571,16 @@ With three very lovely girls.
             Clean.files = ('build', 'dist')
             InitDirs.files = ('build', 'dist')
             tmpdiropt = '--directory=' + str(tmpdir)
-            debug('pymain("-v", "' + tmpdiropt + '", "clean")')
-            pymain('-v', tmpdiropt, 'clean')
+            debug('PyErector("-v", "' + tmpdiropt + '", "clean")')
+            PyErector('-v', tmpdiropt, 'clean')
             if debug:
                 os.system('ls -lAtr ' + str(tmpdir))
-            debug('pymain("-v", "' + tmpdiropt + '")')
-            pymain('-v', tmpdiropt) # default
+            debug('PyErector("-v", "' + tmpdiropt + '")')
+            PyErector('-v', tmpdiropt) # default
             if debug:
                 os.system('ls -lAtr ' + str(tmpdir))
-            debug('pymain("-v", "' + tmpdiropt + '")')
-            pymain('-v', tmpdiropt) # default with uptodate
+            debug('PyErector("-v", "' + tmpdiropt + '")')
+            PyErector('-v', tmpdiropt) # default with uptodate
             if debug:
                 os.system('ls -lAtr ' + str(tmpdir))
         finally:
