@@ -65,6 +65,7 @@ else:
 
 __all__ = [
   'Target', 'Uptodate', 'pymain', 'PyErector', 'symbols_to_global',
+  'DirList', 'FileList',
   # standard targets
   'All', 'Default', 'Help', 'Clean', 'Init', 'InitDirs',
   'Build', 'Compile', 'Dist', 'Packaging', 'Test',
@@ -80,7 +81,7 @@ class Config:
         from os import curdir
         if basedir is not None:
             self.basedir = basedir
-    def _get_basedir(self, value):
+    def _get_basedir(self):
         return self._basedir
     def _set_basedir(self, value):
         from os.path import normpath, realpath, isdir
