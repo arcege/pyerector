@@ -95,8 +95,12 @@ class Config:
 class Verbose(object):
     from os import linesep as eoln
     from sys import stdout as stream
+    prefix = ''
     def __init__(self, state=False):
+        from os import environ
         self.state = bool(state)
+        if 'PYERECTOR_PREFIX' in environ:
+            self.prefix = environ['PYERECTOR_PREFIX'].decode('UTF-8')
     def __bool__(self):
         return self.state
     __nonzero__ = __bool__
@@ -106,6 +110,9 @@ class Verbose(object):
         self.state = False
     def _write(self, msg):
         if self.state:
+            if self.prefix != '':
+                self.stream.write(u(self.prefix))
+                self.stream.write(u(': '))
             self.stream.write(u(msg))
             self.stream.write(u(self.eoln))
             self.stream.flush()
@@ -742,6 +749,9 @@ class Target(_Initer):
     def run(self):
         pass
     def verbose(self, *args):
+        if verbose.prefix != '':
+            self.stream.write(u(verbose.prefix))
+            self.stream.write(u(': '))
         self.stream.write(u(str(self)))
         self.stream.write(u(': '))
         self.stream.write(u(' ').join([u(str(s)) for s in args]))
@@ -1048,9 +1058,13 @@ class Spawn(Task):
         infile = self.get_kwarg('infile', str)
         outfile = self.get_kwarg('outfile', str)
         errfile = self.get_kwarg('errfile', str)
+        env = self.get_kwarg('env', dict)
+        from os import environ
         cmd = self.get_args('cmd')
         from os import WIFSIGNALED, WTERMSIG, WEXITSTATUS
         try:
+            realenv = environ.copy()
+            realenv.update(env)
             from subprocess import call
             ifl = of = ef = None
             if infile:
@@ -1065,7 +1079,8 @@ class Spawn(Task):
                 cmd = cmd[0]
             verbose('spawn("' + str(cmd) + '")')
             shellval = not isinstance(cmd, tuple)
-            rc = call(cmd, shell=shellval, stdin=ifl, stdout=of, stderr=ef, bufsize=0)
+            rc = call(cmd, shell=shellval, stdin=ifl, stdout=of, stderr=ef,
+                      bufsize=0, env=realenv)
             if rc < 0:
                 raise self.Error(str(self), 'signal ' + str(abs(rc)) + 'raised')
             elif rc > 0:
@@ -1083,13 +1098,24 @@ class Spawn(Task):
             elif errfile:
                 pcmd += '2>"' + str(errfile) + '"'
             verbose('spawn("' + str(pcmd) + '")')
+            oldenv = {}
+            for ename in env:
+                if ename in environ:
+                    oldenv[ename] = environ[ename]
+                else:
+                    oldenv[ename] = None
+                environ[ename] = env[ename]
             rc = Popen3(pcmd, capturestderr=False, bufsize=0).wait()
             if WIFSIGNALED(rc):
                 raise self.Error(str(self),
                                  'signal ' + str(WTERMSIG(rc)) + 'raised')
             elif WEXITSTATUS(rc):
                 raise self.Error(str(self), 'returned error = ' + str(rc))
-            pass
+            for ename in env:
+                if oldenv[ename] is None:
+                    del environ[ename]
+                else:
+                    environ[ename] = oldenv[ename]
 class Remove(Task):
     files = ()
     noglob = False
