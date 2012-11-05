@@ -126,17 +126,26 @@ del environ
 
 # the main program, an instance to be called by pyerect program
 class PyErector(object):
-    import argparse
-    parser = argparse.ArgumentParser(description='Pyerector build system')
-    del argparse
-    parser.add_argument('targets', metavar='TARGET', nargs='*',
-                        help='name of target to call, default is "default"')
-    parser.add_argument('--directory', '-d',
-                        help='base directory')
-    parser.add_argument('--dry-run', '-N', dest='noop', action='store_true',
-                        help='do not perform operations')
-    parser.add_argument('--verbose', '-v', action='store_true',
-                        help='more verbose output')
+    try:
+        import argparse
+        parser = argparse.ArgumentParser(description='Pyerector build system')
+        del argparse
+        parser.add_argument('targets', metavar='TARGET', nargs='*',
+                            help='name of target to call, default is "default"')
+        parser.add_argument('--directory', '-d',
+                            help='base directory')
+        parser.add_argument('--dry-run', '-N', dest='noop', action='store_true',
+                            help='do not perform operations')
+        parser.add_argument('--verbose', '-v', action='store_true',
+                            help='more verbose output')
+    except ImportError:
+        import optparse
+        parser = optparse.OptionParser(description='Pyerector build system')
+        parser.add_option('--directory', '-d', help='base directory')
+        parser.add_option('--dry-run', '-N', dest='noop', action='store_true',
+                          help='do not perform operations')
+        parser.add_option('--verbose', '-v', action='store_true',
+                          help='more verbose output')
     def __init__(self, *args):
         from sys import argv
         self.basedir = None
@@ -148,6 +157,9 @@ class PyErector(object):
         global verbose, noop
         import __main__
         args = self.parser.parse_args(args)
+        if isinstance(args, tuple):
+            args, arglist = args
+            args.targets = arglist
         if args.verbose:
             verbose.on()
         if args.noop:
@@ -1054,6 +1066,7 @@ class Spawn(Task):
     infile = None
     outfile = None
     errfile = None
+    env = {}
     def run(self):
         infile = self.get_kwarg('infile', str)
         outfile = self.get_kwarg('outfile', str)
