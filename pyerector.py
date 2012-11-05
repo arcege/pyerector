@@ -1157,7 +1157,7 @@ class Shebang(Copy):
         program = self.get_kwarg('program', str, noNone=True)
         srcs = self.get_files(self.get_args('files'), noglob=self.wantnoglob())
         try:
-            from io import StringIO
+            from io import BytesIO as StringIO
         except ImportError:
             from StringIO import StringIO
         from os import linesep
