@@ -1081,10 +1081,9 @@ class Spawn(Task):
             realenv.update(env)
             if ((isinstance(cmd, tuple) or isinstance(cmd, list)) and
                 len(cmd) == 1):
-                cmd = cmd[0]
+                cmd = tuple(cmd[0])
             else:
                 cmd = tuple(cmd)
-            verbose('cmd =', cmd)
             ifl = of = ef = None
             if infile:
                 ifl = open(infile, 'r')
