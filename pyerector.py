@@ -36,10 +36,10 @@
 #
 # PyErector()
 # ---------------------------------------------
-# $Id$
+# $Id: pyerector.py 907 2012-11-05 21:29:03Z reillym $
 
 from __future__ import print_function
-_RCS_VERSION = '$Revision$'
+_RCS_VERSION = '$Revision: 30 $'
 
 from sys import version
 if version < '3':
@@ -1076,9 +1076,15 @@ class Spawn(Task):
         cmd = self.get_args('cmd')
         from os import WIFSIGNALED, WTERMSIG, WEXITSTATUS
         try:
+            from subprocess import call
             realenv = environ.copy()
             realenv.update(env)
-            from subprocess import call
+            if ((isinstance(cmd, tuple) or isinstance(cmd, list)) and
+                len(cmd) == 1):
+                cmd = cmd[0]
+            else:
+                cmd = tuple(cmd)
+            verbose('cmd =', cmd)
             ifl = of = ef = None
             if infile:
                 ifl = open(infile, 'r')
@@ -1101,15 +1107,16 @@ class Spawn(Task):
             pass
         except ImportError:
             from popen2 import Popen3
-            if isinstance(cmd, tuple):
+            if isinstance(cmd, tuple) or isinstance(cmd, list):
                 pcmd = ' '.join('"%s"' % str(s) for s in cmd)
-            pcmd = cmd
+            else:
+                pcmd = cmd
             if outfile:
-                pcmd += '>"' + str(outfile) + '"'
+                pcmd += (' >"%s"' % outfile)
             if errfile == outfile:
-                pcmd += '2>&1'
+                pcmd += ' 2>&1'
             elif errfile:
-                pcmd += '2>"' + str(errfile) + '"'
+                pcmd += (' 2>"%s"' % errfile)
             verbose('spawn("' + str(pcmd) + '")')
             oldenv = {}
             for ename in env:
@@ -1449,8 +1456,14 @@ class Unittest(Task):
         import imp, unittest
         from sys import argv
         from os.path import realpath
-        loader = unittest.loader.TestLoader()
-        runner = unittest.runner.TextTestRunner()
+        try:
+            loader = unittest.loader.TestLoader()
+        except AttributeError:
+            loader = unittest.TestLoader()
+        try:
+            runner = unittest.runner.TextTestRunner()
+        except AttributeError:
+            runner = unittest.TextTestRunner()
         real_sys_name = argv[0]
         try:
             path = [realpath(p) for p in self.path]
