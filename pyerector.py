@@ -1079,8 +1079,8 @@ class Spawn(Task):
             from subprocess import call
             realenv = environ.copy()
             realenv.update(env)
-            if ((isinstance(cmd, tuple) or isinstance(cmd, list)) and
-                len(cmd) == 1):
+            if (len(cmd) == 1 and
+                (isinstance(cmd, tuple) or isinstance(cmd, list))):
                 cmd = tuple(cmd[0])
             else:
                 cmd = tuple(cmd)
@@ -1093,8 +1093,6 @@ class Spawn(Task):
                 ef = of
             elif errfile:
                 ef = open(errfile, 'w')
-            if isinstance(cmd, list) and len(cmd) == 1:
-                cmd = cmd[0]
             verbose('spawn("' + str(cmd) + '")')
             shellval = not isinstance(cmd, tuple)
             rc = call(cmd, shell=shellval, stdin=ifl, stdout=of, stderr=ef,
