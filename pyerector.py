@@ -307,7 +307,6 @@ class _Initer(object):
         if not self.config.initialized:
             self.config.basedir = normpath(realpath(basedir))
             self.config.initialized = True
-        self.basedir = normpath(realpath(basedir))
     del curdir
     def get_files(self, files=None, noglob=False, subdir=None):
         from glob import glob
@@ -328,8 +327,8 @@ class _Initer(object):
             filelist.extend(s)
         return filelist
     def join(self, *path):
-        from os.path import join
-        return join(self.basedir, *path)
+        from os.path import join, normpath
+        return normpath(join(self.config.basedir, *path))
     def asserttype(self, value, typeval, valname):
         if isinstance(typeval, type):
             typename = typeval.__name__
@@ -694,7 +693,7 @@ class Target(_Initer):
                 raise self.Error(str(self), 'no such uptodate: ' + str(klassname))
             else:
                 raise
-        return klass(basedir=self.basedir)()
+        return klass(basedir=self.config.basedir)()
     def call_dependency(self, klassname):
         targets = self.get_targets()
         try:
@@ -704,7 +703,7 @@ class Target(_Initer):
                 raise self.Error(str(self), 'no such dependency: ' + str(klassname))
             else:
                 raise
-        klass(basedir=self.basedir)()
+        klass(basedir=self.config.basedir)()
     def call_task(self, klassname, args):
         tasks = self.get_tasks()
         try:
@@ -714,7 +713,7 @@ class Target(_Initer):
                 raise self.Error(str(self), 'no such task: ' + str(klassname))
             else:
                 raise
-        return klass(basedir=self.basedir)(*args)
+        return klass(basedir=self.config.basedir)(*args)
     def __call__(self, *args):
         from sys import exc_info
         if self.been_called:
@@ -733,8 +732,8 @@ class Target(_Initer):
                 self.call_task(task, args) # usually args would be (), but...
             except self.Error:
                 if not debug:
-                    e = exc_info()[1]
-                    raise self.Error(str(self) + ':' + str(e[0]), e[1])
+                    e = exc_info()
+                    raise self.Error(str(self) + ':' + str(e[1][0]), e[1][1]), None, e[2]
                 else:
                     raise
         try:
@@ -743,16 +742,16 @@ class Target(_Initer):
             raise
         except Task.Error:
             if not debug:
-                e = exc_info()[1]
-                raise self.Error(str(self) + ':' + str(e[0]), e[1])
+                e = exc_info()
+                raise self.Error(str(self) + ':' + str(e[1][0]), e[1][1]), None, e[2]
             else:
                 raise
         except self.Error:
             raise
         except Exception:
             if not debug:
-                e = exc_info()[1]
-                raise self.Error(str(self), e)
+                e = exc_info()
+                raise self.Error(str(self), e[1]), None, e[2]
             else:
                 raise
         else:
@@ -990,8 +989,8 @@ class Task(_Initer):
             raise
         except Exception:
             if not debug:
-                e = exc_info()[1]
-                raise self.Error(str(self), e)
+                e = exc_info()
+                raise self.Error(str(self), e[1]), None, e[2]
             else:
                 raise
         if rc:
@@ -1493,12 +1492,12 @@ class Clean(Target):
     """Clean directories and files used by the build"""
     files = ()
     def run(self):
-        Remove(basedir=self.basedir)(*self.files)
+        Remove(basedir=self.config.basedir)(*self.files)
 class InitDirs(Target):
     """Create initial directories"""
     files = ()
     def run(self):
-        Mkdir(basedir=self.basedir)(*self.files)
+        Mkdir(basedir=self.config.basedir)(*self.files)
 class Init(Target):
     """Initialize the build."""
     dependencies = ("InitDirs",)
