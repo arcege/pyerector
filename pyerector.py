@@ -1180,7 +1180,7 @@ class Copy(Task):
         return (('noglob' in self.kwargs and self.kwargs['noglob']) or
                 self.noglob)
     def run(self):
-        from os.path import basename, isdir, join
+        from os.path import basename, isdir, isfile, join
         from shutil import copy2
         verbose('starting Copy')
         dst = self.join(self.get_kwarg('dest', str, noNone=True))
@@ -1192,7 +1192,7 @@ class Copy(Task):
                 dstfile = join(dst, basename(fname))
             else:
                 dstfile = dst
-            if Uptodate.checkpair(fname, dstfile):
+            if isfile(dstfile) and Uptodate.checkpair(fname, dstfile):
                 debug('uptodate:', dstfile)
             else:
                 verbose('copy2(' + str(fname) + ', ' + str(dstfile) + ')')
