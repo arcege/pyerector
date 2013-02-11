@@ -27,11 +27,6 @@ class Localtest(Target):
     dependencies = ('InitDirs', 'Packaging',)
 class Cleantest(Target):
     tasks = ('CleanTest_t',)
-class Unittest_t(Spawn):
-    cmd = ('python', '-munittest', 'pyerector')
-class Unittest_T(Target):
-    tasks = ('Unittest_t',)
-#Unittest.modules = ('pyerector',)
 Test.dependencies = ('Localtest',) + Test.dependencies
 
 PyErector()
