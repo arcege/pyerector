@@ -28,5 +28,10 @@ class Localtest(Target):
 class Cleantest(Target):
     tasks = ('CleanTest_t',)
 Test.dependencies = ('Localtest',) + Test.dependencies
+class Realclean(Target):
+    tasks = ('Realclean_t',)
+    dependencies = ('Clean',)
+class Realclean_t(Remove):
+    files = ('*.pyc',)
 
 PyErector()
