@@ -1484,6 +1484,7 @@ class Unittest(Task):
         modules = tuple(self.get_args('modules'))
         import imp, unittest
         from sys import argv
+        from os import curdir
         from os.path import realpath
         try:
             loader = unittest.loader.TestLoader()
@@ -1493,17 +1494,27 @@ class Unittest(Task):
             runner = unittest.runner.TextTestRunner()
         except AttributeError:
             runner = unittest.TextTestRunner()
+        try:
+            suite = unittest.suite.TestSuite()
+        except AttributeError:
+            suite = unittest.TestSuite()
         real_sys_name = argv[0]
         try:
-            path = [realpath(p) for p in self.path]
-            if not path:
-                path = ['.']
-            for modname in modules:
-                argv[0] = modname
-                packet = imp.find_module(modname, path)
-                mod = imp.load_module(modname, *packet)
-                tests = loader.loadTestsFromModule(mod)
-                runner.run(tests)
+            if modules:
+                path = [realpath(p) for p in self.path]
+                if not path:
+                    path = [curdir]
+                for modname in modules:
+                    argv[0] = modname
+                    packet = imp.find_module(modname, path)
+                    mod = imp.load_module(modname, *packet)
+                    suite.addTests(loader.loadTestsFromModule(mod))
+            elif self.path:
+                for path in [realpath(p) for p in self.path]:
+                    suite.addTests(loader.discover(path))
+            else:
+                suite.addTests(loader.discover(curdir)
+            runner.run(suite)
         finally:
             argv[0] = real_sys_name
 
