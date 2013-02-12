@@ -320,7 +320,7 @@ class _Register(object):
             c = self._cache[cls] = {}
             for name in self:
                 kls = self[name]
-                if issubclass(kls, cls) and c is not kls:
+                if issubclass(kls, cls) and cls is not kls:
                     c[name] = kls
             return c
 _register = _Register()
