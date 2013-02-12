@@ -172,7 +172,7 @@ class PyErector(object):
             _Initer.config.basedir = args.directory
         if args.targets:
             self.targets = []
-            all_targets = Target.get_targets()
+            all_targets = _register.get('Target')
             for name in args.targets:
                 try:
                     obj = all_targets[name.capitalize()]
@@ -475,9 +475,9 @@ class Target(_Initer):
     @classmethod
     def validate_tree(klass):
         name = klass.__name__
-        targets = klass.get_targets()
-        uptodates = klass.get_uptodates()
-        tasks = klass.get_tasks()
+        targets = _register.get('Target')
+        uptodates = _register.get('Uptodate')
+        tasks = _register.get('Task')
         try:
             deps = klass.dependencies
         except AttributeError:
@@ -526,7 +526,7 @@ class Target(_Initer):
         elif isinstance(klassname, Uptodate):
             return klassname()
         else:
-            uptodates = self.get_uptodates()
+            uptodates = _register.get('Uptodate')
             try:
                 klass = uptodates[klassname]
             except KeyError:
@@ -542,7 +542,7 @@ class Target(_Initer):
         elif isinstance(klassname, Target):
             return klassname()
         else:
-            targets = self.get_targets()
+            targets = _register.get('Target')
             try:
                 klass = targets[klassname]
             except KeyError:
@@ -558,7 +558,7 @@ class Target(_Initer):
         elif isinstance(klassname, Task):
             return klassname(*args)
         else:
-            tasks = self.get_tasks()
+            tasks = _register.get('Task')
             try:
                 klass = tasks[klassname]
             except KeyError:
@@ -621,15 +621,7 @@ class Target(_Initer):
         self.stream.write(u(' ').join([u(str(s)) for s in args]))
         self.stream.write(u('\n'))
         self.stream.flush()
-    @staticmethod
-    def get_tasks():
-        return _register.get('Task')
-    @staticmethod
-    def get_targets():
-        return _register.get('Target')
-    @staticmethod
-    def get_uptodates():
-        return _register.get('Uptodate')
+
 # Tasks
 class Task(_Initer):
     args = []
@@ -1120,7 +1112,7 @@ class Unittest(Task):
 class Help(Target):
     """This information"""
     def run(self):
-        for name, obj in sorted(self.get_targets().items()):
+        for name, obj in sorted(_register.get('Target').items()):
             if hasformat:
                 print('{0:20}  {1}'.format(
                         obj.__name__.lower(),
