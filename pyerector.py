@@ -292,8 +292,47 @@ class DirList(FileIterator):
                         dirs.append(spath)
         self.pool[:] = paths # replace the pool with the gathered set
 
+class _Register(object):
+    def __init__(self):
+        self.map = {}
+        self._cache = {}
+    def __repr__(self):
+        return repr(self.map)
+    def append(self, name, cls):
+        self.map[name] = cls
+    def __contains__(self, name):
+        return name in self.map
+    def __getitem__(self, name):
+        return self.map[name]
+    def __setitem__(self, name, value):
+        self.map[name] = value
+    def __delitem__(self, name):
+        del self.map[name]
+    def __len__(self):
+        return len(self.map)
+    def __iter__(self):
+        return iter(self.map)
+    def get(self, name):
+        cls = self[name]
+        if cls in self._cache:
+            return self._cache[cls]
+        else:
+            c = self._cache[cls] = {}
+            for name in self:
+                kls = self[name]
+                if issubclass(kls, cls) and c is not kls:
+                    c[name] = kls
+            return c
+_register = _Register()
+
 # the base class to set up the others
 class _Initer(object):
+    class __metaclass__(type):
+        def __init__(cls, name, bases, dict):
+            global _register
+            type.__init__(cls, name, bases, dict)
+            _register[name] = cls
+            debug('registering', name, 'as', cls)
     class Error(Exception):
         def __str__(self):
             return str(self[0]) + ': ' + str(self[1])
@@ -445,18 +484,26 @@ class Target(_Initer):
             pass
         else:
             for dep in deps:
-                if dep not in targets and not isinstance(dep, Target):
+                if isinstance(dep, str) and dep in targets:
+                    obj = targets[dep]
+                elif isinstance(dep, Target):
+                    obj = targets[dep.__class__.__name__]
+                elif issubclass(dep, Target):
+                    obj = targets[dep.__name__]
+                else:
                     raise ValueError(
-                        str(name) + ': invalid dependency: ' + str(dep)
+                        str(name) + ': invalid dependency: ' % str(dep)
                     )
-                targets[dep].validate_tree()
+                obj.validate_tree()
         try:
             utds = klass.uptodates
         except AttributeError:
             pass
         else:
             for utd in utds:
-                if utd not in uptodates and not isinstance(utd, Uptodate):
+                if ((not isinstance(utd, str) or utd not in uptodates) and
+                        not isinstance(utd, Uptodate) and
+                        not issubclass(utd, Uptodate)):
                     raise ValueError(
                         str(name) + ': invalid uptodate: ' + str(utd)
                     )
@@ -466,12 +513,17 @@ class Target(_Initer):
             pass
         else:
             for tsk in tsks:
-                if tsk not in tasks and not isinstance(tsk, Task):
+                if ((not isinstance(tsk, str) or tsk not in tasks) and
+                        not isinstance(tsk, Task) and
+                        not issubclass(tsk, Task)):
                     raise ValueError(
                         str(name) + ': invalid task: ' + str(tsk)
                     )
     def call_uptodate(self, klassname):
-        if isinstance(klassname, Uptodate):
+        if (isinstance(klassname, type(_Initer)) and
+            issubclass(klassname, Uptodate)):
+            return klassname(basedir=self.config.basedir)()
+        elif isinstance(klassname, Uptodate):
             return klassname()
         else:
             uptodates = self.get_uptodates()
@@ -484,7 +536,10 @@ class Target(_Initer):
                     raise
             return klass(basedir=self.config.basedir)()
     def call_dependency(self, klassname):
-        if isinstance(klassname, Target):
+        if (isinstance(klassname, type(_Initer)) and
+            issubclass(klassname, Target)):
+            return klassname(basedir=self.config.basedir)()
+        elif isinstance(klassname, Target):
             return klassname()
         else:
             targets = self.get_targets()
@@ -497,7 +552,10 @@ class Target(_Initer):
                     raise
             klass(basedir=self.config.basedir)()
     def call_task(self, klassname, args):
-        if isinstance(klassname, Task):
+        if (isinstance(klassname, type(_Initer)) and
+            issubclass(klassname, Task)):
+            return klassname(basedir=self.config.basedir)(*args)
+        elif isinstance(klassname, Task):
             return klassname(*args)
         else:
             tasks = self.get_tasks()
@@ -565,44 +623,13 @@ class Target(_Initer):
         self.stream.flush()
     @staticmethod
     def get_tasks():
-        import __main__
-        if not hasattr(__main__, '_tasks_cache'):
-            tasks = {}
-            for name, obj in list(vars(__main__).items()):
-                if not name.startswith('_') \
-                   and obj is not Task \
-                   and isinstance(obj, type(Task)) \
-                   and issubclass(obj, Task):
-                    tasks[name] = obj
-            setattr(__main__, '_tasks_cache', tasks)
-        return getattr(__main__, '_tasks_cache')
+        return _register.get('Task')
     @staticmethod
     def get_targets():
-        import __main__
-        if not hasattr(__main__, '_targets_cache'):
-            targets = {}
-            for name, obj in list(vars(__main__).items()):
-                if not name.startswith('_') \
-                   and obj is not Target \
-                   and isinstance(obj, type(Target)) \
-                   and issubclass(obj, Target):
-                    targets[name] = obj
-            setattr(__main__, '_targets_cache', targets)
-        return getattr(__main__, '_targets_cache')
+        return _register.get('Target')
     @staticmethod
     def get_uptodates():
-        import __main__
-        if not hasattr(__main__, '_uptodates_cache'):
-            uptodates = {}
-            for name, obj in list(vars(__main__).items()):
-                if not name.startswith('_') \
-                   and obj is not Uptodate \
-                   and isinstance(obj, type(Uptodate)) \
-                   and issubclass(obj, Uptodate):
-                    uptodates[name] = obj
-            setattr(__main__, '_uptodates_cache', uptodates)
-        return getattr(__main__, '_uptodates_cache')
-
+        return _register.get('Uptodate')
 # Tasks
 class Task(_Initer):
     args = []
@@ -880,17 +907,21 @@ class Tar(Task):
                 elif isdir(fn):
                     fnames = [join(fn, f) for f in listdir(fn)]
                     queue.extend(fnames)
-        file = open(self.join(name), 'w:gz')
-        for fname in toadd:
-            fn = fname.replace(
-                root + sep, ''
-            )
-            verbose('tar.add(' +
-                    str(fname) + ', ' +
-                    str(fn) + ')'
-            )
-            file.add(fname, fn)
-        file.close()
+        try:
+            file = open(self.join(name), 'w:gz')
+        except IOError:
+            raise ValueError('no such file or directory: %s' % name)
+        else:
+            for fname in toadd:
+                fn = fname.replace(
+                    root + sep, ''
+                )
+                verbose('tar.add(' +
+                        str(fname) + ', ' +
+                        str(fn) + ')'
+                )
+                file.add(fname, fn)
+            file.close()
 class Untar(Task):
     name = None
     root = None
@@ -903,17 +934,22 @@ class Untar(Task):
         root = self.get_kwarg('root', str)
         self.asserttype(root, str,'root')
         files = tuple(self.get_args('files'))
-        file = open(name, 'r:gz')
-        fileset = []
-        for member in file.getmembers():
-            if member.name.startswith(sep) or member.name.startswith(pardir):
-                pass
-            elif not files or member.name in files:
-                fileset.append(member)
-        for fileinfo in fileset:
-            verbose('tar.extract(' + str(fileinfo.name) + ')')
-            file.extract(fileinfo, path=(root or ""))
-        file.close()
+        try:
+            file = open(self.join(name), 'r:gz')
+        except IOError:
+            raise ValueError('no such file or directory: %s' % name)
+        else:
+            fileset = []
+            for member in file.getmembers():
+                if (member.name.startswith(sep) or
+                    member.name.startswith(pardir)):
+                    pass
+                elif not files or member.name in files:
+                    fileset.append(member)
+            for fileinfo in fileset:
+                verbose('tar.extract(' + str(fileinfo.name) + ')')
+                file.extract(fileinfo, path=(root or ""))
+            file.close()
 class Zip(Task):
     from os import curdir as root
     name = None
@@ -950,14 +986,18 @@ class Zip(Task):
                 elif isdir(fn):
                     files = [join(fn, f) for f in listdir(fn)]
                     queue.extend(files)
-        file = ZipFile(self.join(name), 'w')
-        for fname in toadd:
-            fn = fname.replace(
-                root + sep, ''
-            )
-            verbose('zip.add(' + str(fname) + ', ' + str(fn) + ')' )
-            file.write(fname, fn)
-        file.close()
+        try:
+            file = ZipFile(self.join(name), 'w')
+        except IOError:
+            raise ValueError('no such file or directory: %s' % name)
+        else:
+            for fname in toadd:
+                fn = fname.replace(
+                    root + sep, ''
+                )
+                verbose('zip.add(' + str(fname) + ', ' + str(fn) + ')' )
+                file.write(fname, fn)
+            file.close()
 class Unzip(Task):
     name = None
     root = None
@@ -969,20 +1009,24 @@ class Unzip(Task):
         name = self.get_kwarg('name', str, noNone=True)
         root = self.get_kwarg('root', str)
         files = tuple(self.get_args('files'))
-        file = ZipFile(name, 'r')
-        fileset = []
-        for member in file.namelist():
-            if member.startswith(sep) or member.startswith(pardir):
-                pass
-            elif not files or member in files:
-                fileset.append(member)
-        for member in fileset:
-            dname = join(root, member)
-            Mkdir.mkdir(dirname(dname))
-            verbose('zip.extract(' + str(member) + ')')
-            dfile = open(dname, 'wb')
-            dfile.write(file.read(member))
-        file.close()
+        try:
+            file = ZipFile(self.join(name), 'r')
+        except IOError:
+            raise ValueError('no such file or directory: %s' % name)
+        else:
+            fileset = []
+            for member in file.namelist():
+                if member.startswith(sep) or member.startswith(pardir):
+                    pass
+                elif not files or member in files:
+                    fileset.append(member)
+            for member in fileset:
+                dname = join(root, member)
+                Mkdir.mkdir(dirname(dname))
+                verbose('zip.extract(' + str(member) + ')')
+                dfile = open(dname, 'wb')
+                dfile.write(file.read(member))
+            file.close()
 class Java(Task):
     from os import environ
     try:
@@ -1089,39 +1133,39 @@ class Clean(Target):
     """Clean directories and files used by the build"""
     files = ()
     def run(self):
-        Remove(basedir=self.config.basedir)(*self.files)
+        Remove()(*self.files)
 class InitDirs(Target):
     """Create initial directories"""
     files = ()
     def run(self):
-        Mkdir(basedir=self.config.basedir)(*self.files)
+        Mkdir()(*self.files)
 class Init(Target):
     """Initialize the build."""
-    dependencies = ("InitDirs",)
+    dependencies = (InitDirs,)
 class Compile(Target):
     """Compile source files."""
     # meant to be overriden
 class Build(Target):
     """The primary build."""
-    dependencies = ("Init", "Compile")
+    dependencies = (Init, Compile)
 class Packaging(Target):
     """Package for distribution."""
     # meant to be overriden
 class Dist(Target):
     """The primary packaging."""
-    dependencies = ("Build", "Packaging")
+    dependencies = (Build, Packaging)
     # may be overriden
 class Test(Target):
     """Run (unit)tests."""
-    dependencies = ("Build",)
-    tasks = ("Unittest",)
+    dependencies = (Build,)
+    tasks = (Unittest,)
 # default target
 class All(Target):
     """Do it all"""
-    dependencies = ("Clean", "Dist", "Test")
+    dependencies = (Clean, Dist, Test)
 class Default(Target):
     """When no target is specified."""
-    dependencies = ("Dist",)
+    dependencies = (Dist,)
 
 def get_version():
     return _RCS_VERSION.replace('Revision: ', '').replace('$', '')

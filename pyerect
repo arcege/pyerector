@@ -12,18 +12,18 @@ class Cleantest(Target):
 class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
     tasks = (Remove(files=('*.pyc',)),)
-    dependencies = ('Clean',)
+    dependencies = (Clean,)
 class Localtest(Target):
     """Ensure the packaging looks correct."""
     tasks = (
         Untar(root='testdir/tar', name='pyerector.tgz'),
         Unzip(root='testdir/zip', name='pyerector.zip'),
     )
-    dependencies = ('InitDirs', 'Packaging',)
+    dependencies = (InitDirs, Packaging,)
 
-Test.dependencies = ('Localtest',) + Test.dependencies
+Test.dependencies = (Localtest,) + Test.dependencies
 Clean.files = ('pyerector.tgz', 'pyerector.zip', 'build', 'dist', 'MANIFEST')
-Clean.dependencies = ('Cleantest',)
+Clean.dependencies = (Cleantest,)
 InitDirs.files = ('testdir/zip', 'testdir/tar')
 Packaging.tasks = (
     Zip(name='pyerector.zip', files=packlist),
