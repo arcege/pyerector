@@ -748,7 +748,7 @@ class Shebang(Copy):
 class CopyTree(Task):
     srcdir = None
     dstdir = None
-    excludes = ('.svn',)
+    excludes = ('.git', '.hg', '.svn')
     def run(self):
         from fnmatch import fnmatch
         from os import curdir, error, listdir
