@@ -169,6 +169,7 @@ class PyErector(object):
             noop.on()
         if args.directory:
             self.basedir = args.directory
+            _Initer.config.basedir = args.directory
         if args.targets:
             self.targets = []
             all_targets = Target.get_targets()
@@ -205,6 +206,7 @@ class PyErector(object):
         # run all targets in the tree of each argument
         for target in self.targets:
             try:
+                debug('PyErector.basedir =', self.basedir)
                 target(basedir=self.basedir)()
             except ValueError:
                 self.handle_error()
@@ -955,7 +957,10 @@ class Unzip(Task):
         file.close()
 class Java(Task):
     from os import environ
-    java_home = environ['JAVA_HOME']
+    try:
+        java_home = environ['JAVA_HOME']
+    except KeyError:
+        java_home = None
     classpath = ()
     properties = []
     del environ
@@ -965,7 +970,7 @@ class Java(Task):
         from os import access, X_OK
         from os.path import expanduser, exists, join
         import os
-        if exists(self.java_home):
+        if self.java_home and exists(self.java_home):
             self.java_prog = join(self.java_home, 'bin', 'java')
         elif exists(expanduser(join('~', 'java'))):
             self.java_prog = expanduser(
@@ -1066,13 +1071,13 @@ class Init(Target):
     """Initialize the build."""
     dependencies = ("InitDirs",)
 class Compile(Target):
-    """Do something interesting."""
+    """Compile source files."""
     # meant to be overriden
 class Build(Target):
     """The primary build."""
     dependencies = ("Init", "Compile")
 class Packaging(Target):
-    """Do something interesting."""
+    """Package for distribution."""
     # meant to be overriden
 class Dist(Target):
     """The primary packaging."""
@@ -1087,6 +1092,7 @@ class All(Target):
     """Do it all"""
     dependencies = ("Clean", "Dist", "Test")
 class Default(Target):
+    """When no target is specified."""
     dependencies = ("Dist",)
 
 def get_version():
