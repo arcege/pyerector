@@ -304,12 +304,31 @@ class _Initer(object):
                 return str(self)
     config = Config()
     from os import curdir
-    def __init__(self, basedir=None, curdir=curdir):
+    def __init__(self, *args, **kwargs):
+        import os
         from os.path import realpath
+        try:
+            basedir = kwargs['basedir']
+        except KeyError:
+            basedir = None
+        else:
+            del kwargs['basedir']
+        try:
+            curdir = kwargs['curdir']
+        except KeyError:
+            curdir = os.curdir
+        else:
+            del kwargs['curdir']
         if basedir is None:
             basedir = curdir
+        if args:
+            self.args = args
+        if kwargs:
+            for key in kwargs:
+                setattr(self, key, kwargs[key])
         if not self.config.initialized:
-            self.config.basedir = realpath(basedir)
+            self.config.basedir = \
+                    basedir and realpath(basedir) or realpath(curdir)
             self.config.initialized = True
     del curdir
     def get_files(self, files=None, noglob=False, subdir=None):
@@ -426,7 +445,7 @@ class Target(_Initer):
             pass
         else:
             for dep in deps:
-                if dep not in targets:
+                if dep not in targets and not isinstance(dep, Target):
                     raise ValueError(
                         str(name) + ': invalid dependency: ' + str(dep)
                     )
@@ -437,7 +456,7 @@ class Target(_Initer):
             pass
         else:
             for utd in utds:
-                if utd not in uptodates:
+                if utd not in uptodates and not isinstance(utd, Uptodate):
                     raise ValueError(
                         str(name) + ': invalid uptodate: ' + str(utd)
                     )
@@ -447,40 +466,49 @@ class Target(_Initer):
             pass
         else:
             for tsk in tsks:
-                if tsk not in tasks:
+                if tsk not in tasks and not isinstance(tsk, Task):
                     raise ValueError(
                         str(name) + ': invalid task: ' + str(tsk)
                     )
     def call_uptodate(self, klassname):
-        uptodates = self.get_uptodates()
-        try:
-            klass = uptodates[klassname]
-        except KeyError:
-            if not debug:
-                raise self.Error(str(self), 'no such uptodate: ' + str(klassname))
-            else:
-                raise
-        return klass(basedir=self.config.basedir)()
+        if isinstance(klassname, Uptodate):
+            return klassname()
+        else:
+            uptodates = self.get_uptodates()
+            try:
+                klass = uptodates[klassname]
+            except KeyError:
+                if not debug:
+                    raise self.Error(str(self), 'no such uptodate: ' + str(klassname))
+                else:
+                    raise
+            return klass(basedir=self.config.basedir)()
     def call_dependency(self, klassname):
-        targets = self.get_targets()
-        try:
-            klass = targets[klassname]
-        except KeyError:
-            if not debug:
-                raise self.Error(str(self), 'no such dependency: ' + str(klassname))
-            else:
-                raise
-        klass(basedir=self.config.basedir)()
+        if isinstance(klassname, Target):
+            return klassname()
+        else:
+            targets = self.get_targets()
+            try:
+                klass = targets[klassname]
+            except KeyError:
+                if not debug:
+                    raise self.Error(str(self), 'no such dependency: ' + str(klassname))
+                else:
+                    raise
+            klass(basedir=self.config.basedir)()
     def call_task(self, klassname, args):
-        tasks = self.get_tasks()
-        try:
-            klass = tasks[klassname]
-        except KeyError:
-            if not debug:
-                raise self.Error(str(self), 'no such task: ' + str(klassname))
-            else:
-                raise
-        return klass(basedir=self.config.basedir)(*args)
+        if isinstance(klassname, Task):
+            return klassname(*args)
+        else:
+            tasks = self.get_tasks()
+            try:
+                klass = tasks[klassname]
+            except KeyError:
+                if not debug:
+                    raise self.Error(str(self), 'no such task: ' + str(klassname))
+                else:
+                    raise
+            return klass(basedir=self.config.basedir)(*args)
     def __call__(self, *args):
         from sys import exc_info
         if self.been_called:

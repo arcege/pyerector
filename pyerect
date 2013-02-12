@@ -3,35 +3,31 @@
 
 from pyerector import *
 
+# files to be including in packaging
+packlist = ('pyerector.py', 'pyerector.pyc', 'setup.py', 'README', 'LICENSE')
+
+class Cleantest(Target):
+    """Clean the test directory."""
+    tasks = (Remove(files=('testdir',)),)
+class Realclean(Target):
+    """Clean up the cruft (including pyc) files."""
+    tasks = (Remove(files=('*.pyc',)),)
+    dependencies = ('Clean',)
+class Localtest(Target):
+    """Ensure the packaging looks correct."""
+    tasks = (
+        Untar(root='testdir/tar', name='pyerector.tgz'),
+        Unzip(root='testdir/zip', name='pyerector.zip'),
+    )
+    dependencies = ('InitDirs', 'Packaging',)
+
+Test.dependencies = ('Localtest',) + Test.dependencies
 Clean.files = ('pyerector.tgz', 'pyerector.zip', 'build', 'dist', 'MANIFEST')
 Clean.dependencies = ('Cleantest',)
 InitDirs.files = ('testdir/zip', 'testdir/tar')
-Packaging.tasks = ('MakeZip_t', 'MakeTar_t')
-
-class MakeZip_t(Zip):
-    name = 'pyerector.zip'
-    files = ('pyerector.py', 'pyerector.pyc', 'setup.py', 'README', 'LICENSE')
-class MakeTar_t(Tar):
-    name = 'pyerector.tgz'
-    files = ('pyerector.py', 'pyerector.pyc', 'setup.py', 'README', 'LICENSE')
-class Untar_t(Untar):
-    root = 'testdir/tar'
-    name = 'pyerector.tgz'
-class Unzip_t(Unzip):
-    root = 'testdir/zip'
-    name = 'pyerector.zip'
-class CleanTest_t(Remove):
-    files = ('testdir',)
-class Localtest(Target):
-    tasks = ('Untar_t', 'Unzip_t')
-    dependencies = ('InitDirs', 'Packaging',)
-class Cleantest(Target):
-    tasks = ('CleanTest_t',)
-Test.dependencies = ('Localtest',) + Test.dependencies
-class Realclean(Target):
-    tasks = ('Realclean_t',)
-    dependencies = ('Clean',)
-class Realclean_t(Remove):
-    files = ('*.pyc',)
+Packaging.tasks = (
+    Zip(name='pyerector.zip', files=packlist),
+    Tar(name='pyerector.tgz', files=packlist),
+)
 
 PyErector()
