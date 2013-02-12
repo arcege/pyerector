@@ -10,7 +10,6 @@
 # Options available to pyerector.py:
 #    help                    call the 'help' target and exit
 #    version                 display library version
-#    test                    run test of pyerector.py
 #
 # Example code:
 # ---------------------------------------------
@@ -325,14 +324,17 @@ class _Register(object):
             return c
 _register = _Register()
 
+# metaclass for instantiating _Initer
+class _IniterMetaClass(type):
+    def __init__(self, class_name, bases, namespace):
+        global _register
+        type.__init__(self, class_name, bases, namespace)
+        _register[class_name] = self
+        debug('registering', class_name, 'as', self)
+
 # the base class to set up the others
 class _Initer(object):
-    class __metaclass__(type):
-        def __init__(cls, name, bases, dict):
-            global _register
-            type.__init__(cls, name, bases, dict)
-            _register[name] = cls
-            debug('registering', name, 'as', cls)
+    __metaclass__ = _IniterMetaClass
     class Error(Exception):
         def __str__(self):
             return str(self[0]) + ': ' + str(self[1])
@@ -344,6 +346,7 @@ class _Initer(object):
     config = Config()
     from os import curdir
     def __init__(self, *args, **kwargs):
+        debug('%s.__init__(*%s, **%s)' % (self.__class__.__name__, args, kwargs))
         import os
         from os.path import realpath
         try:
@@ -534,7 +537,9 @@ class Target(_Initer):
             except self.Error:
                 if not debug:
                     e = exc_info()
-                    raise self.Error(str(self) + ':' + str(e[1][0]), e[1][1]), None, e[2]
+                    msg = '%s:%s' % (self, e[1][0])
+                    raise self.Error(msg, e[1][1]), None, e[2]
+                    #raise self.Error(msg) from e[1]
                 else:
                     raise
         try:
@@ -544,7 +549,9 @@ class Target(_Initer):
         except Task.Error:
             if not debug:
                 e = exc_info()
-                raise self.Error(str(self) + ':' + str(e[1][0]), e[1][1]), None, e[2]
+                msg = '%s:%s' % (self, e[1][0])
+                raise self.Error(msg, e[1][1]), None, e[2]
+                #raise self.Error(msg) from e[1]
             else:
                 raise
         except self.Error:
@@ -553,6 +560,7 @@ class Target(_Initer):
             if not debug:
                 e = exc_info()
                 raise self.Error(str(self), e[1]), None, e[2]
+                #raise self.Error(str(self), e[1]) from e[1]
             else:
                 raise
         else:
@@ -589,6 +597,7 @@ class Task(_Initer):
             if not debug:
                 e = exc_info()
                 raise self.Error(str(self), e[1]), None, e[2]
+                #raise self.Error(str(self), e[1]) from e[1]
             else:
                 raise
         if rc:
@@ -1117,13 +1126,8 @@ if __name__ == '__main__':
     from sys import argv
     progname = splitext(basename(argv[0]))[0]
     if len(argv) == 1 or argv[1] == 'help':
-        print(progname, 'help|version|test|unit')
+        print(progname, 'help|version')
     elif argv[1] == 'version':
         print(progname, get_version())
-    elif argv[1] == 'test':
-        test()
-    elif argv[1] == 'unit':
-        argv[1:] = []
-        unittest.main()
     else:
         print('Error: %s: Invalid argument: %s' % (progname, argv[1]))
