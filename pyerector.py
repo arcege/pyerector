@@ -416,6 +416,9 @@ class _Initer(object):
             value = getattr(self, name)
         self.asserttype(value, (tuple, list), name)
         return value
+    @classmethod
+    def validate_tree(self):
+        pass # do nothing, Target will do something with this
 
 class Uptodate(_Initer):
     sources = ()
@@ -474,115 +477,60 @@ class Target(_Initer):
         return self.__class__.__name__
     @classmethod
     def validate_tree(klass):
-        name = klass.__name__
-        targets = _register.get('Target')
-        uptodates = _register.get('Uptodate')
-        tasks = _register.get('Task')
-        try:
-            deps = klass.dependencies
-        except AttributeError:
-            pass
-        else:
-            for dep in deps:
-                if isinstance(dep, str) and dep in targets:
-                    obj = targets[dep]
-                elif isinstance(dep, Target):
-                    obj = targets[dep.__class__.__name__]
-                elif issubclass(dep, Target):
-                    obj = targets[dep.__name__]
+        def validate_class(kobj, kset, ktype, ktname):
+            klass = _register[ktype]
+            klasses = _register.get(ktype)
+            for name in kset:
+                if isinstance(name, str) and name in klasses:
+                    obj = klasses[name]
+                elif isinstance(name, type) and issubclass(name, klass):
+                    obj = klasses[name.__name__]
+                elif isinstance(name, klass):
+                    obj = klasses[name.__class__.__name__]
                 else:
                     raise ValueError(
-                        str(name) + ': invalid dependency: ' % str(dep)
+                        '%s: invalid %s: %s' % (kobj, ktname, name)
                     )
                 obj.validate_tree()
-        try:
-            utds = klass.uptodates
-        except AttributeError:
-            pass
+        validate_class(klass.__name__, klass.dependencies, 'Target', 'dependency')
+        validate_class(klass.__name__, klass.uptodates, 'Uptodate', 'uptodate')
+        validate_class(klass.__name__, klass.tasks, 'Task', 'task')
+    def call(self, name, klass, ktype, args=None):
+        if (isinstance(name, type) and issubclass(name, klass)):
+            obj = name(basedir=self.config.basedir)
+        elif isinstance(name, klass):
+            obj = name
         else:
-            for utd in utds:
-                if ((not isinstance(utd, str) or utd not in uptodates) and
-                        not isinstance(utd, Uptodate) and
-                        not issubclass(utd, Uptodate)):
-                    raise ValueError(
-                        str(name) + ': invalid uptodate: ' + str(utd)
-                    )
-        try:
-            tsks = klass.tasks
-        except AttributeError:
-            pass
-        else:
-            for tsk in tsks:
-                if ((not isinstance(tsk, str) or tsk not in tasks) and
-                        not isinstance(tsk, Task) and
-                        not issubclass(tsk, Task)):
-                    raise ValueError(
-                        str(name) + ': invalid task: ' + str(tsk)
-                    )
-    def call_uptodate(self, klassname):
-        if (isinstance(klassname, type(_Initer)) and
-            issubclass(klassname, Uptodate)):
-            return klassname(basedir=self.config.basedir)()
-        elif isinstance(klassname, Uptodate):
-            return klassname()
-        else:
-            uptodates = _register.get('Uptodate')
             try:
-                klass = uptodates[klassname]
-            except KeyError:
+                kobj = _register[name]
+                assert isinstance(kobj, klass)
+            except (KeyError, AssertionError):
                 if not debug:
-                    raise self.Error(str(self), 'no such uptodate: ' + str(klassname))
+                    raise self.Error('%s no such %s: %s' % (self, ktype, name))
                 else:
                     raise
-            return klass(basedir=self.config.basedir)()
-    def call_dependency(self, klassname):
-        if (isinstance(klassname, type(_Initer)) and
-            issubclass(klassname, Target)):
-            return klassname(basedir=self.config.basedir)()
-        elif isinstance(klassname, Target):
-            return klassname()
+            else:
+                obj = kobj(basedir=self.config.basedir)
+        if args is None:
+            return obj()
         else:
-            targets = _register.get('Target')
-            try:
-                klass = targets[klassname]
-            except KeyError:
-                if not debug:
-                    raise self.Error(str(self), 'no such dependency: ' + str(klassname))
-                else:
-                    raise
-            klass(basedir=self.config.basedir)()
-    def call_task(self, klassname, args):
-        if (isinstance(klassname, type(_Initer)) and
-            issubclass(klassname, Task)):
-            return klassname(basedir=self.config.basedir)(*args)
-        elif isinstance(klassname, Task):
-            return klassname(*args)
-        else:
-            tasks = _register.get('Task')
-            try:
-                klass = tasks[klassname]
-            except KeyError:
-                if not debug:
-                    raise self.Error(str(self), 'no such task: ' + str(klassname))
-                else:
-                    raise
-            return klass(basedir=self.config.basedir)(*args)
+            return obj(*args)
     def __call__(self, *args):
         from sys import exc_info
         if self.been_called:
             return
         if self.uptodates:
             for utd in self.uptodates:
-                if not self.call_uptodate(utd):
+                if not self.call(utd, Uptodate, 'uptodate'):
                     break
             else:
                 self.verbose('uptodate.')
                 return
         for dep in self.dependencies:
-            self.call_dependency(dep)
+            self.call(dep, Target, 'dependencies')
         for task in self.tasks:
             try:
-                self.call_task(task, args) # usually args would be (), but...
+                self.call(task, Task, 'task', args)
             except self.Error:
                 if not debug:
                     e = exc_info()
