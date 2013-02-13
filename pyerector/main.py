@@ -4,7 +4,7 @@
 import sys
 from . import verbose, debug, noop
 from .register import registry
-from .base import Target
+from .base import Initer, Target
 
 __all__ = [
     'PyErector', 'pymain',
