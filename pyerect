@@ -7,14 +7,15 @@ import release
 distfile = '%s-%s' % (release.product, release.number)
 
 # files to be including in packaging
-packlist = ('pyerector', 'setup.py', 'README', 'LICENSE')
+packlist = ('pyerector', 'release.py', 'setup.py', 'README', 'LICENSE')
 
 class PyCopy(Target):
     tasks = (
         CopyTree(srcdir='pyerector',
                  dstdir='build/pyerector',
                  excludes=('*.pyc', '__pycache__', '.hg', '.*.swp')),
-        Copy(files=('setup.py', 'README', 'LICENSE'), dest='build'),
+        Copy(files=('release.py', 'setup.py', 'README', 'LICENSE'),
+             dest='build'),
     )
 
 class Cleantest(Target):
