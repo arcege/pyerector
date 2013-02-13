@@ -4,30 +4,44 @@
 from pyerector import *
 
 # files to be including in packaging
-packlist = ('pyerector.py', 'pyerector.pyc', 'setup.py', 'README', 'LICENSE')
+packlist = ('pyerector', 'setup.py', 'README', 'LICENSE')
+
+class PyCopy(Target):
+    tasks = (
+        CopyTree(srcdir='pyerector',
+                 dstdir='build/pyerector',
+                 excludes=('*.pyc', '__pycache__', '.hg', '.*.swp')),
+        Copy(files=('setup.py', 'README', 'LICENSE'), dest='build'),
+    )
 
 class Cleantest(Target):
     """Clean the test directory."""
     tasks = (Remove(files=('testdir',)),)
 class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
-    tasks = (Remove(files=('*.pyc',)),)
+    tasks = (
+        Remove(files=(
+            FileList('pyerector', 'pyerector/py2', 'testsrc', pattern='*.pyc'),
+            FileList('pyerector', 'pyerector/py3', 'testsrc', pattern='__pycache__'),
+        )),
+    )
     dependencies = (Clean,)
 class Localtest(Target):
     """Ensure the packaging looks correct."""
     tasks = (
-        Untar(root='testdir/tar', name='pyerector.tgz'),
-        Unzip(root='testdir/zip', name='pyerector.zip'),
+        Untar(root='testdir/tar', name='dist/pyerector.tgz'),
+        Unzip(root='testdir/zip', name='dist/pyerector.zip'),
     )
     dependencies = (InitDirs, Packaging,)
 
 Test.dependencies = (Localtest,) + Test.dependencies
-Clean.files = ('pyerector.tgz', 'pyerector.zip', 'build', 'dist', 'MANIFEST')
+Clean.files = ('build', 'dist', 'MANIFEST')
 Clean.dependencies = (Cleantest,)
-InitDirs.files = ('testdir/zip', 'testdir/tar')
+InitDirs.files = ('build', 'dist', 'testdir/zip', 'testdir/tar')
+Compile.dependencies = (PyCopy,)
 Packaging.tasks = (
-    Zip(name='pyerector.zip', files=packlist),
-    Tar(name='pyerector.tgz', files=packlist),
+    Zip(name='dist/pyerector.zip', files=packlist, root='build'),
+    Tar(name='dist/pyerector.tgz', files=packlist, root='build'),
 )
 
 PyErector()

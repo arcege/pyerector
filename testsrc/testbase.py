@@ -1,67 +1,81 @@
 #!/usr/bin/python
-# Copyright @ 2010-2012 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 import unittest
-from pyerector import *
-from pyerector import _Initer, normjoin, Verbose, verbose, debug, Config, noop
+try:
+    from io import StringIO
+except ImportError:
+    from StringIO import StringIO
+
+from pyerector import normjoin, verbose, debug, noop
+from pyerector.helper import Verbose
+from pyerector.config import Config
+from pyerector.exception import Error
+from pyerector.base import Initer, Target, Task, Uptodate
+from pyerector.targets import *
+from pyerector.tasks import *
+
+Target.stream = StringIO()
+
 
 class Test_Initer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from tempfile import mkdtemp
         cls.dir = mkdtemp()
-        #cls.oldconfigbasedir = _Initer.config.basedir
-        #_Initer.config.basedir = cls.dir
+        #cls.oldconfigbasedir = Initer.config.basedir
+        #Initer.config.basedir = cls.dir
     @classmethod
     def tearDownClass(cls):
         from shutil import rmtree
         rmtree(cls.dir)
-        #_Initer.config.basedir = cls.oldconfigbasedir
+        #Initer.config.basedir = cls.oldconfigbasedir
     def test_initialized(self):
         #"""Is system initialized on first instantiation."""
-        old_config = _Initer.config
+        old_config = Initer.config
         try:
-            _Initer.config = Config()
-            _Initer.config.initialized = False
-            self.assertFalse(_Initer.config.initialized)
-            obj = _Initer()
-            self.assertTrue(_Initer.config.initialized)
+            Initer.config = Config()
+            Initer.config.initialized = False
+            self.assertFalse(Initer.config.initialized)
+            obj = Initer()
+            self.assertTrue(Initer.config.initialized)
         finally:
-            _Initer.config = old_config
+            Initer.config = old_config
     @unittest.skip('issue with config.basedir')
     def test_basedir(self):
         from os import curdir, getcwd
         from os.path import realpath
-        #_Initer.config.basedir = self.oldconfigbasedir
-        obj = _Initer()
+        #Initer.config.basedir = self.oldconfigbasedir
+        obj = Initer()
         self.assertEqual(obj.config.basedir, realpath(getcwd()))
-        _Initer.config.initialized = False
-        obj = _Initer(basedir=self.dir)
+        Initer.config.initialized = False
+        obj = Initer(basedir=self.dir)
+        self.asertTrue(obj.config.initialized)
         self.assertEqual(obj.config.basedir, self.dir)
-        #_Initer.config.basedir = self.dir
+        #Initer.config.basedir = self.dir
     @unittest.skip('issue with config.basedir')
     def test_join(self):
         #"""Ensure that join() method returns proper values."""
         from os.path import join
-        obj = _Initer(basedir=self.dir)
+        obj = Initer(basedir=self.dir)
         self.assertEqual(obj.join('foobar'), join(self.dir, 'foobar'))
         self.assertEqual(obj.join('xyzzy', 'foobar'),
                          join(self.dir, 'xyzzy', 'foobar'))
     def test_asserttype(self):
-        obj = _Initer(basedir=self.dir)
+        obj = Initer(basedir=self.dir)
         self.assertIsNone(obj.asserttype('foo', str, 'foobar'))
         for test in (('foo', int, 'name'), (1, str, 'foobar')):
             self.assertRaises(AssertionError, obj.asserttype, *test)
         with self.assertRaises(AssertionError) as cm:
             obj.asserttype(1, str, 'foobar')
         exc = cm.exception
-        self.assertEqual(str(exc), "Must supply str to 'foobar' in '_Initer'")
+        self.assertEqual(str(exc), "Must supply str to 'foobar' in 'Initer'")
     @unittest.skip('issue with config.basedir')
     def test_get_files_simple(self):
         #"""Retrieve files in basedir properly."""
         from os import mkdir, curdir
         from os.path import join
-        obj = _Initer(basedir=self.dir)
+        obj = Initer(basedir=self.dir)
         # no files
         self.assertEqual(obj.get_files(('get_files_simple-*',)), [])
         subdir = curdir
@@ -98,7 +112,7 @@ class Test_Initer(unittest.TestCase):
     @unittest.skip('issue with config.basedir')
     def test_get_files_subdir(self):
         from os import mkdir, curdir
-        obj = _Initer(basedir=self.dir)
+        obj = Initer(basedir=self.dir)
         # test subdir value
         subdir = 'subdir'
         mkdir(normjoin(self.dir, subdir))
@@ -123,13 +137,13 @@ class TestUptodate(unittest.TestCase):
     def setUpClass(cls):
         import tempfile
         cls.dir = tempfile.mkdtemp()
-        cls.oldconfigbasedir = _Initer.config.basedir
-        _Initer.config.basedir = cls.dir
+        cls.oldconfigbasedir = Initer.config.basedir
+        Initer.config.basedir = cls.dir
     @classmethod
     def tearDownClass(cls):
         import shutil
         shutil.rmtree(cls.dir)
-        _Initer.config.basedir = cls.oldconfigbasedir
+        Initer.config.basedir = cls.oldconfigbasedir
     def test_older(self):
         #"""Test that newer files indeed do trigger the test."""
         import os, time
@@ -261,20 +275,20 @@ class TestCallUptodate_utd(Uptodate):
     sources = ('call_uptodate,older',)
     destinations = ('call_uptodate.newer',)
 class TestCallUptodate_T(Target):
-    uptodates = ("TestCallUptodate_utd",)
+    uptodates = (TestCallUptodate_utd,)
 class TestCallTask_t(Task):
     def run(self):
         verbose('Creating', self.join(self.args[0]))
         open(self.join(self.args[0]), 'w').close()
 class TestCallTask_T(Target):
-    tasks = ("TestCallTask_t",)
+    tasks = (TestCallTask_t,)
 class TestCallDependency_t(Task):
     def run(self):
         open(self.join('calldependency'), 'w').close()
 class TestCallDependency_T1(Target):
-    tasks = ("TestCallDependency_t",)
+    tasks = (TestCallDependency_t,)
 class TestCallDependency_T(Target):
-    dependencies = ("TestCallDependency_T1",)
+    dependencies = (TestCallDependency_T1,)
 class TestE2E_t1(Task):
     def run(self):
         from time import sleep
@@ -296,8 +310,8 @@ class TestTarget(unittest.TestCase):
     def setUpClass(cls):
         import tempfile
         cls.dir = tempfile.mkdtemp()
-        cls.oldconfigbasedir = _Initer.config.basedir
-        _Initer.config.basedir = cls.dir
+        cls.oldconfigbasedir = Initer.config.basedir
+        Initer.config.basedir = cls.dir
         Target.allow_reexec = True
 
         cls.uptodate_classes = {
@@ -332,89 +346,63 @@ class TestTarget(unittest.TestCase):
             mod2 = {'modname': __name__}
         else:
             mod2 = {}
-        symbols_to_global(*list(cls.uptodate_classes.values()), **mod1)
-        symbols_to_global(*list(cls.uptodate_classes.values()), **mod2)
-        symbols_to_global(*list(cls.target_classes.values()), **mod1)
-        symbols_to_global(*list(cls.target_classes.values()), **mod2)
-        symbols_to_global(*list(cls.task_classes.values()), **mod1)
-        symbols_to_global(*list(cls.task_classes.values()), **mod2)
+        #symbols_to_global(*list(cls.uptodate_classes.values()), **mod1)
+        #symbols_to_global(*list(cls.uptodate_classes.values()), **mod2)
+        #symbols_to_global(*list(cls.target_classes.values()), **mod1)
+        #symbols_to_global(*list(cls.target_classes.values()), **mod2)
+        #symbols_to_global(*list(cls.task_classes.values()), **mod1)
+        #symbols_to_global(*list(cls.task_classes.values()), **mod2)
     @classmethod
     def tearDownClass(cls):
         import shutil
         shutil.rmtree(cls.dir)
-        _Initer.config.basedir = cls.oldconfigbasedir
+        Initer.config.basedir = cls.oldconfigbasedir
     def setUp(self):
-        try:
-            from io import StringIO
-        except ImportError:
-            from StringIO import StringIO
-        self.real_stream = Target.stream
-        Target.stream = StringIO()
+        Verbose.stream = StringIO()
+        debug('Target.stream =', Target.stream)
     def tearDown(self):
         if hasattr(self, 'real_stream'):
-            Target.stream = getattr(self, 'real_stream')
-    @unittest.skip('fix after adding testpyerector.py')
+            Verbose.stream = getattr(self, 'real_stream')
     def test_been_called(self):
         target = TestBeenCalled(basedir=self.dir)
         self.assertFalse(target.been_called)
         target()
         self.assertTrue(target.been_called)
-    @unittest.skip('fix names after adding testpyerector.py')
-    def test_get_uptodates(self):
-        global TestUptodate_utd
-        import __main__
-        result = Target.get_uptodates()
-        self.assertEqual(Target.get_uptodates(), self.uptodate_classes)
-    @unittest.skip('fix names after adding testpyerector.py')
-    def test_get_targets(self):
-        self.assertEqual(Target.get_targets(), self.target_classes)
-    @unittest.skip('fix names after adding testpyerector.py')
-    def test_get_tasks(self):
-        self.assertEqual(Target.get_tasks(), self.task_classes)
     def test_verbose(self):
-        try:
-            from io import StringIO
-        except ImportError:
-            from StringIO import StringIO
-        target = Target(basedir=self.dir)
-        target.stream = StringIO()
+        target = Target()
         target.verbose('hi there')
-        self.assertEqual(target.stream.getvalue(), 'Target: hi there\n')
-        target.stream = StringIO()
+        self.assertEqual(verbose.stream.getvalue(), 'Target: hi there\n')
+        verbose.stream = StringIO()
         target.verbose('hi', 'there')
-        self.assertEqual(target.stream.getvalue(), 'Target: hi there\n')
+        self.assertEqual(verbose.stream.getvalue(), 'Target: hi there\n')
     def test_nothing(self):
         class NothingTarget(Target):
             pass
         target = NothingTarget(basedir=self.dir)
         self.assertIsNone(NothingTarget.validate_tree())
         self.assertIsNone(target())
-    @unittest.skip('issue with new org')
     def test_call_uptodate(self):
-        import __main__, tempfile, time
+        import tempfile, time
         from os.path import join, isfile
         open(join(self.dir, 'call_uptodate.older'), 'w').close()
         #time.sleep(1)
         open(join(self.dir, 'call_uptodate.newer'), 'w').close()
         self.assertTrue(TestCallUptodate_utd(basedir=self.dir)())
         target = TestCallUptodate_T(basedir=self.dir)
-        self.assertTrue(target.call_uptodate('TestCallUptodate_utd'))
-    @unittest.skip('issue with new org')
+        self.assertTrue(target.call(TestCallUptodate_utd, Uptodate, 'uptodate'))
     def test_call_task(self):
         import os
         from os.path import join, isfile
         self.assertFalse(isfile(join(self.dir, 'calltask')))
         target = TestCallTask_T(basedir=self.dir)
-        self.assertIsNone(target.call_task("TestCallTask_t", ('calltask',)))
+        self.assertIsNone(target.call(TestCallTask_t, Task, 'task', ('calltask',)))
         self.assertTrue(isfile(join(self.dir, 'calltask')))
-    @unittest.skip('issue with new org')
     def test_call_dependency(self):
         from os.path import join, isfile
         self.assertFalse(isfile(join(self.dir, 'calldependency')))
         target = TestCallDependency_T(basedir=self.dir)
-        self.assertIsNone(target.call_dependency("TestCallDependency_T"))
+        self.assertIsNone(target.call(TestCallDependency_T, Target, 'dependencies'))
         self.assertTrue(isfile(join(self.dir, 'calldependency')))
-    @unittest.skip('issue with new org')
     def test_end_to_end(self):
         from os.path import join, isfile, getmtime
         self.assertFalse(isfile(join(self.dir, 'e2e_t1')))
@@ -435,13 +423,13 @@ class TestTask(unittest.TestCase):
     def setUpClass(cls):
         import tempfile
         cls.dir = tempfile.mkdtemp()
-        cls.oldconfigbasedir = _Initer.config.basedir
-        _Initer.config.basedir = cls.dir
+        cls.oldconfigbasedir = Initer.config.basedir
+        Initer.config.basedir = cls.dir
     @classmethod
     def tearDownClass(cls):
         import shutil
         shutil.rmtree(cls.dir)
-        _Initer.config.basedir = cls.oldconfigbasedir
+        Initer.config.basedir = cls.oldconfigbasedir
     def test_instantiation(self):
         obj = Task()
         self.assertEqual(str(obj), Task.__name__)
@@ -457,7 +445,7 @@ class TestTask(unittest.TestCase):
             def run(self):
                 return 255
         self.assertIsNone(SuccessTask()())
-        self.assertRaises(Task.Error, FailureTask())
+        self.assertRaises(Error, FailureTask())
     def test_exception(self):
         class TypeErrorTask(Task):
             def run(self):
@@ -469,19 +457,18 @@ class TestTask(unittest.TestCase):
         if debug:
             self.assertRaises(ValueError, ValueErrorTask())
         else:
-            self.assertRaises(Task.Error, ValueErrorTask())
+            self.assertRaises(Error, ValueErrorTask())
     def test_noop(self):
-        import pyerector
+        #import pyerector
         try:
             from io import StringIO
         except ImportError:
             from StringIO import StringIO
-        old_noop = pyerector.noop
+        old_noop = noop.state
         try:
-            pyerector.noop = Verbose()
-            pyerector.noop.on()
-            pyerector.noop.stream = StringIO()
-            self.assertTrue(pyerector.noop)
+            noop.on()
+            noop.stream = StringIO()
+            self.assertTrue(bool(noop))
             class NoopTask(Task):
                 foobar = False
                 def run(self):
@@ -489,119 +476,8 @@ class TestTask(unittest.TestCase):
             obj = NoopTask()
             obj()
             self.assertFalse(obj.foobar)
-            self.assertEqual(pyerector.noop.stream.getvalue(),
+            self.assertEqual(noop.stream.getvalue(),
                              'Calling NoopTask(*(), **{})\n')
         finally:
-            pyerector.noop = old_noop
-
-#@unittest.skip('conflict with other TestCase classes')
-class TestStandardTargets: #(unittest.TestCase):
-    long_output = """\
-InitDirs: done.
-Init: done.
-Compile: done.
-Build: done.
-Packaging: done.
-Dist: done.
-"""
-    clean_output = """\
-Clean: done.
-"""
-    default_output = """\
-Default: done.
-"""
-    all_output = """\
-All: done.
-"""
-    def setUp(self):
-        try:
-            from io import StringIO
-        except ImportError:
-            from StringIO import StringIO
-        self.stream = StringIO
-        self.real_stream = verbose.stream
-        verbose.stream = self.stream
-    def tearDown(self):
-        verbose.stream = self.real_stream
-    def test_all(self):
-        PyErector("all")
-        output = self.stream.getvalue()
-        long_output = self.clean_output + self.long_output + self.all_output
-        short_output = self.clean_output + self.all_output
-        if output == long_output:
-            self.assertEqual(output, long_output)
-        elif output == short_output:
-            self.assertEqual(output, short_output)
-        else:
-            self.assertEqual(output, '')
-    def test_default(self):
-        PyErector("default")
-        output = self.stream.getvalue()
-        long_output = self.long_output + self.default_output
-        short_output = self.default_output
-        if output == long_output:
-            self.assertEqual(output, long_output)
-        elif output == short_output:
-            self.assertEqual(output, short_output)
-        else:
-            self.assertEqual(output, '')
-# test code
-def test():
-    from os.path import join
-    import os, tempfile
-    from sys import exc_info
-    try:
-        tmpdir = tempfile.mkdtemp('.d', 'pymake')
-    except OSError:
-        e = exc_info()[1]
-        raise SystemExit(e)
-    else:
-        try:
-            Target.allow_reexec = True
-            # setup
-            class Foobar_utd(Uptodate):
-                sources = ('foobar',)
-                destinations = (join('build', 'foobar'),)
-            class DistTar_utd(Uptodate):
-                sources = ('foobar',)
-                destinations = (join('dist', 'xyzzy.tgz'),)
-            class Compile(Target):
-                uptodates = ('Foobar_utd',)
-                def run(self):
-                    Copy()(
-                        'foobar',
-                        dest=join('build', 'foobar')
-                    )
-            class DistTar_t(Tar):
-                name = join('dist', 'xyzzy.tgz')
-                root = 'build'
-                files = ('foobar',)
-            symbols_to_global(Foobar_utd, DistTar_utd, DistTar_t, Compile)
-            # end setup
-            f = open(join(tmpdir, 'foobar'), 'w')
-            f.write("""\
-This is a story,
-Of a lovely lady,
-With three very lovely girls.
-""")
-            f.close()
-            Packaging.tasks = ('DistTar_t',)
-            Packaging.uptodates = ('DistTar_utd',)
-            Clean.files = ('build', 'dist')
-            InitDirs.files = ('build', 'dist')
-            tmpdiropt = '--directory=' + str(tmpdir)
-            debug('PyErector("-v", "' + tmpdiropt + '", "clean")')
-            PyErector('-v', tmpdiropt, 'clean')
-            if debug:
-                os.system('ls -lAtr ' + str(tmpdir))
-            debug('PyErector("-v", "' + tmpdiropt + '")')
-            PyErector('-v', tmpdiropt) # default
-            if debug:
-                os.system('ls -lAtr ' + str(tmpdir))
-            debug('PyErector("-v", "' + tmpdiropt + '")')
-            PyErector('-v', tmpdiropt) # default with uptodate
-            if debug:
-                os.system('ls -lAtr ' + str(tmpdir))
-        finally:
-            Remove()(tmpdir)
+            noop.state = old_noop
 
