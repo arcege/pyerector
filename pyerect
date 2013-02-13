@@ -1,0 +1,50 @@
+#!/usr/bin/python
+# Copyright @ 2012 Michael P. Reilly. All rights reserved.
+
+from pyerector import *
+import release
+
+distfile = '%s-%s' % (release.product, release.number)
+
+# files to be including in packaging
+packlist = ('pyerector', 'setup.py', 'README', 'LICENSE')
+
+class PyCopy(Target):
+    tasks = (
+        CopyTree(srcdir='pyerector',
+                 dstdir='build/pyerector',
+                 excludes=('*.pyc', '__pycache__', '.hg', '.*.swp')),
+        Copy(files=('setup.py', 'README', 'LICENSE'), dest='build'),
+    )
+
+class Cleantest(Target):
+    """Clean the test directory."""
+    tasks = (Remove(files=('testdir',)),)
+class Realclean(Target):
+    """Clean up the cruft (including pyc) files."""
+    tasks = (
+        Remove(files=(
+            FileList('pyerector', 'pyerector/py2', 'testsrc', pattern='*.pyc'),
+            FileList('pyerector', 'pyerector/py3', 'testsrc', pattern='__pycache__'),
+        )),
+    )
+    dependencies = (Clean,)
+class Localtest(Target):
+    """Ensure the packaging looks correct."""
+    tasks = (
+        Untar(root='testdir/tar', name='dist/%s.tgz' % distfile),
+        Unzip(root='testdir/zip', name='dist/%s.zip' % distfile),
+    )
+    dependencies = (InitDirs, Packaging,)
+
+Test.dependencies = (Localtest,) + Test.dependencies
+Clean.files = ('build', 'dist', 'MANIFEST')
+Clean.dependencies = (Cleantest,)
+InitDirs.files = ('build', 'dist', 'testdir/zip', 'testdir/tar')
+Compile.dependencies = (PyCopy,)
+Packaging.tasks = (
+    Zip(name='dist/%s.zip' % distfile, files=packlist, root='build'),
+    Tar(name='dist/%s.tgz' % distfile, files=packlist, root='build'),
+)
+
+PyErector()
