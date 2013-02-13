@@ -4,7 +4,7 @@
 from .register import registry
 from . import debug
 
-# metaclass for instantiating _Initer
+# metaclass for instantiating Initer
 class IniterMetaClass(type):
     def __init__(self, class_name, bases, namespace):
         type.__init__(self, class_name, bases, namespace)

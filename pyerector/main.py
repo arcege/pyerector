@@ -51,7 +51,7 @@ class PyErector(object):
             noop.on()
         if args.directory:
             self.basedir = args.directory
-            _Initer.config.basedir = args.directory
+            Initer.config.basedir = args.directory
         if args.targets:
             self.targets = []
             all_targets = registry.get('Target')

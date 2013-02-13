@@ -18,7 +18,7 @@ from pyerector.tasks import *
 Target.stream = StringIO()
 
 
-class Test_Initer(unittest.TestCase):
+class TestIniter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         from tempfile import mkdtemp
