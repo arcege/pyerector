@@ -46,11 +46,9 @@ class Initer(Base):
         if kwargs:
             for key in kwargs:
                 setattr(self, key, kwargs[key])
-        if not self.config.initialized:
-            self.config.basedir = \
-                    basedir and os.path.realpath(basedir) or \
-                                os.path.realpath(curdir)
-            self.config.initialized = True
+        #if not self.config.initialized:
+        self.config.basedir = basedir or os.curdir
+        self.config.initialized = True
     def get_files(self, files=None, noglob=False, subdir=None):
         from glob import glob
         if noglob:
@@ -59,17 +57,17 @@ class Initer(Base):
             subdir = os.curdir
         if not files:
             files = self.files
-        filelist = []
         if isinstance(files, FileIterator):
-            filelist.extend(self.join(e) for e in files)
+            return files
         else:
+            filelist = []
             for entry in files:
                 if isinstance(entry, FileIterator):
                     s = (self.join(e) for e in entry)
                 else:
                     s = glob(self.join(subdir, entry))
                 filelist.extend(s)
-        return filelist
+            return filelist
     def join(self, *path):
         return normjoin(self.config.basedir, *path)
     def asserttype(self, value, typeval, valname):
@@ -82,7 +80,7 @@ class Initer(Base):
         )
         assert isinstance(value, typeval), text
     def get_kwarg(self, name, typeval, noNone=False):
-        if name in self.kwargs:
+        if hasattr(self, 'kwargs') and name in self.kwargs:
             value = self.kwargs[name]
         else:
             value = getattr(self, name)
@@ -93,10 +91,12 @@ class Initer(Base):
                                 (name, self.__class__.__name__))
         return value
     def get_args(self, name):
-        if self.args:
+        if hasattr(self, 'args') and self.args:
             value = self.args
-        else:
+        elif hasattr(self, name) and getattr(self, name):
             value = getattr(self, name)
+        else:
+            return ()
         self.asserttype(value, (tuple, list, FileIterator), name)
         return value
     @classmethod
@@ -107,40 +107,46 @@ class Uptodate(Initer):
     sources = ()
     destinations = ()
     def __call__(self, *args):
+        debug('%s.__call__(*%s)' % (self.__class__.__name__, args))
         klsname = self.__class__.__name__
-        if not self.sources or not self.destinations:
+        if (not self.sources or not self.destinations):
             debug(klsname, '*>', False)
             return False
         srcs = self.get_files(self.sources)
         dsts = self.get_files(self.destinations)
-        # if no actual destination files then nothing is uptodate
-        if not dsts and self.destinations:
-            debug(klsname, '+>', False)
-            return False
         result = self.check(srcs, dsts)
         debug(klsname, '=>', result and 'False' or 'True')
         return result
     @staticmethod
     def check(srcs, dsts):
-        # compare the latest mtime of the sources with the earliest
-        # mtime of the destinations
-        try:
-            from sys import maxsize as maxint
-        except ImportError:
-            from sys import maxint
+        # return True if earliest destination is newer than oldest
+        # source
+        debug('Uptodate.check(%s, %s)' % (srcs, dsts))
+        maxval = float('inf')
         latest_src = reduce(max, [os.path.getmtime(s) for s in srcs], 0)
-        earliest_dst = reduce(min, [os.path.getmtime(d) for d in dsts], maxint)
+        earliest_dst = reduce(min, [os.path.getmtime(d) for d in dsts], maxval)
+        debug('latest_src =', latest_src, 'earliest_dst =', earliest_dst)
+        if earliest_dst == maxval: # empty list case
+            return False
         result = round(earliest_dst, 4) >= round(latest_src, 4)
         return result
     @staticmethod
     def checkpair(src, dst):
-        # compare the mtime of the source with the mtime of the
-        # destination
-        return round(os.path.getmtime(dst), 4) >= \
-               round(os.path.getmtime(src), 4)
+        # return True if destination is newer than source
+        try:
+            s = round(os.path.getmtime(src), 4)
+        except OSError:
+            raise ValueError('no source:', src)
+        try:
+            d = round(os.path.getmtime(dst), 4)
+        except OSError:
+            return False
+        return d >= s
+    @staticmethod
+    def checktree(src, dst):
+        return False # always outofdate until we implement
 
 class Target(Initer):
-    from sys import stdout as stream
     dependencies = ()
     uptodates = ()
     tasks = ()
@@ -163,7 +169,10 @@ class Target(Initer):
             klass = registry[ktype]
             klasses = registry.get(ktype)
             for name in kset:
-                if isinstance(name, str) and name in klasses:
+                if ktype == 'Uptodate' and isinstance(name, klass):
+                    # special case, allow direct instance of Uptodate
+                    obj = name
+                elif isinstance(name, str) and name in klasses:
                     obj = klasses[name]
                 elif isinstance(name, type) and issubclass(name, klass):
                     obj = klasses[name.__name__]
@@ -199,6 +208,7 @@ class Target(Initer):
         else:
             return obj(*args)
     def __call__(self, *args):
+        debug('%s.__call__(*%s)' % (self.__class__.__name__, args))
         if self.been_called:
             return
         if self.uptodates:
@@ -249,6 +259,7 @@ class Task(Initer):
     def __str__(self):
         return self.__class__.__name__
     def __call__(self, *args, **kwargs):
+        debug('%s.__call__(*%s, **%s)' % (self.__class__.__name__, args, kwargs))
         self.handle_args(args, kwargs)
         if noop:
             noop('Calling %s(*%s, **%s)' % (self, args, kwargs))
@@ -267,5 +278,7 @@ class Task(Initer):
     def run(self):
         pass
     def handle_args(self, args, kwargs):
-        self.args = list(args)
-        self.kwargs = dict(kwargs)
+        if (hasattr(self, 'args') and not self.args) or args:
+            self.args = list(args)
+        if kwargs:
+            self.kwargs = dict(kwargs)

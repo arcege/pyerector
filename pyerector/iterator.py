@@ -4,6 +4,8 @@
 import fnmatch
 import glob
 import os
+from .helper import normjoin
+from . import debug
 
 __all__ = [
     'FileIterator', 'FileList', 'DirList'
@@ -14,6 +16,7 @@ class FileIterator(object):
     def __init__(self, path, pattern=None, exclude=None, basedir=None):
         # load it here to avoid recursive imports
         from .base import Initer
+        self.basedir = basedir or Initer.config.basedir
         super(FileIterator, self).__init__()
         if isinstance(path, (tuple, list)):
             self.pool = list(path)
@@ -26,14 +29,13 @@ class FileIterator(object):
         if self.pattern:
             for i, v in enumerate(self.pool):
                 self.pool[i] = os.path.join(v, self.pattern)
-        if basedir is None:
-            basedir = Initer.config.basedir or os.curdir
-        self.basedir = basedir
         self.curpoolitem = None
         self.curpoolset = None
     def __iter__(self):
         self.poolpos = 0
         self.setpos = 0
+        self.curpoolitem = None
+        self.curpoolset = None
         return self
     def next(self):
         if self.curpoolitem is None:
@@ -51,10 +53,14 @@ class FileIterator(object):
                 raise StopIteration
             self.curpoolitem = self.pool[self.poolpos]
             self.poolpos += 1
-            self.curpoolset = glob.glob(self.curpoolitem)
+            self.curpoolset = self.glob(self.curpoolitem)
             self.setpos = 0
             if self.curpoolset:
                 break
+    def glob(self, pattern):
+        base = os.path.join(self.basedir, '')
+        files = glob.glob(os.path.join(self.basedir, pattern))
+        return [name.replace(base, '') for name in files]
     def apply_exclusion(self, filename):
         result = self.exclude and fnmatch.fnmatch(filename, self.exclude)
         #debug('apply_exclusion(%s, %s) =' % (filename, self.exclude),
