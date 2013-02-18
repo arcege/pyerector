@@ -28,8 +28,7 @@ class TestIniter(unittest.TestCase):
         Initer.config.basedir = cls.dir
     @classmethod
     def tearDownClass(cls):
-        from shutil import rmtree
-        rmtree(cls.dir)
+        shutil.rmtree(cls.dir)
         Initer.config.basedir = cls.oldconfigbasedir
     def test_initialized(self):
         #"""Is system initialized on first instantiation."""
