@@ -20,7 +20,9 @@ class PyCopy(Target):
 
 class Cleantest(Target):
     """Clean the test directory."""
-    tasks = (Remove(files=('testdir',)),)
+    tasks = (
+        Remove(files=('testdir',)),
+    )
 class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
     tasks = (
