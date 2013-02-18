@@ -5,6 +5,7 @@ from . import hasformat
 from .register import registry
 from .base import Target
 from .tasks import Mkdir, Remove, Unittest
+from .iterator import StaticIterator
 
 __all__ =  [
     'All',
@@ -43,7 +44,7 @@ class InitDirs(Target):
     """Create initial directories"""
     files = ()
     def run(self):
-        Mkdir()(*self.files)
+        Mkdir()(StaticIterator(self.files))
 class Init(Target):
     """Initialize the build."""
     dependencies = (InitDirs,)

@@ -34,13 +34,13 @@ Default: done.
 """
     all_output = """\
 InitDirs: done.
-Packaging: done.
-Localtest: done.
-InitDirs: done.
 Init: done.
 PyCopy: done.
 Compile: done.
 Build: done.
+InitDirs: done.
+Packaging: done.
+Localtest: done.
 Test: done.
 All: done.
 """

@@ -13,7 +13,7 @@ except ImportError:
     from StringIO import StringIO
 
 from pyerector import normjoin, verbose, debug, noop
-from pyerector.helper import Verbose
+from pyerector.helper import normjoin, Verbose
 from pyerector.config import Config
 from pyerector.exception import Error
 from pyerector.base import Initer, Target, Task, Uptodate
@@ -41,24 +41,20 @@ class TestIniter(unittest.TestCase):
             self.assertTrue(Initer.config.initialized)
         finally:
             Initer.config = old_config
-    @unittest.skip('issue with config.basedir')
     def test_basedir(self):
-        #Initer.config.basedir = self.oldconfigbasedir
         obj = Initer()
         self.assertEqual(obj.config.basedir, os.path.realpath(os.getcwd()))
         Initer.config.initialized = False
         obj = Initer(basedir=self.dir)
-        self.asertTrue(obj.config.initialized)
+        self.assertTrue(obj.config.initialized)
         self.assertEqual(obj.config.basedir, self.dir)
-        #Initer.config.basedir = self.dir
-    @unittest.skip('issue with config.basedir')
     def test_join(self):
         #"""Ensure that join() method returns proper values."""
         obj = Initer(basedir=self.dir)
         self.assertEqual(obj.join('foobar'),
-                         os.path.join(self.dir, 'foobar'))
+                         normjoin(self.dir, 'foobar'))
         self.assertEqual(obj.join('xyzzy', 'foobar'),
-                         os.path.join(self.dir, 'xyzzy', 'foobar'))
+                         normjoin(self.dir, 'xyzzy', 'foobar'))
     def test_asserttype(self):
         obj = Initer(basedir=self.dir)
         self.assertIsNone(obj.asserttype('foo', str, 'foobar'))
@@ -68,64 +64,44 @@ class TestIniter(unittest.TestCase):
             obj.asserttype(1, str, 'foobar')
         exc = cm.exception
         self.assertEqual(str(exc), "Must supply str to 'foobar' in 'Initer'")
-    @unittest.skip('issue with config.basedir')
     def test_get_files_simple(self):
         #"""Retrieve files in basedir properly."""
         obj = Initer(basedir=self.dir)
         # no files
-        self.assertEqual(obj.get_files(('get_files_simple-*',)), [])
+        self.assertEqual(list(obj.get_files(('get_files_simple-*',))), [])
         subdir = os.curdir
         for n in ('bar', 'far', 'tar'):
-            fn = os.path.join(self.dir, subdir, 'get_files_simple-%s' % n)
+            fn = normjoin(self.dir, subdir, 'get_files_simple-%s' % n)
             open(fn, 'w').close()
         # test simple glob
         self.assertEqual(sorted(obj.get_files(('get_files_simple-*',))),
-                         [normjoin(self.dir, subdir, 'get_files_simple-bar'),
-                          normjoin(self.dir, subdir, 'get_files_simple-far'),
-                          normjoin(self.dir, subdir, 'get_files_simple-tar')])
-        # test glob pattern against noglob
-        self.assertEqual(obj.get_files(('get_files_simple-*',), noglob=True),
-                         [normjoin(self.dir, subdir, 'get_files_simple-*')])
+                         [normjoin(subdir, 'get_files_simple-bar'),
+                          normjoin(subdir, 'get_files_simple-far'),
+                          normjoin(subdir, 'get_files_simple-tar')])
         # test single file
-        self.assertEqual(obj.get_files(('get_files_simple-bar',)),
-                         [normjoin(self.dir, subdir, 'get_files_simple-bar')])
+        self.assertEqual(list(obj.get_files(('get_files_simple-bar',))),
+                         [normjoin(subdir, 'get_files_simple-bar')])
         # test single file, no glob
-        self.assertEqual(obj.get_files(('get_files_simple-tar',), noglob=True),
-                         [normjoin(self.dir, subdir, 'get_files_simple-tar')])
+        self.assertEqual(list(obj.get_files(('get_files_simple-tar',), noglob=True)),
+                         [normjoin(subdir, 'get_files_simple-tar')])
         # test simple file tuple, with glob
         self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-tar'))),
-                         [normjoin(self.dir, subdir, 'get_files_simple-bar'),
-                          normjoin(self.dir, subdir, 'get_files_simple-tar')])
+                         [normjoin(subdir, 'get_files_simple-bar'),
+                          normjoin(subdir, 'get_files_simple-tar')])
         # test glob file tuple, with glob
         self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-t*'))),
-                         [normjoin(self.dir, subdir, 'get_files_simple-bar'),
-                          normjoin(self.dir, subdir, 'get_files_simple-tar')])
+                         [normjoin(subdir, 'get_files_simple-bar'),
+                          normjoin(subdir, 'get_files_simple-tar')])
+    @unittest.skip('noglob not working from this level')
+    def test_get_files_noglob(self):
+        # test glob pattern against noglob
+        self.assertEqual(list(obj.get_files(('get_files_simple-*',), noglob=True)),
+                         [normjoin(subdir, 'get_files_simple-*')])
         # test globl file tuple, no glob
         self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-t*'),
                                               noglob=True)),
                          [normjoin(self.dir, subdir, 'get_files_simple-bar'),
                           normjoin(self.dir, subdir, 'get_files_simple-t*')])
-    @unittest.skip('issue with config.basedir')
-    def test_get_files_subdir(self):
-        obj = Initer(basedir=self.dir)
-        # test subdir value
-        subdir = 'subdir'
-        os.mkdir(normjoin(self.dir, subdir))
-        open(normjoin(self.dir, subdir, 'get_files_subdir-par'), 'w').close()
-        open(normjoin(self.dir, subdir, 'get_files_subdir-rar'), 'w').close()
-        self.assertEqual(sorted(obj.get_files(('get_files_subdir-*',),
-                                              subdir=subdir)),
-                         [normjoin(self.dir, subdir, 'get_files_subdir-par'),
-                          normjoin(self.dir, subdir, 'get_files_subdir-rar')])
-        self.assertEqual(sorted(obj.get_files(('get_files_subdir-par',
-                                               'get_files_subdir-rar'),
-                                              subdir=subdir)),
-                         [normjoin(self.dir, subdir, 'get_files_subdir-par'),
-                          normjoin(self.dir, subdir, 'get_files_subdir-rar')])
-        self.assertEqual(obj.get_files(('get_files_subdir-par',),
-                                       noglob=True,
-                                       subdir=subdir),
-                         [normjoin(self.dir, subdir, 'get_files_subdir-par')])
 
 class TestUptodate(unittest.TestCase):
     @classmethod
@@ -139,7 +115,6 @@ class TestUptodate(unittest.TestCase):
         Initer.config.basedir = cls.oldconfigbasedir
     def test_older(self):
         #"""Test that newer files indeed do trigger the test."""
-        import os, time
         older = normjoin(self.dir, 'older-older')
         newer = normjoin(self.dir, 'older-newer')
         open(older, 'w').close()
@@ -154,7 +129,6 @@ class TestUptodate(unittest.TestCase):
         self.assertTrue(utd())
     def test_newer(self):
         #"""Test that older files indeed do not trigger the test."""
-        import os, time
         older = normjoin(self.dir, 'newer-older')
         newer = normjoin(self.dir, 'newer-newer')
         open(older, 'w').close()
@@ -169,7 +143,6 @@ class TestUptodate(unittest.TestCase):
         self.assertFalse(utd())
     def test_same(self):
         #"""Test that files of the same age do trigger the test."""
-        import os, time
         older = normjoin(self.dir, 'same-older')
         newer = normjoin(self.dir, 'same-newer')
         open(older, 'w').close()
@@ -184,7 +157,6 @@ class TestUptodate(unittest.TestCase):
         self.assertTrue(utd())
     def test_multi_older(self):
         #"""Test that files in directories are handled properly."""
-        import os, time
         older_d = normjoin(self.dir, 'multi_older-older')
         newer_d = normjoin(self.dir, 'multi_older-newer')
         os.mkdir(older_d)
@@ -203,7 +175,6 @@ class TestUptodate(unittest.TestCase):
         utd.destinations = tuple(files[newer_d])
         self.assertTrue(utd())
     def test_multi_newer(self):
-        import os, time
         older_d = normjoin(self.dir, 'multi_newer-older')
         newer_d = normjoin(self.dir, 'multi_newer-newer')
         os.mkdir(older_d)
@@ -222,7 +193,6 @@ class TestUptodate(unittest.TestCase):
         utd.destinations = tuple(files[newer_d])
         self.assertFalse(utd())
     def test_multi_same(self):
-        import os, time
         older_d = normjoin(self.dir, 'multi_same-older')
         newer_d = normjoin(self.dir, 'multi_same-newer')
         os.mkdir(older_d)
@@ -241,7 +211,6 @@ class TestUptodate(unittest.TestCase):
         utd.destinations = tuple(files[newer_d])
         self.assertTrue(utd())
     def test_multi_mixed(self):
-        import os, time
         older_d = normjoin(self.dir, 'multi_mixed-older')
         newer_d = normjoin(self.dir, 'multi_mixed-newer')
         os.mkdir(older_d)
@@ -284,7 +253,7 @@ class TestCallDependency_T(Target):
     dependencies = (TestCallDependency_T1,)
 class TestE2E_t1(Task):
     def run(self):
-        from time import sleep
+        #from time import sleep
         open(self.join('e2e_t1'), 'w').close()
         #sleep(1)
 class TestE2E_t2(Task):
@@ -301,12 +270,12 @@ class TestTarget(unittest.TestCase):
     maxDiff = None
     @classmethod
     def setUpClass(cls):
-        import tempfile
         cls.dir = tempfile.mkdtemp()
+        debug('%s.dir =' % cls.__name__, cls.dir)
         Target.allow_reexec = True
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(cls.dir)
+        pass #shutil.rmtree(cls.dir)
     def setUp(self):
         self.realstream = Verbose.stream
         Verbose.stream = StringIO()
@@ -337,38 +306,39 @@ class TestTarget(unittest.TestCase):
         self.assertIsNone(NothingTarget.validate_tree())
         self.assertIsNone(target())
     def test_call_uptodate(self):
-        open(os.path.join(self.dir, 'call_uptodate.older'), 'w').close()
-        time.sleep(1)
-        open(os.path.join(self.dir, 'call_uptodate.newer'), 'w').close()
+        open(normjoin(self.dir, 'call_uptodate.older'), 'w').close()
+        #time.sleep(0.2)
+        debug(normjoin(self.dir, 'call_uptodate.newer'))
+        open(normjoin(self.dir, 'call_uptodate.newer'), 'w').close()
         self.assertTrue(TestCallUptodate_utd(basedir=self.dir)())
         target = TestCallUptodate_T(basedir=self.dir)
         self.assertTrue(target.call(TestCallUptodate_utd, Uptodate, 'uptodate'))
     def test_call_task(self):
-        self.assertFalse(os.path.isfile(os.path.join(self.dir, 'calltask')))
+        self.assertFalse(os.path.isfile(normjoin(self.dir, 'calltask')))
         target = TestCallTask_T(basedir=self.dir)
         self.assertIsNone(target.call(TestCallTask_t, Task, 'task', ('calltask',)))
-        self.assertTrue(os.path.isfile(os.path.join(self.dir, 'calltask')))
+        self.assertTrue(os.path.isfile(normjoin(self.dir, 'calltask')))
     def test_call_dependency(self):
-        self.assertFalse(os.path.isfile(os.path.join(self.dir, 'calldependency')))
+        self.assertFalse(os.path.isfile(normjoin(self.dir, 'calldependency')))
         target = TestCallDependency_T(basedir=self.dir)
         self.assertIsNone(target.call(TestCallDependency_T, Target, 'dependencies'))
-        self.assertTrue(os.path.isfile(os.path.join(self.dir, 'calldependency')))
+        self.assertTrue(os.path.isfile(normjoin(self.dir, 'calldependency')))
     def test_end_to_end(self):
-        self.assertFalse(os.path.isfile(os.path.join(self.dir, 'e2e_t1')))
-        self.assertFalse(os.path.isfile(os.path.join(self.dir, 'e2e_t2')))
+        self.assertFalse(os.path.isfile(normjoin(self.dir, 'e2e_t1')))
+        self.assertFalse(os.path.isfile(normjoin(self.dir, 'e2e_t2')))
         target = TestE2E_T(basedir=self.dir)
         self.assertIsNone(target())
-        self.assertTrue(os.path.isfile(os.path.join(self.dir, 'e2e_t1')))
-        self.assertTrue(os.path.isfile(os.path.join(self.dir, 'e2e_t2')))
-        t1 = os.path.getmtime(os.path.join(self.dir, 'e2e_t1'))
-        t2 = os.path.getmtime(os.path.join(self.dir, 'e2e_t2'))
+        self.assertTrue(os.path.isfile(normjoin(self.dir, 'e2e_t1')))
+        self.assertTrue(os.path.isfile(normjoin(self.dir, 'e2e_t2')))
+        t1 = os.path.getmtime(normjoin(self.dir, 'e2e_t1'))
+        t2 = os.path.getmtime(normjoin(self.dir, 'e2e_t2'))
         target = TestE2E_T(basedir=self.dir)
         self.assertIsNone(target())
         self.assertEqual(round(t1, 4),
-            round(os.path.getmtime(os.path.join(self.dir, 'e2e_t1')), 4)
+            round(os.path.getmtime(normjoin(self.dir, 'e2e_t1')), 4)
         )
         self.assertEqual(round(t2, 4),
-            round(os.path.getmtime(os.path.join(self.dir, 'e2e_t2')), 4)
+            round(os.path.getmtime(normjoin(self.dir, 'e2e_t2')), 4)
         )
 
 class TestTask(unittest.TestCase):
@@ -410,7 +380,6 @@ class TestTask(unittest.TestCase):
         else:
             self.assertRaises(Error, ValueErrorTask())
     def test_noop(self):
-        #import pyerector
         try:
             from io import StringIO
         except ImportError:

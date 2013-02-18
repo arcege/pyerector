@@ -16,7 +16,7 @@ from .helper import normjoin, u
 from .register import registry
 from .exception import Error
 from .config import Config
-from .iterator import FileIterator
+from .iterator import FileIterator, FileMapper, FileSet, StaticIterator
 
 __all__ = [
     'Target', 'Task', 'Uptodate',
@@ -49,26 +49,31 @@ class Initer(Base):
         #if not self.config.initialized:
         self.config.basedir = basedir or os.curdir
         self.config.initialized = True
-    def get_files(self, files=None, noglob=False, subdir=None):
-        from glob import glob
-        if noglob:
-            glob = lambda x: [x]
-        if subdir is None:
-            subdir = os.curdir
+    def wantnoglob(self):
+        return ((hasattr(self, 'kwargs') and 'noglob' in  self.kwargs and
+                    self.kwargs['noglob']) or
+                (hasattr(self, 'noglob') and self.noglob))
+    def get_files(self, files=None, noglob=None):
+        if self.wantnoglob():
+            iterator = StaticIterator
+        else:
+            iterator = FileIterator
         if not files:
             files = self.files
-        if isinstance(files, FileIterator):
+        if isinstance(files, (FileMapper, StaticIterator, FileSet)):
             return files
         else:
-            filelist = []
+            fs = FileSet()
             for entry in files:
-                if isinstance(entry, FileIterator):
-                    s = (self.join(e) for e in entry)
+                if isinstance(entry, (FileMapper, StaticIterator, FileSet)):
+                    fs.append(entry)
+                elif isinstance(entry, (tuple, list)):
+                    fs.append(iterator(entry, basedir=self.config.basedir))
                 else:
-                    s = glob(self.join(subdir, entry))
-                filelist.extend(s)
-            return filelist
+                    fs.append(iterator((entry,), basedir=self.config.basedir))
+            return fs
     def join(self, *path):
+        debug('%s.join(%s, *%s)' % (self.__class__.__name__, self.config.basedir, path))
         return normjoin(self.config.basedir, *path)
     def asserttype(self, value, typeval, valname):
         if isinstance(typeval, type):
@@ -97,7 +102,7 @@ class Initer(Base):
             value = getattr(self, name)
         else:
             return ()
-        self.asserttype(value, (tuple, list, FileIterator), name)
+        self.asserttype(value, (tuple, list, FileIterator, FileMapper), name)
         return value
     @classmethod
     def validate_tree(self):
@@ -106,17 +111,37 @@ class Initer(Base):
 class Uptodate(Initer):
     sources = ()
     destinations = ()
+    mappers = ()
     def __call__(self, *args):
         debug('%s.__call__(*%s)' % (self.__class__.__name__, args))
         klsname = self.__class__.__name__
-        if (not self.sources or not self.destinations):
+        mappers = self.get_args('mappers')
+        if not mappers and (not self.sources or not self.destinations):
             debug(klsname, '*>', False)
             return False
-        srcs = self.get_files(self.sources)
-        dsts = self.get_files(self.destinations)
-        result = self.check(srcs, dsts)
-        debug(klsname, '=>', result and 'False' or 'True')
-        return result
+        if mappers:
+            debug('using mappers')
+            for mapper in mappers:
+                for (s, d) in mapper:
+                    sf = self.join(s)
+                    df = self.join(d)
+                    if os.path.isdir(sf):
+                        result = self.checktree(sf, df)
+                    else:
+                        result = self.checkpair(sf, df)
+                    if not result:
+                        return False
+            else:
+                return True
+        else:
+            debug('comparing sources to destinations')
+            srcs = self.get_files(self.sources)
+            dsts = self.get_files(self.destinations)
+            result = self.check(
+                [self.join(s) for s in srcs],
+                [self.join(d) for d in dsts])
+            debug(klsname, '=>', result and 'False' or 'True')
+            return result
     @staticmethod
     def check(srcs, dsts):
         # return True if earliest destination is newer than oldest

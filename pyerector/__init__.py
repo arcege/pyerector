@@ -44,6 +44,7 @@ __all__ = [
     'CopyTree',
     'Java',
     'Mkdir',
+    'PyCompile',
     'Remove',
     'Shebang',
     'Spawn',
@@ -67,8 +68,13 @@ __all__ = [
     'Test',
 
     # iterators
+    'FileSet',
+    'StaticIterator',
     'FileIterator',
     'FileList',
     'DirList',
+    # mappers
+    'FileMapper',
+    'BasenameMapper',
 ]
 

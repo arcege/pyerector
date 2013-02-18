@@ -7,10 +7,12 @@ import shutil
 from .exception import Error
 from .base import Task, Uptodate
 from . import debug, verbose
+from .iterator import FileMapper, FileIterator, StaticIterator, FileSet
 
 __all__ = [
     'Spawn', 'Remove', 'Copy', 'Shebang', 'CopyTree', 'Mkdir',
     'Chmod', 'Tar', 'Untar', 'Zip', 'Unzip', 'Java', 'Unittest',
+    'PyCompile',
 ]
 
 class Spawn(Task):
@@ -101,16 +103,17 @@ class Copy(Task):
     files = ()
     dest = None
     noglob = False
-    def wantnoglob(self):
-        return ((hasattr(self, 'kwargs') and 'noglob' in self.kwargs and self.kwargs['noglob']) or
-                self.noglob)
     def run(self):
         #verbose('starting', self.__class__.__name__)
         dest = self.get_kwarg('dest', str, noNone=True)
-        srcs = self.get_files(self.get_args('files'), noglob=self.wantnoglob())
-        for sname in srcs:
-            self.asserttype(sname, str, 'files')
-            dname = os.path.join(dest, sname)
+        files = self.get_args('files')
+        if len(files) == 1 and not os.path.isdir(dest):
+            fmap = ( (files[0], dest), )
+        else:
+            fmap = FileMapper(self.get_files(self.get_args('files')),
+                              destdir=self.get_kwarg('dest', str, noNone=True))
+            debug('Copy.fmap =', vars(fmap))
+        for (sname, dname) in fmap:
             srcfile = self.join(sname)
             dstfile = self.join(dname)
             if os.path.isfile(dstfile) and \
@@ -126,7 +129,7 @@ class Shebang(Copy):
     def run(self):
         verbose('starting Shebang')
         program = self.get_kwarg('program', str, noNone=True)
-        srcs = self.get_files(self.get_args('files'), noglob=self.wantnoglob())
+        srcs = self.get_files(self.get_args('files'))
         try:
             from io import BytesIO as StringIO
         except ImportError:
@@ -188,8 +191,9 @@ class CopyTree(Task):
 
 class Mkdir(Task):
     files = ()
+    noglob = True
     def run(self):
-        files = self.get_files(self.get_args('files'), noglob=True)
+        files = self.get_files(self.get_args('files'))
         for arg in files:
             self.asserttype(arg, str, 'files')
             self.mkdir(self.join(arg))
@@ -214,6 +218,29 @@ class Chmod(Task):
             self.asserttype(fname, str, 'files')
             verbose('chmod(' + fname + ', ' + oct(mode) + ')')
             chmod(self.join(fname), mode)
+
+class PyCompile(Task):
+    files = ()
+    dest = None
+    version = '2'
+    def run(self):
+        import py_compile
+        import sys
+        mapper = FileMapper(self.get_files(self.get_args('files')),
+                            map=lambda x: x + 'c',
+                            destdir=self.dest
+        )
+        if self.version[:1] == sys.version[:1]:  # compile inline
+            for (s, d) in mapper:
+                debug('py_compile.compile(%s, %s)' % (s, d))
+                py_compile.compile(s, d)
+        else:
+            if self.version[:1] == '2':
+                cmd = 'python2'
+            elif self.version[:1] == '3':
+                cmd = 'python3'
+            for (s, d) in mapper:
+                Spawn(cmd, '-c', 'from py_compile import compile; compile("%s", "%s")' % (self.join(s), self.join(d)))
 
 class Tar(Task):
     from os import curdir as root
