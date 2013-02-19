@@ -49,6 +49,7 @@ __all__ = [
     'Shebang',
     'Spawn',
     'Tar',
+    'Tokenize',
     'Unittest',
     'Untar',
     'Unzip',

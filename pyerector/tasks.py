@@ -11,8 +11,8 @@ from .iterator import FileMapper, FileIterator, StaticIterator, FileSet
 
 __all__ = [
     'Chmod', 'Copy', 'CopyTree', 'Java', 'Mkdir', 'PyCompile',
-    'Remove', 'Shebang', 'Spawn', 'Tar', 'Unittest', 'Untar',
-    'Unzip', 'Zip',
+    'Remove', 'Shebang', 'Spawn', 'Tar', 'Tokenize', 'Unittest',
+    'Untar', 'Unzip', 'Zip',
 ]
 
 class Chmod(Task):
@@ -334,6 +334,25 @@ class Tar(Task):
                 )
                 file.add(fname, fn)
             file.close()
+
+class Tokenize(Task):
+    """Replace tokens found in tokenmap with their associated values in
+each file."""
+    files = ()
+    dest = None
+    tokenmap = {}
+    def run(self):
+        import re
+        def repltoken(m, map=self.tokenmap):
+            return map.get(m.group(0), '')
+        patt = '|'.join(tuple(self.get_kwarg('tokenmap', dict)))
+        tokens = re.compile(r'\b%s\b' % patt, re.MULTILINE)
+        mapper = FileMapper(self.get_files(self.get_args('files')),
+                            destdir=self.get_kwarg('dest', str))
+        for (sname, dname) in mapper:
+            contents = tokens.sub(repltoken,
+                                  open(self.join(sname), 'rt').read())
+            open(self.join(dname), 'wt').write(contents)
 
 class Unittest(Task):
     modules = ()
