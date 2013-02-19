@@ -26,6 +26,37 @@ class Chmod(Task):
             verbose('chmod(' + fname + ', ' + oct(mode) + ')')
             chmod(self.join(fname), mode)
 
+class Container(Task):
+    """An internal task for subclassing standard classes Tar and Zip."""
+    appname = None
+    from os import curdir as root
+    name = None
+    files = ()
+    exclude = ()
+    def run(self):
+        name = self.get_kwarg('name', str, noNone=True)
+        root = self.join(self.get_kwarg('root', str))
+        excludes = self.get_kwarg('exclude', (tuple, list))
+        if excludes:
+            exctest = lambda t, e=excludes: [v for v in e if t.endswith(v)]
+        else:
+            exctest = None
+        toadd = []
+        from glob import glob
+        queue = list(self.get_files(self.get_args('files'), noglob=True))
+        while queue:
+            entry = queue[0]
+            del queue[0]
+            for fn in glob(self.join(root, entry)):
+                if exctest and exctest(fn): # if true, then ignore
+                    pass
+                elif os.path.islink(fn) or os.path.isfile(fn):
+                    toadd.append(fn)
+                elif os.path.isdir(fn):
+                    fnames = [os.path.join(fn, f) for f in os.listdir(fn)]
+                    queue.extend(fnames)
+        self.contain(name, root, toadd)
+
 class Copy(Task):
     files = ()
     dest = None
@@ -287,38 +318,9 @@ class Spawn(Task):
                 else:
                     environ[ename] = oldenv[ename]
 
-class Tar(Task):
-    from os import curdir as root
-    name = None
-    files = ()
-    exclude = ()
-    def run(self):
+class Tar(Container):
+    def contain(self, name, root, toadd):
         from tarfile import open
-        name = self.get_kwarg('name', str, noNone=True)
-        root = self.join(self.get_kwarg('root', str))
-        excludes = self.get_kwarg('exclude', (tuple, list))
-        if excludes:
-            exctest = lambda t, e=excludes: [v for v in e if t.endswith(v)]
-            filter = lambda t, e=exctest: not e(t.name) and t or None
-            exclusion = lambda t, e=exctest: e(t)
-        else:
-            exctest = None
-            filter = None
-            exclusion = None
-        toadd = []
-        from glob import glob
-        queue = list(self.get_files(self.get_args('files'), noglob=True))
-        while queue:
-            entry = queue[0]
-            del queue[0]
-            for fn in glob(self.join(root, entry)):
-                if exctest and exctest(fn):  # if true, then ignore
-                    pass
-                elif os.path.islink(fn) or os.path.isfile(fn):
-                    toadd.append(fn)
-                elif os.path.isdir(fn):
-                    fnames = [os.path.join(fn, f) for f in os.listdir(fn)]
-                    queue.extend(fnames)
         try:
             file = open(self.join(name), 'w:gz')
         except IOError:
@@ -392,95 +394,65 @@ class Unittest(Task):
         finally:
             sys.argv[0] = real_sys_name
 
-class Untar(Task):
+class Uncontainer(Task):
     name = None
     root = None
     files = ()
     def run(self):
+        name = self.get_kwarg('name', str, noNone=True)
+        root = self.get_kwarg('root', str)
+        self.asserttype(root, str, 'root')
+        files = tuple(self.get_args('files'))
+        try:
+            contfile = self.get_file(name)
+        except IOError:
+            raise ValueError('no such file or directory: %s' % name)
+        else:
+            fileset = self.retrieve_members(contfile, files)
+            self.extract_members(contfile, fileset, root)
+            contfile.close()
+
+class Untar(Uncontainer):
+    def get_file(self, fname):
         from tarfile import open
-        name = self.get_kwarg('name', str, noNone=True)
-        root = self.get_kwarg('root', str)
-        self.asserttype(root, str,'root')
-        files = tuple(self.get_args('files'))
-        try:
-            file = open(self.join(name), 'r:gz')
-        except IOError:
-            raise ValueError('no such file or directory: %s' % name)
-        else:
-            fileset = []
-            for member in file.getmembers():
-                if (member.name.startswith(os.sep) or
-                    member.name.startswith(os.pardir)):
-                    pass
-                elif not files or member.name in files:
-                    fileset.append(member)
-            for fileinfo in fileset:
-                verbose('tar.extract(' + str(fileinfo.name) + ')')
-                file.extract(fileinfo, path=(root or ""))
-            file.close()
+        return open(self.join(fname), 'r:gz')
+    def retrieve_members(self, contfile, files):
+        fileset = []
+        for member in contfile.getmembers():
+            if (member.name.startswith(os.sep) or
+                member.name.startswith(os.pardir)):
+                pass
+            elif not files or member.name in files:
+                fileset.append(member)
+        return fileset
+    def extract_members(self, contfile, fileset, root):
+        for fileinfo in fileset:
+            verbose('tar.extract(' + str(fileinfo.name) + ')')
+            contfile.extract(fileinfo, path=(root or ""))
 
-class Unzip(Task):
-    name = None
-    root = None
-    files = ()
-    def run(self):
+class Unzip(Uncontainer):
+    def get_file(self, fname):
         from zipfile import ZipFile
-        from os import pardir, sep
-        from os.path import dirname, join
-        name = self.get_kwarg('name', str, noNone=True)
-        root = self.get_kwarg('root', str)
-        files = tuple(self.get_args('files'))
-        try:
-            file = ZipFile(self.join(name), 'r')
-        except IOError:
-            raise ValueError('no such file or directory: %s' % name)
-        else:
-            fileset = []
-            for member in file.namelist():
-                if member.startswith(sep) or member.startswith(pardir):
-                    pass
-                elif not files or member in files:
-                    fileset.append(member)
-            for member in fileset:
-                dname = join(root, member)
-                Mkdir.mkdir(dirname(dname))
-                verbose('zip.extract(' + str(member) + ')')
-                dfile = open(dname, 'wb')
-                dfile.write(file.read(member))
-            file.close()
+        return ZipFile(self.join(fname), 'r')
+    def retrieve_members(self, contfile, files):
+        fileset = []
+        for member in contfile.namelist():
+            if member.startswith(os.sep) or member.startswith(os.pardir):
+                pass
+            elif not files or member in files:
+                fileset.append(member)
+        return fileset
+    def extract_members(self, contfile, fileset, root):
+        for member in fileset:
+            dname = os.path.join(root, member)
+            Mkdir.mkdir(os.path.dirname(dname))
+            verbose('zip.extract(' + str(member) + ')')
+            dfile = open(dname, 'wb')
+            dfile.write(contfile.read(member))
 
-class Zip(Task):
-    from os import curdir as root
-    name = None
-    files = ()
-    exclude = ()
-    def run(self):
+class Zip(Container):
+    def contain(self, name, root, toadd):
         from zipfile import ZipFile
-        name = self.get_kwarg('name', str, noNone=True)
-        root = self.join(self.get_kwarg('root', str))
-        excludes = tuple(self.get_kwarg('exclude', (tuple, list)))
-        if excludes:
-            exctest = lambda t, e=excludes: [v for v in e if t.endswith(v)]
-            filter = lambda t, e=exctest: not e(t.name) and f or None
-            exclusion = lambda t, e=exctest: e(t)
-        else:
-            exctest = None
-            filter = None
-            exclusion = None
-        toadd = []
-        from glob import glob
-        queue = list(self.get_files(self.get_args('files'), noglob=True))
-        while queue:
-            entry = queue[0]
-            del queue[0]
-            for fn in glob(self.join(root, entry)):
-                if exctest and exctest(fn): # if true then ignore
-                    pass
-                elif os.path.islink(fn) or os.path.isfile(fn):
-                    toadd.append(fn)
-                elif os.path.isdir(fn):
-                    files = [os.path.join(fn, f) for f in os.listdir(fn)]
-                    queue.extend(files)
         try:
             file = ZipFile(self.join(name), 'w')
         except IOError:
@@ -490,7 +462,7 @@ class Zip(Task):
                 fn = fname.replace(
                     root + os.sep, ''
                 )
-                verbose('zip.add(' + str(fname) + ', ' + str(fn) + ')' )
+                verbose('zip.add(' + str(fname) + ',' + str(fn) + ')' )
                 file.write(fname, fn)
             file.close()
 
