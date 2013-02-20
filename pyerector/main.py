@@ -5,6 +5,7 @@ import sys
 from . import verbose, debug, noop
 from .register import registry
 from .base import Initer, Target
+from .version import get_version, get_release
 
 __all__ = [
     'PyErector', 'pymain',
@@ -24,6 +25,8 @@ class PyErector(object):
                             help='do not perform operations')
         parser.add_argument('--verbose', '-v', action='store_true',
                             help='more verbose output')
+        parser.add_argument('--version', '-V', action='store_true',
+                            help='show version information')
     except ImportError:
         import optparse
         parser = optparse.OptionParser(description='Pyerector build system')
@@ -33,6 +36,8 @@ class PyErector(object):
                           help='do not perform operations')
         parser.add_option('--verbose', '-v', action='store_true',
                           help='more verbose output')
+        parser.add_option('--version', '-V', action='store_true',
+                          help='show version information')
     def __init__(self, *args):
         self.basedir = None
         self.targets = []
@@ -45,10 +50,17 @@ class PyErector(object):
         if isinstance(args, tuple):
             args, arglist = args
             args.targets = arglist
+        # check --verbose before --version
         if args.verbose:
             verbose.on()
         if args.noop:
             noop.on()
+        if args.version:
+            if verbose:
+                print get_release(), get_version()
+            else:
+                print get_release()
+            raise SystemExit
         if args.directory:
             self.basedir = args.directory
             Initer.config.basedir = args.directory

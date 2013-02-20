@@ -3,6 +3,7 @@
 
 import os
 import shutil
+import sys
 
 from .exception import Error
 from .base import Task, Uptodate
@@ -187,7 +188,6 @@ class PyCompile(Task):
     version = '2'
     def run(self):
         import py_compile
-        import sys
         mapper = FileMapper(self.get_files(self.get_args('files')),
                             map=lambda x: x + 'c',
                             destdir=self.dest
@@ -346,22 +346,29 @@ each file."""
     def run(self):
         import re
         def repltoken(m, map=self.tokenmap):
+            debug('found', m.group(0))
             return map.get(m.group(0), '')
-        patt = '|'.join(tuple(self.get_kwarg('tokenmap', dict)))
-        tokens = re.compile(r'\b%s\b' % patt, re.MULTILINE)
+        def quote(s):
+            return s.replace('\\', r'\\').replace('.', r'\.')\
+                    .replace('$', r'\$').replace('(', r'\(')\
+                    .replace(')', r'\)').replace('|', r'\|')
+        patt = '|'.join([quote(k) for k in self.get_kwarg('tokenmap', dict)])
+        tokens = re.compile(r'(%s)' % patt, re.MULTILINE)
+        debug('patt =', str(tokens.pattern))
         mapper = FileMapper(self.get_files(self.get_args('files')),
                             destdir=self.get_kwarg('dest', str))
         for (sname, dname) in mapper:
-            contents = tokens.sub(repltoken,
-                                  open(self.join(sname), 'rt').read())
-            open(self.join(dname), 'wt').write(contents)
+            realcontents = open(self.join(sname), 'rt').read()
+            m = tokens.search(realcontents)
+            alteredcontents = tokens.sub(repltoken, realcontents)
+            open(self.join(dname), 'wt').write(alteredcontents)
 
 class Unittest(Task):
     modules = ()
     path = ()
     def run(self):
         modules = tuple(self.get_args('modules'))
-        import imp, sys, unittest
+        import imp, unittest
         try:
             loader = unittest.loader.TestLoader()
         except AttributeError:

@@ -10,12 +10,31 @@ distfile = '%s-%s' % (release.product, release.number)
 # files to be including in packaging
 packlist = ('pyerector', 'release.py', 'setup.py', 'README', 'LICENSE')
 
+class VersionInfo(Tokenize):
+    files = (normjoin('build', 'pyerector', 'version.py'),)
+    tokenmap = {
+        '%release.product%': release.product,
+        '%release.number%': release.number,
+        '%hg.version%': '',
+        '%hg.branch%': '',
+        '%hg.tags%': '',
+    }
+    def run(self):
+        hgout = os.popen('hg identify --id --branch --tags', 'r').read()
+        parts = hgout.rstrip().split()
+        self.tokenmap['%hg.version%'] = parts[0]
+        self.tokenmap['%hg.branch%'] = parts[1]
+        self.tokenmap['%hg.tags%'] = parts[2]
+        super(VersionInfo, self).run()
+
+
 class PyCopy(Target):
     tasks = (
         CopyTree(srcdir='pyerector',
                  dstdir='build/pyerector',
                  excludes=('*.pyc', '__pycache__', '.hg', '.*.swp')),
         Copy('release.py', 'setup.py', 'README', 'LICENSE', dest='build'),
+        VersionInfo,
     )
 
 class Cleantest(Target):
