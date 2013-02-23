@@ -188,21 +188,18 @@ class PyCompile(Task):
     version = '2'
     def run(self):
         import py_compile
-        mapper = FileMapper(self.get_files(self.get_args('files')),
-                            map=lambda x: x + 'c',
-                            destdir=self.dest
-        )
+        fileset = self.get_files(self.get_args('files'))
         if self.version[:1] == sys.version[:1]:  # compile inline
-            for (s, d) in mapper:
-                debug('py_compile.compile(%s, %s)' % (s, d))
-                py_compile.compile(s, d)
+            for s in fileset:
+                debug('py_compile.compile(%s)' % s)
+                py_compile.compile(s)
         else:
             if self.version[:1] == '2':
                 cmd = 'python2'
             elif self.version[:1] == '3':
                 cmd = 'python3'
-            for (s, d) in mapper:
-                Spawn(cmd, '-c', 'from py_compile import compile; compile("%s", "%s")' % (self.join(s), self.join(d)))
+            for s in fileset:
+                Spawn(cmd, '-c', 'from py_compile import compile; compile("%s")' % self.join(s))
 
 class Remove(Task):
     files = ()
