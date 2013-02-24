@@ -37,6 +37,19 @@ class PyCopy(Target):
         VersionInfo,
     )
 
+class PreCompile(Target):
+    dependencies = (PyCopy,)
+    tasks = (
+        PyCompile(
+            FileList('build/pyerector', 'build/pyerector/py2', pattern='*.py'),
+            version='2'
+        ),
+        PyCompile(
+            FileList('build/pyerector', 'build/pyerector/py3', pattern='*.py'),
+            version='3'
+        ),
+    )
+
 class Cleantest(Target):
     """Clean the test directory."""
     tasks = (
@@ -64,7 +77,7 @@ Test.dependencies = Test.dependencies + (Localtest,)
 Clean.files = ('build', 'dist', 'MANIFEST')
 Clean.dependencies = (Cleantest,)
 InitDirs.files = ('build', 'dist', 'testdir/zip', 'testdir/tar')
-Compile.dependencies = (PyCopy,)
+Compile.dependencies = (PreCompile,)
 Packaging.tasks = (
     Zip(name='dist/%s.zip' % distfile, files=packlist, root='build'),
     Tar(name='dist/%s.tgz' % distfile, files=packlist, root='build'),

@@ -57,9 +57,9 @@ class PyErector(object):
             noop.on()
         if args.version:
             if verbose:
-                print get_release(), get_version()
+                sys.stdout.write('%s %s\n' % (get_release(), get_version()))
             else:
-                print get_release()
+                sys.stdout.write('%s\n' % get_release())
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
