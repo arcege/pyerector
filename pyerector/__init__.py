@@ -27,7 +27,7 @@ from .main import PyErector, pymain
 from .base import Target, Task
 from .tasks import  *
 from .targets import *
-from .iterator import *
+from .iterators import *
 
 __all__ = [
     # base routines

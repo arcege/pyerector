@@ -5,7 +5,7 @@ from . import hasformat
 from .register import registry
 from .base import Target
 from .tasks import Mkdir, Remove, Unittest
-from .iterator import StaticIterator
+from .iterators import StaticIterator
 
 __all__ =  [
     'All',

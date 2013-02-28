@@ -71,6 +71,9 @@ class FileIterator(StaticIterator):
     def glob(self, pattern):
         # do not use the join() method since it will remove the trailing
         # separator
+        # XXX should we be returning an iter() object?
+        if isinstance(pattern, Iterator): # an iterator, so convert to a list
+            return list(pattern)
         base = os.path.join(self.config.basedir, '')
         files = glob.glob(self.join(pattern))
         debug('%s.glob(%s) = %s' % (self.__class__.__name__, self.join(pattern), files))

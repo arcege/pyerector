@@ -8,7 +8,7 @@ import sys
 from .exception import Error
 from .base import Task
 from . import debug, verbose
-from .iterator import FileMapper
+from .iterators import FileMapper
 
 __all__ = [
     'Chmod', 'Copy', 'CopyTree', 'Java', 'Mkdir', 'PyCompile',
