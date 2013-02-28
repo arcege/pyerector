@@ -16,10 +16,9 @@ from .helper import normjoin, u
 from .register import registry
 from .exception import Error
 from .config import Config
-from .iterator import FileIterator, FileMapper, FileSet, StaticIterator
 
 __all__ = [
-    'Target', 'Task', 'Uptodate',
+    'Target', 'Task',
 ]
 
 # the base class to set up the others
@@ -39,38 +38,39 @@ class Initer(Base):
             curdir = os.curdir
         else:
             del kwargs['curdir']
-        if basedir is None:
-            basedir = curdir
         if args:
             self.args = args
         if kwargs:
             for key in kwargs:
                 setattr(self, key, kwargs[key])
         #if not self.config.initialized:
-        self.config.basedir = basedir or os.curdir
+        if self.config.basedir is None or basedir is not None:
+            self.config.basedir = basedir or os.curdir
         self.config.initialized = True
     def wantnoglob(self):
         return ((hasattr(self, 'kwargs') and 'noglob' in  self.kwargs and
                     self.kwargs['noglob']) or
                 (hasattr(self, 'noglob') and self.noglob))
     def get_files(self, files=None, noglob=None):
-        if self.wantnoglob():
-            iterator = StaticIterator
-        else:
-            iterator = FileIterator
         if not files:
             files = self.files
-        if isinstance(files, (FileMapper, StaticIterator, FileSet)):
+        if isinstance(files, Iterator):
             return files
         else:
+            # import here to avoid recursive references
+            from .iterator import StaticIterator, FileIterator, FileSet
+            if self.wantnoglob():
+                iterator = StaticIterator
+            else:
+                iterator = FileIterator
             fs = FileSet()
             for entry in files:
-                if isinstance(entry, (FileMapper, StaticIterator, FileSet)):
+                if isinstance(entry, Iterator):
                     fs.append(entry)
                 elif isinstance(entry, (tuple, list)):
-                    fs.append(iterator(entry, basedir=self.config.basedir))
+                    fs.append(iterator(entry))
                 else:
-                    fs.append(iterator((entry,), basedir=self.config.basedir))
+                    fs.append(iterator((entry,),))
             return fs
     def join(self, *path):
         debug('%s.join(%s, *%s)' % (self.__class__.__name__, self.config.basedir, path))
@@ -102,74 +102,11 @@ class Initer(Base):
             value = getattr(self, name)
         else:
             return ()
-        self.asserttype(value, (tuple, list, FileIterator, FileMapper), name)
+        self.asserttype(value, (tuple, list, Iterator), name)
         return value
     @classmethod
     def validate_tree(self):
         pass # do nothing, Target will do something with this
-
-class Uptodate(Initer):
-    sources = ()
-    destinations = ()
-    mappers = ()
-    def __call__(self, *args):
-        debug('%s.__call__(*%s)' % (self.__class__.__name__, args))
-        klsname = self.__class__.__name__
-        mappers = self.get_args('mappers')
-        if not mappers and (not self.sources or not self.destinations):
-            debug(klsname, '*>', False)
-            return False
-        if mappers:
-            debug('using mappers')
-            for mapper in mappers:
-                for (s, d) in mapper:
-                    sf = self.join(s)
-                    df = self.join(d)
-                    if os.path.isdir(sf):
-                        result = self.checktree(sf, df)
-                    else:
-                        result = self.checkpair(sf, df)
-                    if not result:
-                        return False
-            else:
-                return True
-        else:
-            debug('comparing sources to destinations')
-            srcs = self.get_files(self.sources)
-            dsts = self.get_files(self.destinations)
-            result = self.check(
-                [self.join(s) for s in srcs],
-                [self.join(d) for d in dsts])
-            debug(klsname, '=>', result and 'False' or 'True')
-            return result
-    @staticmethod
-    def check(srcs, dsts):
-        # return True if earliest destination is newer than oldest
-        # source
-        debug('Uptodate.check(%s, %s)' % (srcs, dsts))
-        maxval = float('inf')
-        latest_src = reduce(max, [os.path.getmtime(s) for s in srcs], 0)
-        earliest_dst = reduce(min, [os.path.getmtime(d) for d in dsts], maxval)
-        debug('latest_src =', latest_src, 'earliest_dst =', earliest_dst)
-        if earliest_dst == maxval: # empty list case
-            return False
-        result = round(earliest_dst, 4) >= round(latest_src, 4)
-        return result
-    @staticmethod
-    def checkpair(src, dst):
-        # return True if destination is newer than source
-        try:
-            s = round(os.path.getmtime(src), 4)
-        except OSError:
-            raise ValueError('no source:', src)
-        try:
-            d = round(os.path.getmtime(dst), 4)
-        except OSError:
-            return False
-        return d >= s
-    @staticmethod
-    def checktree(src, dst):
-        return False # always outofdate until we implement
 
 class Target(Initer):
     dependencies = ()
@@ -213,7 +150,7 @@ class Target(Initer):
         validate_class(klass.__name__, klass.tasks, 'Task', 'task')
     def call(self, name, klass, ktype, args=None):
         if (isinstance(name, type) and issubclass(name, klass)):
-            obj = name(basedir=self.config.basedir)
+            obj = name()
         elif isinstance(name, klass):
             obj = name
         else:
@@ -227,8 +164,11 @@ class Target(Initer):
                 else:
                     raise
             else:
-                obj = kobj(basedir=self.config.basedir)
-        if args is None:
+                obj = kobj()
+        from .iterator import Uptodate
+        if not isinstance(obj, Uptodate) and isinstance(obj, Mapper):
+            return obj.uptodate()
+        elif args is None:
             return obj()
         else:
             return obj(*args)
@@ -238,7 +178,7 @@ class Target(Initer):
             return
         if self.uptodates:
             for utd in self.uptodates:
-                if not self.call(utd, Uptodate, 'uptodate'):
+                if not self.call(utd, Mapper, 'uptodate'):
                     break
             else:
                 self.verbose('uptodate.')
@@ -307,3 +247,13 @@ class Task(Initer):
             self.args = list(args)
         if kwargs:
             self.kwargs = dict(kwargs)
+
+class Iterator(Initer):
+    def __iter__(self):
+        return self
+    def next(self):
+        raise StopIteration
+
+class Mapper(Iterator):
+    pass
+

@@ -6,9 +6,9 @@ import shutil
 import sys
 
 from .exception import Error
-from .base import Task, Uptodate
+from .base import Task
 from . import debug, verbose
-from .iterator import FileMapper, FileIterator, StaticIterator, FileSet
+from .iterator import FileMapper
 
 __all__ = [
     'Chmod', 'Copy', 'CopyTree', 'Java', 'Mkdir', 'PyCompile',
@@ -63,20 +63,21 @@ class Copy(Task):
     dest = None
     noglob = False
     def run(self):
+        from .iterator import MergeMapper
         #verbose('starting', self.__class__.__name__)
         dest = self.get_kwarg('dest', str, noNone=True)
         files = self.get_args('files')
         if len(files) == 1 and not os.path.isdir(dest):
-            fmap = ( (files[0], dest), )
+            fmap = MergeMapper(files, destdir=dest)
+            debug('Copy.fmap =', vars(fmap))
         else:
             fmap = FileMapper(self.get_files(self.get_args('files')),
-                              destdir=self.get_kwarg('dest', str, noNone=True))
+                              destdir=dest)
             debug('Copy.fmap =', vars(fmap))
         for (sname, dname) in fmap:
             srcfile = self.join(sname)
             dstfile = self.join(dname)
-            if os.path.isfile(dstfile) and \
-                    Uptodate.checkpair(srcfile, dstfile):
+            if os.path.isfile(dstfile) and fmap.checkpair(srcfile, dstfile):
                 debug('uptodate:', dstfile)
             else:
                 verbose('copy2(' + str(sname) + ', ' + str(dname) + ')')
