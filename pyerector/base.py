@@ -16,7 +16,7 @@ from .helper import normjoin, u
 from .register import registry
 from .exception import Error
 from .config import Config
-from .iterator import FileIterator, FileMapper, FileSet, StaticIterator
+from .iterators import FileIterator, FileMapper, FileSet, StaticIterator
 
 __all__ = [
     'Target', 'Task', 'Uptodate',
