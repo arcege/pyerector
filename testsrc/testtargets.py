@@ -20,6 +20,7 @@ class TestStandardTargets(unittest.TestCase):
 InitDirs: done.
 Init: done.
 PyCopy: done.
+PreCompile: done.
 Compile: done.
 Build: done.
 Packaging: done.
@@ -36,6 +37,7 @@ Default: done.
 InitDirs: done.
 Init: done.
 PyCopy: done.
+PreCompile: done.
 Compile: done.
 Build: done.
 InitDirs: done.
