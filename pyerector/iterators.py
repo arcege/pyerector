@@ -7,28 +7,28 @@ import itertools
 import os
 from .helper import normjoin
 from . import debug
+from .base import Initer, Iterator, Mapper
 
 __all__ = [
     'FileSet', 'StaticIterator', 'FileIterator', 'FileList', 'DirList',
-    'FileMapper', 'BasenameMapper',
+    'FileMapper', 'BasenameMapper', 'MergeMapper', 'Uptodate',
 ]
 
 # a helper class to handle file/directory lists better
-class StaticIterator(object):
+class StaticIterator(Iterator):
     def __init__(self, path, pattern=None, exclude=None, basedir=None):
-        # load it here to avoid recursive imports
-        from .base import Initer
-        self.basedir = basedir or Initer.config.basedir
-        super(StaticIterator, self).__init__()
-        if isinstance(path, (tuple, list)):
-            self.pool = list(path)
+        super(StaticIterator, self).__init__(*path,
+            **{'pattern': pattern, 'exclude': exclude, 'basedir': basedir}
+        )
+        pool = self.get_args('path')
+        if isinstance(pool, (tuple, list)):
+            self.pool = list(pool)
         else:
-            self.pool = [path]
+            self.pool = [pool]
         self.poolpos = 0
         self.setpos = 0
-        self.exclude = exclude
-        self.pattern = pattern
         if self.pattern:
+            # should may defer to next() method
             for i, v in enumerate(self.pool):
                 self.pool[i] = os.path.join(v, self.pattern)
         self.curpoolitem = None
@@ -69,8 +69,14 @@ class StaticIterator(object):
 
 class FileIterator(StaticIterator):
     def glob(self, pattern):
-        base = os.path.join(self.basedir, '')
-        files = glob.glob(os.path.join(self.basedir, pattern))
+        # do not use the join() method since it will remove the trailing
+        # separator
+        # XXX should we be returning an iter() object?
+        if isinstance(pattern, Iterator): # an iterator, so convert to a list
+            return list(pattern)
+        base = os.path.join(self.config.basedir, '')
+        files = glob.glob(self.join(pattern))
+        debug('%s.glob(%s) = %s' % (self.__class__.__name__, self.join(pattern), files))
         return [name.replace(base, '') for name in files]
 
 class FileList(FileIterator):
@@ -92,9 +98,9 @@ class DirList(FileIterator):
             if not self.filesonly:
                 paths.append(thisdir)
             if not self.apply_exclusion(os.path.basename(thisdir)):
-                for name in os.listdir(os.path.join(self.basedir, thisdir)):
+                for name in os.listdir(os.path.join(self.config.basedir, thisdir)):
                     spath = os.path.join(thisdir, name)
-                    dpath = os.path.join(self.basedir, thisdir, name)
+                    dpath = os.path.join(self.config.basedir, thisdir, name)
                     if self.apply_exclusion(name):
                         pass
                     elif os.path.islink(dpath) or os.path.isfile(dpath):
@@ -103,20 +109,19 @@ class DirList(FileIterator):
                         dirs.append(spath)
         self.pool[:] = paths # replace the pool with the gathered set
 
-class FileSet(object):
+class FileSet(Iterator):
     klass = StaticIterator
     def __init__(self, *set, **kwargs):
         from .base import Initer
-        super(FileSet, self).__init__()
-        self.basedir = kwargs.get('basedir', Initer.config.basedir)
+        super(FileSet, self).__init__(*set, **kwargs)
         self.set = []
         for item in set:
             if not isinstance(item, self.klass):
-                item = self.klass(item, basedir=self.basedir)
+                item = self.klass(item)
             self.set.append(item)
     def append(self, item):
         if not isinstance(item, self.klass):
-            item = self.klass(item, basedir=self.basedir)
+            item = self.klass(item)
         self.set.append(item)
     def __iter__(self):
         self.iset = iter(self.set)
@@ -134,25 +139,21 @@ class FileSet(object):
             else:
                 return item
 
-class FileMapper(object):
+class FileMapper(Mapper):
     def __init__(self, *files, **kwargs):
-        from .base import Initer
-        super(FileMapper, self).__init__()
-        self.basedir = kwargs.get('basedir', Initer.config.basedir)
-        #print files
-        #print files[0], type(files[0]), isinstance(files[0], FileSet)
+        super(FileMapper, self).__init__(*files, **kwargs)
         if len(files) == 1 and isinstance(files[0], (FileIterator, FileSet)):
-            #print 'single iterator/set'
+            #debug('single iterator/set')
             self.files = files[0]
         elif len(files) == 1 and isinstance(files[0], (tuple, list)):
-            #print 'single sequence'
-            self.files = FilesIterator(files[0], basedir=self.basedir)
+            #debug('single sequence')
+            self.files = FileIterator(files[0])
         elif isinstance(files, (FileIterator, FileSet)):
-            #print 'tuple was iterator/set - bad'
+            #debug('tuple was iterator/set - bad')
             self.files = files
         else:
-            #print 'convert to iterator'
-            self.files = FileIterator(files, basedir=self.basedir)
+            #debug('convert to iterator')
+            self.files = FileIterator(files)
         self.destdir = 'destdir' in kwargs and kwargs['destdir'] or os.curdir
         if 'map' in kwargs:
             mapper = kwargs['map']
@@ -193,10 +194,68 @@ class FileMapper(object):
         return (name, result)
     def map(self, fname):
         return fname
+    def uptodate(self):
+        for (s, d) in self:
+            sf = self.join(s)
+            df = self.join(d)
+            if os.path.isdir(sf):
+                result = self.checktree(sf, df)
+            else:
+                result = self.checkpair(sf, df)
+            if not result:
+                debug('%s.uptodate() => False' % self.__class__.__name__)
+                return False
+        else:
+            debug('%s.uptodate() => True' % self.__class__.__name__)
+            return True
+    @staticmethod
+    def checkpair(src, dst):
+        """Return True if destination is newer than source."""
+        try:
+            s = round(os.path.getmtime(src), 4)
+        except OSError:
+            raise ValueError('no source:', src)
+        try:
+            d = round(os.path.getmtime(dst), 4)
+        except OSError:
+            return False
+        return d >= s
+    @classmethod
+    def checktree(cls, src, dst):
+        return False # always outofdate until we implement
 
 class BasenameMapper(FileMapper):
     """Remove the last file extension including the dot."""
     def map(self, fname):
         return os.path.splitext(fname)[0]
 
+class MergeMapper(FileMapper):
+    def map(self, fname):
+        return self.join(self.destdir)
+
+class Uptodate(FileMapper):
+    # backward compatible interface
+    sources = ()
+    destinations = ()
+    def __call__(self, *args):
+        debug('%s.__call__(*%s)' % (self.__class__.__name__, args))
+        klsname = self.__class__.__name__
+        srcs = self.get_kwarg('sources', (list, tuple, Iterator))
+        dsts = self.get_kwarg('destinations', (list, tuple, Iterator))
+        if not self.files and (not srcs or not dsts):
+            debug(klsname, '*>', False)
+            return False
+        if srcs and dsts:
+            def get_times(lst, s=self):
+                return [os.path.getmtime(s.join(f)) for f in lst]
+            maxval = float('inf')
+            lastest_src = reduce(max, get_times(self.get_files(srcs)), 0)
+            earliest_dst = reduce(max, get_times(self.get_files(dsts)), maxval)
+            if earliest_dst == maxval: # empty list case
+                return False
+            result = round(earliest_dst, 4) >= round(latest_src, 4)
+            debug(klsname, '=>', result and 'False' or 'True')
+            return result
+        else:
+            return self.uptodate()
 

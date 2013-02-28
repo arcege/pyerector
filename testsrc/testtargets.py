@@ -11,7 +11,8 @@ except ImportError:
 from pyerector import normjoin, verbose, debug, noop
 from pyerector.helper import Verbose, u
 from pyerector.exception import Error
-from pyerector.base import Initer, Target, Task, Uptodate
+from pyerector.base import Initer, Target, Task
+from pyerector.iterator import Uptodate
 from pyerector.targets import *
 from pyerector.main import PyErector
 

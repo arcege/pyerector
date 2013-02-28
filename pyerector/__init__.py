@@ -24,7 +24,7 @@ debug = Verbose('DEBUG' in environ and environ['DEBUG'] != '')
 del environ
 
 from .main import PyErector, pymain
-from .base import Target, Task, Uptodate
+from .base import Target, Task
 from .tasks import  *
 from .targets import *
 from .iterators import *
@@ -38,7 +38,6 @@ __all__ = [
     'pymain',
     'Target',
     'Task',
-    'Uptodate',
     'V',  # alias for Variable
     'Variable',
     'VariableSet',
@@ -82,5 +81,7 @@ __all__ = [
     # mappers
     'FileMapper',
     'BasenameMapper',
+    'MergeMapper',
+    'Uptodate',
 ]
 
