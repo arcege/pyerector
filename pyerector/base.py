@@ -58,7 +58,7 @@ class Initer(Base):
             return files
         else:
             # import here to avoid recursive references
-            from .iterator import StaticIterator, FileIterator, FileSet
+            from .iterators import StaticIterator, FileIterator, FileSet
             if self.wantnoglob():
                 iterator = StaticIterator
             else:
@@ -165,7 +165,7 @@ class Target(Initer):
                     raise
             else:
                 obj = kobj()
-        from .iterator import Uptodate
+        from .iterators import Uptodate
         if not isinstance(obj, Uptodate) and isinstance(obj, Mapper):
             return obj.uptodate()
         elif args is None:

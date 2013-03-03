@@ -8,7 +8,7 @@ import sys
 from .exception import Error
 from .base import Task
 from . import debug, verbose
-from .iterators import FileMapper
+from .iterators import FileMapper, MergeMapper
 from .variables import VariableSet
 
 
@@ -65,7 +65,6 @@ class Copy(Task):
     dest = None
     noglob = False
     def run(self):
-        from .iterator import MergeMapper
         #verbose('starting', self.__class__.__name__)
         dest = self.get_kwarg('dest', str, noNone=True)
         files = self.get_args('files')
