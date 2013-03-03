@@ -167,6 +167,8 @@ class FileMapper(Mapper):
         else:  # identity mapper
             self.mapper = lambda x: x
         self.pos = 0
+        self.queue = []
+        self.ifiles = None
     def __iter__(self):
         self.ifiles = iter(self.files)
         self.pos = 0
@@ -179,8 +181,11 @@ class FileMapper(Mapper):
         else:
             try:
                 name = next(self.ifiles)
-            except IndexError:
+            except (StopIteration, IndexError):
+                self.ifiles = None
                 raise StopIteration
+            except TypeError:
+                raise RuntimeError('not called as an iter object')
             self.pos += 1
             mapped = self.map(self.mapper(name))
             assert callable(self.mapper), 'mapper is not callable'
