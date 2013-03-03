@@ -162,7 +162,7 @@ class FileMapper(Mapper):
             files = fs
         # we should end up with 'files' being a single Iterator instance
         super(FileMapper, self).__init__(*files, **kwargs)
-        mapper = self.get_kwarg('mapper', object)
+        mapper = self.get_kwarg('mapper', (callable, str))
         if mapper is None:  # identity mapper
             self.mapper_func = lambda x: x
         elif callable(mapper):

@@ -84,7 +84,12 @@ class Initer(Base):
         text = "Must supply %s to '%s' in '%s'" % (
             typename, valname, self.__class__.__name__
         )
-        assert isinstance(value, typeval), text
+        if isinstance(typeval, (tuple, list)) and callable in typeval:
+            l = list(typeval)[:]
+            l.remove(callable)
+            assert callable(value) or isinstance(value, l), text
+        else:
+            assert isinstance(value, typeval), text
     def get_kwarg(self, name, typeval, noNone=False):
         if hasattr(self, 'kwargs') and name in self.kwargs:
             value = self.kwargs[name]
