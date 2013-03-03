@@ -112,16 +112,16 @@ class DirList(FileIterator):
 class FileSet(Iterator):
     klass = StaticIterator
     def __init__(self, *set, **kwargs):
-        from .base import Initer
         super(FileSet, self).__init__(*set, **kwargs)
         self.set = []
         for item in set:
-            if not isinstance(item, self.klass):
-                item = self.klass(item)
-            self.set.append(item)
+            self.append(item)
     def append(self, item):
-        if not isinstance(item, self.klass):
-            item = self.klass(item)
+        klass = self.get_kwarg('klass', type(Iterator))
+        if isinstance(item, (tuple, list)):
+            item = klass(item)
+        elif not isinstance(item, Iterator):
+            item = klass((item,))
         self.set.append(item)
     def __iter__(self):
         self.iset = iter(self.set)
@@ -152,14 +152,7 @@ class FileMapper(Mapper):
         elif len(files) == 1:
             files = FileIterator((files[0],))
         else:
-            fs = FileSet()
-            for i in files:
-                if isinstance(i, (tuple, list)):
-                    i = FileIterator(i)
-                elif not isinstance(i, Iterator):
-                    i = FileIterator((i,))
-                fs.append(i)
-            files = fs
+            files = FileSet(files, klass=FileIterator)
         # we should end up with 'files' being a single Iterator instance
         super(FileMapper, self).__init__(*files, **kwargs)
         mapper = self.get_kwarg('mapper', (callable, str))
