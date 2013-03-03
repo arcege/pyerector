@@ -186,7 +186,6 @@ class FileMapper(Mapper):
             except TypeError:
                 raise RuntimeError('not called as an iter object')
             self.pos += 1
-            mapped = self.map(self.mapper(name))
             assert callable(self.mapper), 'mapper is not callable'
             mapped = self.mapper(name)
             if isinstance(mapped, (list, tuple)):
