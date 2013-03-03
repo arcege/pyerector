@@ -140,21 +140,20 @@ class FileSet(Iterator):
                 return item
 
 class FileMapper(Mapper):
+    files = ()
+    destdir = None
+    map = None
+    mapper = None
     def __init__(self, *files, **kwargs):
-        super(FileMapper, self).__init__(*files, **kwargs)
         if len(files) == 1 and isinstance(files[0], (FileIterator, FileSet)):
-            #debug('single iterator/set')
-            self.files = files[0]
+            files = files[0]
         elif len(files) == 1 and isinstance(files[0], (tuple, list)):
-            #debug('single sequence')
-            self.files = FileIterator(files[0])
-        elif isinstance(files, (FileIterator, FileSet)):
-            #debug('tuple was iterator/set - bad')
-            self.files = files
+            files = FileIterator(files[0])
+        elif len(files) == 1:
+            files = FileIterator((files[0],))
         else:
-            #debug('convert to iterator')
-            self.files = FileIterator(files)
-        self.destdir = 'destdir' in kwargs and kwargs['destdir'] or os.curdir
+            files = FileIterator(files)
+        super(FileMapper, self).__init__(*files, **kwargs)
         if 'map' in kwargs:
             mapper = kwargs['map']
             if callable(mapper):
@@ -170,7 +169,7 @@ class FileMapper(Mapper):
         self.queue = []
         self.ifiles = None
     def __iter__(self):
-        self.ifiles = iter(self.files)
+        self.ifiles = iter(self.get_args('files'))
         self.pos = 0
         self.queue = []
         return self
@@ -194,7 +193,10 @@ class FileMapper(Mapper):
                 first = mapped[0]
                 self.queue.extend( [(name, m) for m in mapped[1:]] )
                 mapped = first
-        result = normjoin(self.destdir, self.map(mapped))
+        destdir = self.get_kwarg('destdir', str)
+        if destdir is None:
+            destdir = ''
+        result = normjoin(destdir, self.map(mapped))
         debug('mapper yields (%s, %s)' % (name, result))
         return (name, result)
     def map(self, fname):
