@@ -66,11 +66,12 @@ class Initer(Base):
             fs = FileSet()
             for entry in files:
                 if isinstance(entry, Iterator):
-                    fs.append(entry)
+                    i = entry
                 elif isinstance(entry, (tuple, list)):
-                    fs.append(iterator(entry))
+                    i = iterator(entry)
                 else:
-                    fs.append(iterator((entry,),))
+                    i = iterator((entry,),)
+                fs.append(i)
             return fs
     def join(self, *path):
         debug('%s.join(%s, *%s)' % (self.__class__.__name__, self.config.basedir, path))
