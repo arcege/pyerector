@@ -65,14 +65,13 @@ class Copy(Task):
     dest = None
     noglob = False
     def run(self):
-        #verbose('starting', self.__class__.__name__)
         dest = self.get_kwarg('dest', str, noNone=True)
         files = self.get_args('files')
         if len(files) == 1 and not os.path.isdir(dest):
-            fmap = MergeMapper(files, destdir=dest)
+            fmap = MergeMapper(files[0], destdir=dest)
             debug('Copy.fmap =', vars(fmap))
         else:
-            fmap = FileMapper(self.get_files(self.get_args('files')),
+            fmap = FileMapper(self.get_files(files),
                               destdir=dest)
             debug('Copy.fmap =', vars(fmap))
         for (sname, dname) in fmap:

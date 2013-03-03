@@ -145,26 +145,33 @@ class FileMapper(Mapper):
     map = None
     mapper = None
     def __init__(self, *files, **kwargs):
-        if len(files) == 1 and isinstance(files[0], (FileIterator, FileSet)):
+        if len(files) == 1 and isinstance(files[0], Iterator):
             files = files[0]
         elif len(files) == 1 and isinstance(files[0], (tuple, list)):
             files = FileIterator(files[0])
         elif len(files) == 1:
             files = FileIterator((files[0],))
         else:
-            files = FileIterator(files)
+            fs = FileSet()
+            for i in files:
+                if isinstance(i, (tuple, list)):
+                    i = FileIterator(i)
+                elif not isinstance(i, Iterator):
+                    i = FileIterator((i,))
+                fs.append(i)
+            files = fs
+        # we should end up with 'files' being a single Iterator instance
         super(FileMapper, self).__init__(*files, **kwargs)
-        if 'map' in kwargs:
-            mapper = kwargs['map']
-            if callable(mapper):
-                self.mapper = mapper
-            elif isinstance(mapper, str):
-                self.mapper = \
-                    lambda name, mapstr=mapper: mapstr % {'name': name}
-            else:
-                raise TypeError('map must be string or callable', mapper)
-        else:  # identity mapper
-            self.mapper = lambda x: x
+        mapper = self.get_kwarg('mapper', object)
+        if mapper is None:  # identity mapper
+            self.mapper_func = lambda x: x
+        elif callable(mapper):
+            self.mapper_func = mapper
+        elif isinstance(mapper, str):
+            self.mapper_func = \
+                lambda name, mapstr=mapper: mapstr % {'name': name}
+        else:
+            raise TypeError('map must be string or callable', mapper)
         self.pos = 0
         self.queue = []
         self.ifiles = None
@@ -186,8 +193,8 @@ class FileMapper(Mapper):
             except TypeError:
                 raise RuntimeError('not called as an iter object')
             self.pos += 1
-            assert callable(self.mapper), 'mapper is not callable'
-            mapped = self.mapper(name)
+            assert callable(self.mapper_func), 'mapper is not callable'
+            mapped = self.mapper_func(name)
             if isinstance(mapped, (list, tuple)):
                 first = mapped[0]
                 self.queue.extend( [(name, m) for m in mapped[1:]] )
