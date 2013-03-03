@@ -19,7 +19,7 @@ from pyerector.exception import Error
 from pyerector.base import Initer, Target, Task
 from pyerector.targets import *
 from pyerector.tasks import *
-from pyerector.iterator import Uptodate
+from pyerector.iterators import Uptodate
 
 class TestIniter(unittest.TestCase):
     @classmethod
