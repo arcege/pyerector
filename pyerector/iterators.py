@@ -222,11 +222,31 @@ class FileMapper(Mapper):
         try:
             d = round(os.path.getmtime(dst), 4)
         except OSError:
+            debug('%s not found' % dst)
             return False
+        debug('%s(%0.4f) %s %s(%0.4f)' % (src, s, (s > d and '>' or '<='), dst, d))
         return s <= d
     @classmethod
-    def checktree(cls, src, dst):
-        return False # always outofdate until we implement
+    def checktree(self, src, dst):
+        dirs = [os.curdir]
+        while dirs:
+            dir = dirs.pop(0)
+            ndir = normjoin(src, dir)
+            for fname in os.listdir(normjoin(src, dir)):
+                sname = normjoin(src, dir, fname)
+                dname = normjoin(dst, dir, fname)
+                if self.apply_exclusion(fname):
+                    continue
+                if os.path.isdir(sname):
+                    debug('adding %s to fifo' % normjoin(dir, fname))
+                    dirs.append(normjoin(dir, fname))
+                else:
+                    debug('checking %s with %s' % (sname, dname))
+                    result = self.checkpair(sname, dname)
+                    if not result:
+                        return result
+        else:
+            return True
 
 class BasenameMapper(FileMapper):
     """Remove the last file extension including the dot."""
