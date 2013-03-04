@@ -16,6 +16,7 @@ __all__ = [
 
 # a helper class to handle file/directory lists better
 class StaticIterator(Iterator):
+    exclude = ()
     def __init__(self, path, pattern=None, exclude=None, basedir=None):
         super(StaticIterator, self).__init__(*path,
             **{'pattern': pattern, 'exclude': exclude, 'basedir': basedir}
@@ -61,11 +62,6 @@ class StaticIterator(Iterator):
                 break
     def glob(self, pattern):
         return [pattern]
-    def apply_exclusion(self, filename):
-        result = self.exclude and fnmatch.fnmatch(filename, self.exclude)
-        #debug('apply_exclusion(%s, %s) =' % (filename, self.exclude),
-        #        result)
-        return result
 
 class FileIterator(StaticIterator):
     def glob(self, pattern):
@@ -144,6 +140,7 @@ class FileMapper(Mapper):
     destdir = None
     map = None
     mapper = None
+    exclude = ()
     def __init__(self, *files, **kwargs):
         if len(files) == 1 and isinstance(files[0], Iterator):
             files = files[0]
@@ -214,9 +211,10 @@ class FileMapper(Mapper):
         else:
             debug('%s.uptodate() => True' % self.__class__.__name__)
             return True
-    @staticmethod
-    def checkpair(src, dst):
+    def checkpair(self, src, dst):
         """Return True if destination is newer than source."""
+        if self.apply_exclusion(os.path.basename(src)):
+            return True
         try:
             s = round(os.path.getmtime(src), 4)
         except OSError:
@@ -225,7 +223,7 @@ class FileMapper(Mapper):
             d = round(os.path.getmtime(dst), 4)
         except OSError:
             return False
-        return d >= s
+        return s <= d
     @classmethod
     def checktree(cls, src, dst):
         return False # always outofdate until we implement
