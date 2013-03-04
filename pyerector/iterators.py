@@ -16,11 +16,10 @@ __all__ = [
 
 # a helper class to handle file/directory lists better
 class StaticIterator(Iterator):
+    pattern = None
     exclude = ()
-    def __init__(self, path, pattern=None, exclude=None, basedir=None):
-        super(StaticIterator, self).__init__(*path,
-            **{'pattern': pattern, 'exclude': exclude, 'basedir': basedir}
-        )
+    def __init__(self, path, **kwargs):
+        super(StaticIterator, self).__init__(*path, **kwargs)
         pool = self.get_args('path')
         if isinstance(pool, (tuple, list)):
             self.pool = list(pool)
@@ -28,7 +27,8 @@ class StaticIterator(Iterator):
             self.pool = [pool]
         self.poolpos = 0
         self.setpos = 0
-        if self.pattern:
+        pattern = self.get_kwarg('pattern', str)
+        if pattern:
             # should may defer to next() method
             for i, v in enumerate(self.pool):
                 self.pool[i] = os.path.join(v, self.pattern)
@@ -39,7 +39,7 @@ class StaticIterator(Iterator):
         self.setpos = 0
         self.curpoolitem = None
         self.curpoolset = None
-        return self
+        return super(StaticIterator, self).__iter__()
     def next(self):
         if self.curpoolitem is None:
             self.getnextset()
@@ -122,7 +122,7 @@ class FileSet(Iterator):
     def __iter__(self):
         self.iset = iter(self.set)
         self.cur = None
-        return self
+        return super(FileSet, self).__iter__()
     def next(self):
         while True:
             if self.cur is None:
@@ -169,7 +169,7 @@ class FileMapper(Mapper):
         self.ifiles = iter(self.get_args('files'))
         self.pos = 0
         self.queue = []
-        return self
+        return super(FileMapper, self).__iter__()
     def next(self):
         if self.queue:
             name, mapped = self.queue[0]
@@ -226,7 +226,6 @@ class FileMapper(Mapper):
             return False
         debug('%s(%0.4f) %s %s(%0.4f)' % (src, s, (s > d and '>' or '<='), dst, d))
         return s <= d
-    @classmethod
     def checktree(self, src, dst):
         dirs = [os.curdir]
         while dirs:

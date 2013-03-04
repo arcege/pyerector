@@ -37,7 +37,7 @@ class PyCopy(Target):
     tasks = (
         CopyTree(srcdir='pyerector',
                  dstdir='build/pyerector',
-                 excludes=('*.pyc', '__pycache__', '.hg', '.*.swp')),
+                 exclude=('*.pyc', '__pycache__', '.hg', '.*.swp')),
         Copy('release.py', 'setup.py', 'README', 'LICENSE', dest='build'),
         VersionInfo,
     )
