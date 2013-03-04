@@ -64,6 +64,7 @@ class Copy(Task):
     files = ()
     dest = None
     noglob = False
+    exclude = ('.svn', '.hg', '.git', '*.pyc', '.*.swp')
     def run(self):
         dest = self.get_kwarg('dest', str, noNone=True)
         files = self.get_args('files')
