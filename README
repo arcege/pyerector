@@ -1,0 +1,8 @@
+PyErector - An Erector set for building systems.  A little more clear and
+Pythonic than using distutils, but not as deep.
+
+To install, either copy 'pyerector' structure into the project directory and
+create a 'pyerect' script, or install pyerector into the Python distribution
+and use from there.
+
+Copyright (C) 2010-2013 Michael P. Reilly.  All rights reserved.
