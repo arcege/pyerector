@@ -7,9 +7,6 @@ import release
 
 distfile = '%s-%s' % (release.product, release.number)
 
-# files to be including in packaging
-packlist = ('pyerector', 'release.py', 'setup.py', 'README', 'LICENSE')
-
 class VersionInfo(Tokenize):
     files = (normjoin('build', 'pyerector', 'version.py'),)
     tokenmap = VariableSet(
@@ -36,9 +33,11 @@ class VersionInfo(Tokenize):
 class PyCopy(Target):
     tasks = (
         CopyTree(srcdir='pyerector',
-                 dstdir='build/pyerector',
+                 dstdir=normjoin('build', distfile, 'pyerector'),
                  exclude=('*.pyc', '__pycache__', '.hg', '.*.swp')),
-        Copy('release.py', 'setup.py', 'README', 'LICENSE', dest='build'),
+        Copy('release.py', 'setup.py', 'README', 'LICENSE',
+             dest=normjoin('build', distfile)
+        ),
         VersionInfo,
     )
 
@@ -81,11 +80,15 @@ class Localtest(Target):
 Test.dependencies = Test.dependencies + (Localtest,)
 Clean.files = ('build', 'dist', 'MANIFEST')
 Clean.dependencies = (Cleantest,)
-InitDirs.files = ('build', 'dist', 'testdir/zip', 'testdir/tar')
+InitDirs.files = (
+    normjoin('build', distfile), 'dist',
+    'testdir/zip', 'testdir/tar'
+)
 Compile.dependencies = (PreCompile,)
+Distlist = StaticIterator(distfile)
 Packaging.tasks = (
-    Zip(name='dist/%s.zip' % distfile, files=packlist, root='build'),
-    Tar(name='dist/%s.tgz' % distfile, files=packlist, root='build'),
+    Zip(name='dist/%s.zip' % distfile, files=Distlist, root='build'),
+    Tar(name='dist/%s.tgz' % distfile, files=Distlist, root='build'),
 )
 
 PyErector()
