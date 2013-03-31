@@ -13,11 +13,11 @@ packlist = ('pyerector', 'release.py', 'setup.py', 'README', 'LICENSE')
 class VersionInfo(Tokenize):
     files = (normjoin('build', 'pyerector', 'version.py'),)
     tokenmap = VariableSet(
-        Variable('%release.product%', release.product),
-        Variable('%release.number%', release.number),
-        Variable('%hg.version%'),
-        Variable('%hg.branch%'),
-        Variable('%hg.tags%'),
+        V('%release.product%', release.product),
+        V('%release.number%', release.number),
+        V('%hg.version%'),
+        V('%hg.branch%'),
+        V('%hg.tags%'),
     )
     def run(self):
         hgout = os.popen('hg identify --id --branch --tags', 'r').read()
