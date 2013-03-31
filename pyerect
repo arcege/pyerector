@@ -35,7 +35,8 @@ class PyCopy(Target):
         CopyTree(srcdir='pyerector',
                  dstdir=normjoin('build', distfile, 'pyerector'),
                  exclude=('*.pyc', '__pycache__', '.hg', '.*.swp')),
-        Copy('release.py', 'setup.py', 'README', 'LICENSE',
+        Copy('release.py', 'setup.py',
+             'README.txt', 'LICENSE.txt', 'CHANGES.txt',
              dest=normjoin('build', distfile)
         ),
         VersionInfo,
@@ -85,7 +86,7 @@ InitDirs.files = (
     'testdir/zip', 'testdir/tar'
 )
 Compile.dependencies = (PreCompile,)
-Distlist = StaticIterator(distfile)
+Distlist = StaticIterator([distfile])
 Packaging.tasks = (
     Zip(name='dist/%s.zip' % distfile, files=Distlist, root='build'),
     Tar(name='dist/%s.tgz' % distfile, files=Distlist, root='build'),
