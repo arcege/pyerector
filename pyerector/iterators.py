@@ -9,6 +9,27 @@ from .helper import normjoin
 from . import debug
 from .base import Initer, Iterator, Mapper
 
+try:
+    reduce
+except NameError:
+    try:
+        from functools import reduce
+    except:
+        # we shouldn't get here, but...
+        def reduce(function, iterable, initializer=None):
+            """Iterate over a sequence, calling function on each successive
+item, accumulating the result."""
+            accum = initializer
+            for item in iterable:
+                if accum is None:
+                    accum = item
+                else:
+                    accum = function(accum, item)
+            else:
+                if accum is None and initializer is not None:
+                    return initializer
+            return accum
+
 __all__ = [
     'FileSet', 'StaticIterator', 'FileIterator', 'FileList', 'DirList',
     'FileMapper', 'BasenameMapper', 'MergeMapper', 'Uptodate',
@@ -40,6 +61,8 @@ class StaticIterator(Iterator):
         self.curpoolitem = None
         self.curpoolset = None
         return super(StaticIterator, self).__iter__()
+    def __next__(self):
+        return self.next()
     def next(self):
         if self.curpoolitem is None:
             self.getnextset()
@@ -123,6 +146,8 @@ class FileSet(Iterator):
         self.iset = iter(self.set)
         self.cur = None
         return super(FileSet, self).__iter__()
+    def __next__(self):
+        return self.next()
     def next(self):
         while True:
             if self.cur is None:
@@ -170,6 +195,8 @@ class FileMapper(Mapper):
         self.pos = 0
         self.queue = []
         return super(FileMapper, self).__iter__()
+    def __next__(self):
+        return self.next()
     def next(self):
         if self.queue:
             name, mapped = self.queue[0]
