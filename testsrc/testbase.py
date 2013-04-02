@@ -299,8 +299,8 @@ class TestTarget_basics(unittest.TestCase):
         Initer.config.basedir = cls.oldconfigbasedir
         shutil.rmtree(cls.dir)
     def setUp(self):
-        self.realstream = Verbose.stream
-        Verbose.stream = StringIO()
+        self.realstream = verbose.stream
+        verbose.stream = StringIO()
         self.realverbose = verbose.state
         self.realdebug = debug.state
     def tearDown(self):
