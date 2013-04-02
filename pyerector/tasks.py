@@ -7,7 +7,7 @@ import sys
 
 from .exception import Error
 from .base import Task
-from . import debug, verbose
+from . import debug, verbose, hasformat
 from .iterators import FileMapper, MergeMapper
 from .variables import VariableSet
 
@@ -46,7 +46,7 @@ class Container(Task):
             exctest = None
         toadd = []
         from glob import glob
-        queue = list(self.get_files(self.get_args('files'), noglob=True))
+        queue = list(self.get_args('files'))
         while queue:
             entry = queue[0]
             del queue[0]
