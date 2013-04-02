@@ -8,7 +8,7 @@ import release
 distfile = '%s-%s' % (release.product, release.number)
 
 class VersionInfo(Tokenize):
-    files = (normjoin('build', 'pyerector', 'version.py'),)
+    files = (normjoin('build', distfile, 'pyerector', 'version.py'),)
     tokenmap = VariableSet(
         V('%release.product%', release.product),
         V('%release.number%', release.number),
@@ -46,11 +46,17 @@ class PreCompile(Target):
     dependencies = (PyCopy,)
     tasks = (
         PyCompile(
-            FileList('build/pyerector', 'build/pyerector/py2', pattern='*.py'),
+            FileList(
+                normjoin('build', distfile, 'pyerector'),
+                normjoin('build', distfile, 'pyerector', 'py2'),
+                pattern='*.py'),
             version='2'
         ),
         PyCompile(
-            FileList('build/pyerector', 'build/pyerector/py3', pattern='*.py'),
+            FileList(
+                normjoin('build', distfile, 'pyerector'),
+                normjoin('build', distfile, 'pyerector', 'py3'),
+                pattern='*.py'),
             version='3'
         ),
     )
