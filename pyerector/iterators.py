@@ -166,15 +166,18 @@ class FileMapper(Mapper):
     map = None
     mapper = None
     exclude = ()
+    iteratorclass = FileIterator
     def __init__(self, *files, **kwargs):
+        if 'iteratorclass' in kwargs:
+            self.iteratorclass = kwargs['iteratorclass']
         if len(files) == 1 and isinstance(files[0], Iterator):
             files = files[0]
         elif len(files) == 1 and isinstance(files[0], (tuple, list)):
-            files = FileIterator(files[0])
+            files = self.iteratorclass(files[0])
         elif len(files) == 1:
-            files = FileIterator((files[0],))
+            files = self.iteratorclass((files[0],))
         else:
-            files = FileSet(files, klass=FileIterator)
+            files = FileSet(files, klass=self.iteratorclass)
         # we should end up with 'files' being a single Iterator instance
         super(FileMapper, self).__init__(*files, **kwargs)
         mapper = self.get_kwarg('mapper', (callable, str))
