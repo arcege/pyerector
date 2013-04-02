@@ -20,15 +20,12 @@ class TestStandardTargets(unittest.TestCase):
     long_output = """\
 InitDirs: done.
 Init: done.
-PyCopy: done.
-PreCompile: done.
 Compile: done.
 Build: done.
 Packaging: done.
 Dist: done.
 """
     clean_output = """\
-Cleantest: done.
 Clean: done.
 """
     default_output = """\
@@ -37,13 +34,8 @@ Default: done.
     all_output = """\
 InitDirs: done.
 Init: done.
-PyCopy: done.
-PreCompile: done.
 Compile: done.
 Build: done.
-InitDirs: done.
-Packaging: done.
-Localtest: done.
 Test: done.
 All: done.
 """

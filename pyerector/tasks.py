@@ -207,7 +207,7 @@ class PyCompile(Task):
             elif self.version[:1] == '3':
                 cmd = 'python3'
             for s in fileset:
-                Spawn(cmd, '-c', 'from py_compile import compile; compile("%s")' % self.join(s))
+                Spawn(cmd, '-c', 'from py_compile import compile; compile("%s")' % self.join(s))()
 
 class Remove(Task):
     files = ()
@@ -381,40 +381,71 @@ each file."""
 class Unittest(Task):
     modules = ()
     path = ()
+    script = '''\
+import os, sys, imp, unittest
+
+params = eval(open(sys.argv[1]).read())
+
+verbose = 'verbose' in params and params['verbose'] or 1 or 0
+
+try:
+    loader = unittest.loader.TestLoader()
+except AttributeError:
+    loader = unittest.TestLoader()
+try:
+    runner = unittest.runner.TextTestRunner(verbosity=verbose)
+except AttributeError:
+    runner = unittest.TextTestRunner(verbosity=verbose)
+try:
+    suite = unittest.suite.TestSuite()
+except:
+    suite = unittest.TestSuite()
+real_args = sys.argv[:]
+try:
+    if params['modules']:
+        path = [os.path.realpath(p) for p in params['path']]
+        if not path:
+            path = [os.curdir]
+        for modname in params['modules']:
+            sys.argv[:] = [modname]
+            packet = imp.find_module(modname, path)
+            mod = imp.load_module(modname, *packet)
+            suite.addTests(loader.loadTestsFromModule(mod))
+    elif params['path']:
+        for path in [os.path.realpath(p) for p in params['path']]:
+            suite.addTests(loader.discover(path))
+    else:
+        suite.addTests(loader.discover(os.curdir))
+    runner.run(suite)
+finally:
+    sys.argv[:] = real_args
+'''
     def run(self):
-        modules = tuple(self.get_args('modules'))
-        import imp, unittest
+        import imp, tempfile, unittest
+        pfile = sfile = None
         try:
-            loader = unittest.loader.TestLoader()
-        except AttributeError:
-            loader = unittest.TestLoader()
-        try:
-            runner = unittest.runner.TextTestRunner()
-        except AttributeError:
-            runner = unittest.TextTestRunner()
-        try:
-            suite = unittest.suite.TestSuite()
-        except AttributeError:
-            suite = unittest.TestSuite()
-        real_sys_name = sys.argv[0]
-        try:
-            if modules:
-                path = [os.path.realpath(p) for p in self.path]
-                if not path:
-                    path = [os.curdir]
-                for modname in modules:
-                    sys.argv[0] = modname
-                    packet = imp.find_module(modname, path)
-                    mod = imp.load_module(modname, *packet)
-                    suite.addTests(loader.loadTestsFromModule(mod))
-            elif self.path:
-                for path in [os.path.realpath(p) for p in self.path]:
-                    suite.addTests(loader.discover(path))
-            else:
-                suite.addTests(loader.discover(os.curdir))
-            runner.run(suite)
+            # create a parameter file with a serialized set of the arguments
+            pfile = tempfile.NamedTemporaryFile(mode='wt',
+                                                suffix=".params",
+                                                delete=False)
+            pfile.write(repr({
+                'modules': tuple(self.get_args('modules')),
+                'path': self.path,
+                'verbose': bool(verbose),
+            }))
+            pfile.close()
+            sfile = tempfile.NamedTemporaryFile(mode='wt',
+                                                suffix=".py",
+                                                delete=False)
+            sfile.write(self.script)
+            sfile.close()
+            # call python <scriptname> <paramfile>
+            Spawn(sys.executable, sfile.name, pfile.name)()
         finally:
-            sys.argv[0] = real_sys_name
+            if pfile is not None and os.path.exists(pfile.name):
+                os.remove(pfile.name)
+            if sfile is not None and os.path.exists(sfile.name):
+                os.remove(sfile.name)
 
 class Uncontainer(Task):
     name = None
