@@ -8,7 +8,7 @@ import sys
 from .exception import Error
 from .base import Task
 from . import debug, verbose, hasformat
-from .iterators import FileMapper, MergeMapper
+from .iterators import FileMapper, MergeMapper, StaticIterator
 from .variables import VariableSet
 
 
@@ -365,13 +365,15 @@ each file."""
         )
         tokens = re.compile(r'(%s)' % patt, re.MULTILINE)
         debug('patt =', str(tokens.pattern))
-        mapper = FileMapper(self.get_files(self.get_args('files')),
-                            destdir=self.get_kwarg('dest', str))
+        mapper = FileMapper(self.get_args('files'),
+                            destdir=self.get_kwarg('dest', str),
+                            iteratorclass=StaticIterator)
         for (sname, dname) in mapper:
             realcontents = open(self.join(sname), 'rt').read()
             m = tokens.search(realcontents)
             alteredcontents = tokens.sub(repltoken, realcontents)
-            open(self.join(dname), 'wt').write(alteredcontents)
+            if alteredcontents != realcontents:
+                open(self.join(dname), 'wt').write(alteredcontents)
 
 class Unittest(Task):
     modules = ()
