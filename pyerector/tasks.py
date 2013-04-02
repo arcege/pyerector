@@ -289,7 +289,7 @@ class Spawn(Task):
             if rc < 0:
                 raise Error(str(self), 'signal ' + str(abs(rc)) + 'raised')
             elif rc > 0:
-                raise Error(str(self), 'returned error + ' + str(rc))
+                raise Error(str(self), 'returned error = ' + str(rc))
             pass
         except ImportError:
             from popen2 import Popen3
