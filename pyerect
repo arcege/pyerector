@@ -16,7 +16,7 @@ class VersionInfo(Tokenize):
         V('%hg.branch%'),
         V('%hg.tags%'),
     )
-    def run(self):
+    def update_tokenmap(self):
         hgout = os.popen('hg identify --id --branch --tags', 'r').read()
         parts = hgout.rstrip().split()
         self.tokenmap['%hg.version%'].value = parts[0]
@@ -28,7 +28,6 @@ class VersionInfo(Tokenize):
             self.tokenmap['%hg.tags%'].value = parts[2]
         except:
             pass
-        super(VersionInfo, self).run()
 
 class PyCopy(Target):
     tasks = (

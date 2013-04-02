@@ -348,9 +348,12 @@ each file."""
     files = ()
     dest = None
     tokenmap = VariableSet()
+    def update_tokenmap(self):
+        pass
     def run(self):
         if not isinstance(self.tokenmap, VariableSet):
             raise TypeError('tokenmap must be a VariableSet instance')
+        self.update_tokenmap()
         import re
         def repltoken(m, map=self.tokenmap):
             debug('found', m.group(0))
