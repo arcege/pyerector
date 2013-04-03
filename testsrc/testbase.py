@@ -21,18 +21,76 @@ from pyerector.targets import *
 from pyerector.tasks import *
 from pyerector.iterators import Uptodate
 
-class TestIniter(unittest.TestCase):
-    @classmethod
+if hasattr(unittest.TestCase, 'assertIsNone'):
+    testcasewrapper = unittest.TestCase
+else:
+    class testcasewrapper(unittest.TestCase):
+        def assertIs(self, a, b, msg=None):
+            return self.assertTrue(a is b, msg=msg)
+        def assertIsNot(self, a, b, msg=None):
+            return self.assertFalse(a is b, msg=msg)
+        def assertIsNone(self, x, msg=None):
+            return self.assertIs(x, None, msg=msg)
+        def assertIsNotNone(self, x, msg=None):
+            return self.assertIsNot(x, None, msg=msg)
+        def assertIn(self, a, b, msg=None):
+            return self.assertTrue(a in b, msg=msg)
+        def assertNotIn(self, a, b, msg=None):
+            return self.assertFalse(a in b, msg=msg)
+        def assertIsInstance(self, a, b, msg=None):
+            return self.assertTrue(isinstance(a, b), msg=msg)
+        def assertNotIsInstance(self, a, b, msg=None):
+            return self.assertFalse(isinstance(a, b), msg=msg)
+        def assertRaisesRegexp(self, exp, regexp, callable=None, *args, **kwds):
+            raise NotImplementedError('assertRaisesRegexp')
+        def assertGreater(self, a, b, msg=None):
+            return self.assertTrue(a > b, msg=msg)
+        def assertGreaterEqual(self, a, b, msg=None):
+            return self.assertTrue(a >= b, msg=msg)
+        def assertLess(self, a, b, msg=None):
+            return self.assertTrue(a < b, msg=msg)
+        def assertLessEqual(self, a, b, msg=None):
+            return self.assertTrue(a <= b, msg=msg)
+        def assertRegexpMatches(self, a, b, msg=None):
+            import re
+            return self.assertIsNot(re.search(b, a), None, msg=msg)
+        def assertNotRegexpMatches(self, a, b, msg=None):
+            return self.assertIs(re.search(b, a), None, msg=msg)
+        def assertItemsEqual(self, a, b, msg=None):
+            return self.assertEqual(sorted(a), sorted(b), msg=msg)
+        def assertDictContainsSubset(self, a, b, msg=None):
+            raise NotImplementedError('assertDictContainsSubset')
+        def assertMultiLineEqual(self, a, b, msg=None):
+            raise NotImplementedError('assertMultiLineEqual')
+        def assertSequenceEqual(self, a, b, msg=None, seq_type=None):
+            if seq_type is not None:
+                self.assertIsInstance(a, seq_type, msg=msg)
+                self.assertIsInstance(b, seq_type, msg=msg)
+            return self.assertEqual(a, b, msg=msg)
+        def assertListEqual(self, a, b, msg=None):
+            return self.assertSequenceEqual(a, b, msg=msg, seq_type=list)
+        def assertTupleEqual(self, a, b, msg=None):
+            return self.assertSequenceEqual(a, b, msg=msg, seq_type=tuple)
+        def assertSetEqual(self, a, b, msg=None):
+            return self.assertSequenceEqual(a, b, msg=msg, seq_type=set)
+        def assertDictEqual(self, a, b, msg=None):
+            return self.assertSequenceEqual(
+                sorted(a.items()),
+                sorted(b.items()),
+                msg=msg)
+
+class TestIniter(testcasewrapper):
     def setUpClass(cls):
         debug('%s.setUpClass()' % cls.__name__)
         cls.dir = tempfile.mkdtemp()
         cls.oldconfigbasedir = Initer.config.basedir
         Initer.config.basedir = cls.dir
-    @classmethod
+    setUpClass = classmethod(setUpClass)
     def tearDownClass(cls):
         debug('%s.tearDownClass()' % cls.__name__)
         Initer.config.basedir = cls.oldconfigbasedir
         shutil.rmtree(cls.dir)
+    tearDownClass = classmethod(tearDownClass)
     def test_initialized(self):
         #"""Is system initialized on first instantiation."""
         old_config = Initer.config
@@ -60,7 +118,10 @@ class TestIniter(unittest.TestCase):
                          normjoin(self.dir, 'xyzzy', 'foobar'))
     def test_asserttype(self):
         obj = Initer(basedir=self.dir)
-        self.assertIsNone(obj.asserttype('foo', str, 'foobar'))
+        if hasattr(self, 'assertIsNone'):
+            self.assertIsNone(obj.asserttype('foo', str, 'foobar'))
+        else:
+            self.assertEqual(obj.asserttype('foo', str, 'foobar'), None)
         for test in (('foo', int, 'name'), (1, str, 'foobar')):
             self.assertRaises(AssertionError, obj.asserttype, *test)
         with self.assertRaises(AssertionError) as cm:
@@ -96,8 +157,8 @@ class TestIniter(unittest.TestCase):
         self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-t*'))),
                          [normjoin(subdir, 'get_files_simple-bar'),
                           normjoin(subdir, 'get_files_simple-tar')])
-    @unittest.skip('noglob not working from this level')
-    def test_get_files_noglob(self):
+    #@unittest.skip('noglob not working from this level')
+    def _test_get_files_noglob(self):
         #"""Retrieve files in basedir properly."""
         obj = Initer(basedir=self.dir)
         subdir = '.'
@@ -114,7 +175,7 @@ class TestIniter(unittest.TestCase):
                           normjoin(self.dir, subdir, 'get_files_simple-t*')])
 
 '''
-class TestUptodate(unittest.TestCase):
+class TestUptodate(testcasewrapper):
     @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
@@ -124,8 +185,8 @@ class TestUptodate(unittest.TestCase):
     def tearDownClass(cls):
         Initer.config.basedir = cls.oldconfigbasedir
         shutil.rmtree(cls.dir)
-    @unittest.skip('to fix Uptodate')
-    def test_older(self):
+    #@unittest.skip('to fix Uptodate')
+    def _test_older(self):
         #"""Test that newer files indeed do trigger the test."""
         older = normjoin(self.dir, 'older-older')
         newer = normjoin(self.dir, 'older-newer')
@@ -139,8 +200,8 @@ class TestUptodate(unittest.TestCase):
         utd.sources = (older,)
         utd.destinations = (newer,)
         self.assertTrue(utd())
-    @unittest.skip('to fix Uptodate')
-    def test_newer(self):
+    #@unittest.skip('to fix Uptodate')
+    def _test_newer(self):
         #"""Test that older files indeed do not trigger the test."""
         older = normjoin(self.dir, 'newer-older')
         newer = normjoin(self.dir, 'newer-newer')
@@ -154,8 +215,8 @@ class TestUptodate(unittest.TestCase):
         utd.sources = (older,)
         utd.destinations = (newer,)
         self.assertFalse(utd())
-    @unittest.skip('to fix Uptodate')
-    def test_same(self):
+    #@unittest.skip('to fix Uptodate')
+    def _test_same(self):
         #"""Test that files of the same age do trigger the test."""
         older = normjoin(self.dir, 'same-older')
         newer = normjoin(self.dir, 'same-newer')
@@ -169,8 +230,8 @@ class TestUptodate(unittest.TestCase):
         utd.sources = (older,)
         utd.destinations = (newer,)
         self.assertTrue(utd())
-    @unittest.skip('to fix Uptodate')
-    def test_multi_older(self):
+    #@unittest.skip('to fix Uptodate')
+    def _test_multi_older(self):
         #"""Test that files in directories are handled properly."""
         older_d = normjoin(self.dir, 'multi_older-older')
         newer_d = normjoin(self.dir, 'multi_older-newer')
@@ -189,8 +250,8 @@ class TestUptodate(unittest.TestCase):
         utd.sources = tuple(files[older_d])
         utd.destinations = tuple(files[newer_d])
         self.assertTrue(utd())
-    @unittest.skip('to fix Uptodate')
-    def test_multi_newer(self):
+    #@unittest.skip('to fix Uptodate')
+    def _test_multi_newer(self):
         older_d = normjoin(self.dir, 'multi_newer-older')
         newer_d = normjoin(self.dir, 'multi_newer-newer')
         os.mkdir(older_d)
@@ -208,8 +269,8 @@ class TestUptodate(unittest.TestCase):
         utd.sources = tuple(files[older_d])
         utd.destinations = tuple(files[newer_d])
         self.assertFalse(utd())
-    @unittest.skip('to fix Uptodate')
-    def test_multi_same(self):
+    #@unittest.skip('to fix Uptodate')
+    def _test_multi_same(self):
         older_d = normjoin(self.dir, 'multi_same-older')
         newer_d = normjoin(self.dir, 'multi_same-newer')
         os.mkdir(older_d)
@@ -227,8 +288,8 @@ class TestUptodate(unittest.TestCase):
         utd.sources = tuple(files[older_d])
         utd.destinations = tuple(files[newer_d])
         self.assertTrue(utd())
-    @unittest.skip('to fix Uptodate')
-    def test_multi_mixed(self):
+    #@unittest.skip('to fix Uptodate')
+    def _test_multi_mixed(self):
         older_d = normjoin(self.dir, 'multi_mixed-older')
         newer_d = normjoin(self.dir, 'multi_mixed-newer')
         os.mkdir(older_d)
@@ -285,19 +346,19 @@ class TestE2E_T(Target):
     uptodates = ('TestE2E_utd',)
     tasks = ('TestE2E_t1', 'TestE2E_t2')
 
-class TestTarget_basics(unittest.TestCase):
+class TestTarget_basics(testcasewrapper):
     maxDiff = None
-    @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
         debug('%s.dir =' % cls.__name__, cls.dir)
         Target.allow_reexec = True
         cls.oldconfigbasedir = Initer.config.basedir
         Initer.config.basedir = cls.dir
-    @classmethod
+    setUpClass = classmethod(setUpClass)
     def tearDownClass(cls):
         Initer.config.basedir = cls.oldconfigbasedir
         shutil.rmtree(cls.dir)
+    tearDownClass = classmethod(tearDownClass)
     def setUp(self):
         self.realstream = verbose.stream
         verbose.stream = StringIO()
@@ -322,26 +383,26 @@ class TestTarget_basics(unittest.TestCase):
         target.verbose('hi', 'there')
         self.assertEqual(verbose.stream.getvalue(), 'Target: hi there\n')
 
-class TestTarget_functionality(unittest.TestCase):
-    @classmethod
+class TestTarget_functionality(testcasewrapper):
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
         debug('%s.dir =' % cls.__name__, cls.dir)
         Target.allow_reexec = True
         cls.oldconfigbasedir = Initer.config.basedir
         Initer.config.basedir = cls.dir
-    @classmethod
+    setUpClass = classmethod(setUpClass)
     def tearDownClass(cls):
         Initer.config.basedir = cls.oldconfigbasedir
         shutil.rmtree(cls.dir)
+    tearDownClass = classmethod(tearDownClass)
     def test_nothing(self):
         class NothingTarget(Target):
             pass
         target = NothingTarget(basedir=self.dir)
         self.assertIsNone(NothingTarget.validate_tree())
         self.assertIsNone(target())
-    @unittest.skip("failing...")
-    def test_call_uptodate(self):
+    #@unittest.skip("failing...")
+    def _test_call_uptodate(self):
         open(normjoin(self.dir, 'call_uptodate.older'), 'w').close()
         #time.sleep(0.2)
         debug(normjoin(self.dir, 'call_uptodate.newer'))
@@ -380,16 +441,16 @@ class TestTarget_functionality(unittest.TestCase):
         #    round(os.path.getmtime(normjoin(self.dir, 'e2e_t2')), 4)
         #)
 
-class TestTask(unittest.TestCase):
-    @classmethod
+class TestTask(testcasewrapper):
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
         cls.oldconfigbasedir = Initer.config.basedir
         Initer.config.basedir = cls.dir
-    @classmethod
+    setUpClass = classmethod(setUpClass)
     def tearDownClass(cls):
         Initer.config.basedir = cls.oldconfigbasedir
         shutil.rmtree(cls.dir)
+    tearDownClass = classmethod(tearDownClass)
     def test_instantiation(self):
         obj = Task()
         self.assertEqual(str(obj), Task.__name__)
