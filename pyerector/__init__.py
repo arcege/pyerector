@@ -29,6 +29,7 @@ from .tasks import  *
 from .targets import *
 from .iterators import *
 from .variables import *
+from .vcs import *
 V = Variable  # an alias for exporting to clients, internally use 'Variable'
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
     'V',  # alias for Variable
     'Variable',
     'VariableSet',
+    'VCS',
 
     # tasks
     'Chmod',

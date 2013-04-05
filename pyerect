@@ -17,17 +17,11 @@ class VersionInfo(Tokenize):
         V('%hg.tags%'),
     )
     def update_tokenmap(self):
-        hgout = os.popen('hg identify --id --branch --tags', 'r').read()
-        parts = hgout.rstrip().split()
-        self.tokenmap['%hg.version%'].value = parts[0]
-        try:
-            self.tokenmap['%hg.branch%'].value = parts[1]
-        except:
-            pass
-        try:
-            self.tokenmap['%hg.tags%'].value = parts[2]
-        except:
-            pass
+        vcs = VCS()
+        assert vcs.name == 'mercurial', 'Expecting Mercurial source tree'
+        self.tokenmap['%hg.version%'].value = V('hg.version').value
+        self.tokenmap['%hg.branch%'].value = V('hg.branch').value
+        self.tokenmap['%hg.tags%'].value = V('hg.tags').value
 
 class PyCopy(Target):
     tasks = (
