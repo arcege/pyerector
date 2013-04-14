@@ -482,7 +482,8 @@ if True: #not hasattr(loader, 'discover'):
                     else:
                         try:
                             yield load_tests(self, tests, pattern)
-                        except Exception, e:
+                        except Exception:
+                            t, e, tb = sys.exc_info()
                             yield self._make_failed_load_tests(package.__name__, e, self.suiteClass)
         def _get_name_from_path(self, path):
             import os, sys
