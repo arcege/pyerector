@@ -13,7 +13,7 @@ setup(
     author_email="arcege@gmail.com",
     url="http://code.google.com/p/pyerector",
     packages=[
-        "pyerector", "pyerector/py2", "pyerector/py3", "pyerector/vcs",
+        "pyerector", "pyerector.py2", "pyerector.py3", "pyerector.vcs",
     ],
     download_url="http://code.google.com/p/pyerector/downloads/",
     license=
