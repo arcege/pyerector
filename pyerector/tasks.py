@@ -20,6 +20,7 @@ __all__ = [
 ]
 
 class Chmod(Task):
+    """Change file permissions."""
     files = ()
     mode = int('666', 8) # gets around Python 2.x vs 3.x octal issue
     def run(self):
@@ -62,6 +63,8 @@ class Container(Task):
         self.contain(name, root, toadd)
 
 class Copy(Task):
+    """Copy files to a destination directory. Exclude standard hidden
+files."""
     files = ()
     dest = None
     noglob = False
@@ -101,6 +104,7 @@ class Copy(Task):
             return True
 
 class CopyTree(Task):
+    """Copy directory tree. Exclude standard hidden files."""
     srcdir = None
     dstdir = None
     excludes = Copy.exclude # deprecated
@@ -139,6 +143,7 @@ class CopyTree(Task):
             return True
 
 class Java(Task):
+    """Call a Java routine."""
     from os import environ
     try:
         java_home = environ['JAVA_HOME']
@@ -185,6 +190,7 @@ class Java(Task):
             )
 
 class Mkdir(Task):
+    """Recursively create directories."""
     files = ()
     noglob = True
     def run(self):
@@ -204,6 +210,7 @@ class Mkdir(Task):
             os.mkdir(path)
 
 class PyCompile(Task):
+    """Compile Python source files."""
     files = ()
     dest = None
     version = '2'
@@ -229,6 +236,7 @@ class PyCompile(Task):
                 verbose('could not compile files with', cmd)
 
 class Remove(Task):
+    """Remove a file or directory tree."""
     files = ()
     noglob = False
     def run(self):
@@ -242,6 +250,7 @@ class Remove(Task):
                 shutil.rmtree(fname)
 
 class Shebang(Copy):
+    """Replace the shebang string with a specific pathname."""
     files = ()
     token = '#!'
     def run(self):
@@ -272,6 +281,7 @@ class Shebang(Copy):
             shutil.copyfileobj(outf, inf)
 
 class Spawn(Task):
+    """Spawn a command."""
     cmd = ()
     infile = None
     outfile = None
@@ -292,6 +302,7 @@ class Spawn(Task):
             raise Error('%s returned error = %d' % (self(self), rc.returncode))
 
 class Tar(Container):
+    """Generate a 'tar' archive file."""
     def contain(self, name, root, toadd):
         from tarfile import open
         try:
@@ -346,6 +357,7 @@ each file."""
                 open(self.join(dname), 'wt').write(alteredcontents)
 
 class Unittest(Task):
+    """Call Python unit tests found."""
     modules = ()
     path = ()
     script = '''\
@@ -532,6 +544,7 @@ finally:
                 os.remove(sfile.name)
 
 class Uncontainer(Task):
+    """Super-class for Untar and Unzip."""
     name = None
     root = None
     files = ()
@@ -550,6 +563,7 @@ class Uncontainer(Task):
             contfile.close()
 
 class Untar(Uncontainer):
+    """Extract a 'tar' archive file."""
     def get_file(self, fname):
         from tarfile import open
         return open(self.join(fname), 'r:gz')
@@ -568,6 +582,7 @@ class Untar(Uncontainer):
             contfile.extract(fileinfo, path=(root or ""))
 
 class Unzip(Uncontainer):
+    """Extract a 'zip' archive file."""
     def get_file(self, fname):
         from zipfile import ZipFile
         return ZipFile(self.join(fname), 'r')
@@ -588,6 +603,7 @@ class Unzip(Uncontainer):
             dfile.write(contfile.read(member))
 
 class Zip(Container):
+    """Generate a 'zip' archive file."""
     def contain(self, name, root, toadd):
         from zipfile import ZipFile
         try:
