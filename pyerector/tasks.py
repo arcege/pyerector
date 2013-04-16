@@ -14,9 +14,9 @@ from .variables import VariableSet
 
 
 __all__ = [
-    'Chmod', 'Copy', 'CopyTree', 'Java', 'Mkdir', 'PyCompile',
-    'Remove', 'Shebang', 'Spawn', 'Tar', 'Tokenize', 'Unittest',
-    'Untar', 'Unzip', 'Zip',
+    'Chmod', 'Copy', 'CopyTree', 'HashGen', 'Java', 'Mkdir',
+    'PyCompile', 'Remove', 'Shebang', 'Spawn', 'Tar', 'Tokenize',
+    'Unittest', 'Untar', 'Unzip', 'Zip',
 ]
 
 class Chmod(Task):
@@ -141,6 +141,31 @@ class CopyTree(Task):
                 return False
         else:
             return True
+
+class HashGen(Task):
+    """Generate file(s) containing md5 or sha1 hash string.
+For example, generates foobar.txt.md5 and foobar.txt.sha1 for the
+contents of foobar.txt.  By default, generates for both md5 and sha1."""
+    files = ()
+    hashs = ('md5', 'sha1')
+    def run(self):
+        from hashlib import md5, sha1
+        files = self.get_args('files')
+        hashs = self.get_kwarg('hashs', tuple)
+        debug('files =', files, 'hashs =', hashs)
+        def mapping(s):
+            return ('%s.md5' % s, '%s.sha1' % s)
+        fmap = FileMapper(self.get_files(files), mapper=mapping)
+        for sname, dname in fmap:
+            h = None
+            if dname.endswith('.md5') and 'md5' in hashs:
+                h = md5()
+            elif dname.endswith('.sha1') and 'sha1' in hashs:
+                h = sha1()
+            if h and os.path.isfile(sname) and not fmap.checkpair(sname, dname):
+                h.update(open(sname, 'rb').read())
+                verbose('writing', dname)
+                open(dname, 'wt').write(h.hexdigest() + '\n')
 
 class Java(Task):
     """Call a Java routine."""

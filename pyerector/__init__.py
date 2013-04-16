@@ -48,6 +48,7 @@ __all__ = [
     'Chmod',
     'Copy',
     'CopyTree',
+    'HashGen',
     'Java',
     'Mkdir',
     'PyCompile',

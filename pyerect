@@ -92,6 +92,7 @@ Distlist = StaticIterator([distfile])
 Packaging.tasks = (
     Zip(name='dist/%s.zip' % distfile, files=Distlist, root='build'),
     Tar(name='dist/%s.tgz' % distfile, files=Distlist, root='build'),
+    HashGen('dist/%s.zip' % distfile, 'dist/%s.tgz' % distfile),
 )
 
 PyErector()
