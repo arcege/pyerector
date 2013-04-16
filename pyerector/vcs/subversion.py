@@ -22,10 +22,15 @@ class Subversion(VCS_Base):
         return os.path.isdir(os.path.join(dir, '.svn'))
     vcs_check = staticmethod(vcs_check)
     def current_info(self):
-        svn = os.popen('%s info' % self.prog, 'r')
-        svnout = svn.read()
-        rc = svn.close()
-        if rc is None or rc == 0:
+        svn = Subcommand(
+                (self.prog, 'info'),
+                wait=True,
+                stdout=Subcommand.PIPE,
+                stderr=os.devnull
+        )
+        svn.wait()
+        svnout = hg.stdout.read()
+        if svn.returncode == 0:
             for line in svnout.rstrip(os.linesep).split(os.linesep):
                 if line.startswith('Revision: '):
                     p = line.split(': ')

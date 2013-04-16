@@ -1,20 +1,16 @@
 #!/usr/bin/python
 
 import os
-try:
-    import subprocess
-except ImportError:
-    import popen2
-    subprocess = None
 
-from .base import VCS_Base
+from ..helper import Subcommand
+from .base import DVCS_Base
 from ..variables import Variable
 
 __all__ = [
     'Git',
 ]
 
-class Git(VCS_Base):
+class Git(DVCS_Base):
     name = 'git'
     prog = 'git'
     # used by the package to see which VCS system to use
@@ -22,28 +18,42 @@ class Git(VCS_Base):
         return os.path.isdir(os.path.join(dir, '.git'))
     vcs_check = staticmethod(vcs_check)
     def current_info(self):
-        git = os.popen('%s log --max-count=1 --format=%%h' % self.prog, 'r')
-        gitout = git.read()
-        rc = git.close()
-        if rc is None or rc == 0:
+        rc = Subcommand(
+                (self.prog, 'log', '--max-count=1', '--format=%h'),
+                wait=True,
+                stdout=Subcommand.PIPE,
+                stderr=os.devnull
+        )
+        rc.wait()
+        gitout = rc.stdout.read()
+        if rc == 0:
             Variable('git.version', gitout.strip())
             git_version = gitout.strip()
         else:
             git_version = None
-        git = os.popen('%s branch --no-color --list' % self.prog, 'r')
-        gitout = git.read()
-        rc = git.close()
-        if rc is None or rc == 0:
+        rc = Subcommand(
+                (self.prog, 'branch', '-no-color', '--list'),
+                wait=True,
+                stdout=Subcommand.PIPE,
+                stderr=os.devnull
+        )
+        rc.wait()
+        gitout = rc.stdout.read()
+        if rc == 0:
             for line in gitout.rstrip(os.linesep).split(os.linesep):
                 if line.startswith('*'):
                     if line[2:].strip() != '(no branch)':
                         Variable('git.branch', line[2:].strip())
         if git_version:
-            git = os.popen('%s tag --contains %s' % (self.prog, git_version),
-                           'r')
-            gitout = git.read()
-            rc = git.close()
-            if rc is None or rc == 0:
+            rc = Subcommand(
+                    (self.prog, 'tag', '--contains', git_version),
+                    wait=True,
+                    stdout=Subcommand.PIPE,
+                    stderr=os.devnull
+            )
+            rc.wait()
+            gitout = rc.stdout.read()
+            if rc == 0:
                 if gitout.strip():
                     Variable('git.tag', gitout.strip())
 

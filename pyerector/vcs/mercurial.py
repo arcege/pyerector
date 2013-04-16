@@ -7,14 +7,15 @@ except ImportError:
     import popen2
     subprocess = None
 
-from .base import VCS_Base
+from ..helper import Subcommand
+from .base import DVCS_Base
 from ..variables import Variable
 
 __all__ = [
     'Mercurial'
 ]
 
-class Mercurial(VCS_Base):
+class Mercurial(DVCS_Base):
     name = 'mercurial'
     prog = 'hg'
     # used by the package to see which VCS system to use
@@ -22,10 +23,15 @@ class Mercurial(VCS_Base):
         return os.path.isdir(os.path.join(dir, '.hg'))
     vcs_check = staticmethod(vcs_check)
     def current_info(self):
-        hg = os.popen('%s identify --id --branch --tags' % self.prog, 'r')
-        hgout = hg.read()
-        rc = hg.close()
-        if rc is None or rc == 0:
+        hg = Subcommand(
+                (self.prog, 'identify', '--id', '--branch', '--tags'),
+                wait=True,
+                stdout=Subcommand.PIPE,
+                stderr=os.devnull
+        )
+        hg.wait()
+        hgout = hg.stdout.read()
+        if hg.returncode == 0:
             parts = hgout.rstrip().split()
             try:
                 parts[1]
