@@ -6,6 +6,7 @@ import shutil
 import sys
 
 from .exception import Error
+from .helper import Subcommand
 from .base import Task
 from . import debug, verbose, hasformat
 from .iterators import FileMapper, MergeMapper, StaticIterator
@@ -166,10 +167,11 @@ class Java(Task):
         env = environ.copy()
         if self.classpath:
             env['CLASSPATH'] = pathsep.join(self.classpath)
-        Spawn()(
-            cmd,
-            env=env,
-        )
+        rc = Subcommand(cmd)
+        if rc.returncode:
+            raise Error(self, '%s failed with returncode %d' %
+                            (self.__class__.__name__.lower(), rc.returncode)
+            )
 
 class Mkdir(Task):
     files = ()
@@ -206,11 +208,14 @@ class PyCompile(Task):
                 cmd = 'python2'
             elif self.version[:1] == '3':
                 cmd = 'python3'
-            for s in fileset:
-                try:
-                    Spawn(cmd, '-c', 'from py_compile import compile; compile("%s")' % self.join(s))()
-                except:
-                    verbose('could not compile', s, 'with', cmd)
+            cmdp = (
+                cmd, '-c',
+                'import sys; from py_compile import compile; ' +
+                '[compile(s) for s in sys.argv[1:]]'
+            ) + tuple(fileset)
+            proc = Subcommand(cmdp)
+            if proc.returncode != 0:
+                verbose('could not compile files with', cmd)
 
 class Remove(Task):
     files = ()
@@ -267,64 +272,13 @@ class Spawn(Task):
         errfile = self.get_kwarg('errfile', str)
         env = self.get_kwarg('env', dict)
         cmd = self.get_args('cmd')
-        try:
-            from subprocess import call
-            realenv = os.environ.copy()
-            realenv.update(env)
-            if (len(cmd) == 1 and
-                (isinstance(cmd, tuple) or isinstance(cmd, list))):
-                cmd = tuple(cmd[0])
-            else:
-                cmd = tuple(cmd)
-            ifl = of = ef = None
-            if infile:
-                ifl = open(infile, 'r')
-            if outfile:
-                of = open(outfile, 'w')
-            if errfile == outfile:
-                ef = of
-            elif errfile:
-                ef = open(errfile, 'w')
-            verbose('spawn("' + str(cmd) + '")')
-            shellval = not isinstance(cmd, tuple)
-            rc = call(cmd, shell=shellval, stdin=ifl, stdout=of, stderr=ef,
-                      bufsize=0, env=realenv)
-            if rc < 0:
-                raise Error(str(self), 'signal ' + str(abs(rc)) + 'raised')
-            elif rc > 0:
-                raise Error(str(self), 'returned error = ' + str(rc))
-            pass
-        except ImportError:
-            from popen2 import Popen3
-            if isinstance(cmd, tuple) or isinstance(cmd, list):
-                pcmd = ' '.join('"%s"' % str(s) for s in cmd)
-            else:
-                pcmd = cmd
-            if outfile:
-                pcmd += (' >"%s"' % outfile)
-            if errfile == outfile:
-                pcmd += ' 2>&1'
-            elif errfile:
-                pcmd += (' 2>"%s"' % errfile)
-            verbose('spawn("' + str(pcmd) + '")')
-            oldenv = {}
-            for ename in env:
-                if ename in os.environ:
-                    oldenv[ename] = environ[ename]
-                else:
-                    oldenv[ename] = None
-                environ[ename] = env[ename]
-            rc = Popen3(pcmd, capturestderr=False, bufsize=0).wait()
-            if hasattr(os, 'WIFSIGNALED') and os.WIFSIGNALED(rc):
-                raise Error(str(self),
-                                 'signal ' + str(os.WTERMSIG(rc)) + 'raised')
-            elif os.WEXITSTATUS(rc):
-                raise Error(str(self), 'returned error = ' + str(rc))
-            for ename in env:
-                if oldenv[ename] is None:
-                    del environ[ename]
-                else:
-                    environ[ename] = oldenv[ename]
+        rc = Subcommand(cmd, env=env,
+                stdin=infile, stdout=outfile, stderr=errfile,
+        )
+        if rc.returncode < 0:
+            raise Error('%s signal %d raised' % (str(self), abs(rc.returncode)))
+        elif rc > 0:
+            raise Error('%s returned error = %d' % (self(self), rc.returncode))
 
 class Tar(Container):
     def contain(self, name, root, toadd):
@@ -376,7 +330,6 @@ each file."""
                             iteratorclass=StaticIterator)
         for (sname, dname) in mapper:
             realcontents = open(self.join(sname), 'rt').read()
-            m = tokens.search(realcontents)
             alteredcontents = tokens.sub(repltoken, realcontents)
             if alteredcontents != realcontents:
                 open(self.join(dname), 'wt').write(alteredcontents)
@@ -560,7 +513,7 @@ finally:
             sfile.write(self.script)
             sfile.close()
             # call python <scriptname> <paramfile>
-            Spawn(sys.executable, sfile.name, pfile.name)()
+            Subcommand((sys.executable, sfile.name, pfile.name))
         finally:
             if pfile is not None and os.path.exists(pfile.name):
                 os.remove(pfile.name)
