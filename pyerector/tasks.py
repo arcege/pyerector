@@ -65,11 +65,12 @@ class Copy(Task):
     files = ()
     dest = None
     noglob = False
-    exclude = ('.svn', '.hg', '.git', '*.pyc', '.*.swp')
+    exclude = ('*.pyc', '*~', '.*.swp', '.git', '.hg', '.svn', 'CVS')
     def run(self):
         from .base import Mapper
         dest = self.get_kwarg('dest', str, noNone=False)
         files = self.get_args('files')
+        excludes = self.get_kwarg('exclude', (tuple, list), noNone=True)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
             debug('Copy.fmap =', vars(fmap))
@@ -85,20 +86,30 @@ class Copy(Task):
         for (sname, dname) in fmap:
             srcfile = self.join(sname)
             dstfile = self.join(dname)
-            if os.path.isfile(dstfile) and fmap.checkpair(srcfile, dstfile):
-                debug('uptodate:', dstfile)
-            else:
-                verbose('copy2(' + str(sname) + ', ' + str(dname) + ')')
-                shutil.copy2(srcfile, dstfile)
+            if self.check_exclusion(os.path.basename(sname), excludes):
+                if os.path.isfile(dstfile) and fmap.checkpair(srcfile, dstfile):
+                    debug('uptodate:', dstfile)
+                else:
+                    verbose('copy2(' + str(sname) + ', ' + str(dname) + ')')
+                    shutil.copy2(srcfile, dstfile)
+    def check_exclusion(self, filename, excludes):
+        from fnmatch import fnmatch
+        for excl in excludes:
+            if fnmatch(filename, excl):
+                return False
+        else:
+            return True
 
 class CopyTree(Task):
     srcdir = None
     dstdir = None
-    excludes = ('.git', '.hg', '.svn')
+    excludes = Copy.exclude # deprecated
+    exclude = Copy.exclude
     def run(self):
         from fnmatch import fnmatch
         srcdir = self.get_kwarg('srcdir', str, noNone=True)
         dstdir = self.get_kwarg('dstdir', str, noNone=True)
+        excludes = self.get_kwarg('exclude', (tuple, list), noNone=True)
         if not os.path.exists(self.join(srcdir)):
             raise OSError(2, "No such file or directory: " + srcdir)
         elif not os.path.isdir(self.join(srcdir)):
@@ -109,19 +120,19 @@ class CopyTree(Task):
         while dirs:
             dir = dirs[0]
             del dirs[0]
-            if self.check_exclusion(dir):
+            if self.check_exclusion(dir, excludes):
                 mkdir_t(self.join(dstdir, dir))
                 for fname in os.listdir(self.join(srcdir, dir)):
-                    if self.check_exclusion(fname):
+                    if self.check_exclusion(fname, excludes):
                         spath = self.join(srcdir, dir, fname)
                         dpath = self.join(dstdir, dir, fname)
                         if os.path.isdir(spath):
                             dirs.append(os.path.join(dir, fname))
                         else:
                             copy_t(spath, dest=dpath)
-    def check_exclusion(self, filename):
+    def check_exclusion(self, filename, excludes):
         from fnmatch import fnmatch
-        for excl in self.excludes:
+        for excl in excludes:
             if fnmatch(filename, excl):
                 return False
         else:
