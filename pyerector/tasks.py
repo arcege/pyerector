@@ -8,7 +8,7 @@ import sys
 from .exception import Error
 from .helper import Subcommand
 from .base import Task
-from . import debug, verbose, hasformat
+from . import debug, verbose, warn, hasformat
 from .iterators import FileMapper, MergeMapper, StaticIterator
 from .variables import VariableSet
 
@@ -256,9 +256,19 @@ class PyCompile(Task):
                 'import sys; from py_compile import compile; ' +
                 '[compile(s) for s in sys.argv[1:]]'
             ) + tuple(fileset)
-            proc = Subcommand(cmdp)
-            if proc.returncode != 0:
-                verbose('could not compile files with', cmd)
+            try:
+                proc = Subcommand(cmdp)
+            except Error:
+                t, e, tb = sys.exc_info()
+                if e.args[0] == 'ENOENT':
+                    warn('%s: Error with %s: %s' %
+                        (self.__class__.__name__, cmd, e.args[1])
+                    )
+                else:
+                    raise
+            else:
+                if proc.returncode != 0:
+                    verbose('could not compile files with', cmd)
 
 class Remove(Task):
     """Remove a file or directory tree."""

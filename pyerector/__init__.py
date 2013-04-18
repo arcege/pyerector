@@ -17,6 +17,7 @@ else:
 
 # must define 'verbose', 'noop' and 'debug' before importing other submodules
 
+warn = Verbose(True) # always emit
 verbose = Verbose()
 noop = Verbose()
 from os import environ

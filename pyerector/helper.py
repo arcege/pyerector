@@ -2,7 +2,9 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 import os
-from sys import version
+from sys import version, exc_info
+
+from .exception import Error
 
 __all__ = [
     'normjoin',
@@ -155,9 +157,16 @@ class Subcommand(object):
         shellval = not isinstance(self.cmd, tuple)
         from . import verbose
         verbose("Popen(%s, shell=%s, stdin=%s, stdout=%s, stderr=%s, bufsize=0, env=%s)" % (self.cmd, shellval, ifl, of, ef, realenv))
-        proc = Popen(self.cmd, shell=shellval,
-                     stdin=ifl, stdout=of, stderr=ef,
-                     bufsize=0, env=realenv)
+        try:
+            proc = Popen(self.cmd, shell=shellval,
+                         stdin=ifl, stdout=of, stderr=ef,
+                         bufsize=0, env=realenv)
+        except (IOError, OSError):
+            t, e, tb = exc_info()
+            if e.args[0] == 2: # ENOENT
+                raise Error('ENOENT', 'Program not found')
+            else:
+                raise
         self.proc = proc
         if ifl == self.PIPE:
             self.stdin = proc.stdin
