@@ -2,9 +2,11 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 import sys
+import traceback
+from .exception import Error, extract_tb
 from . import verbose, debug, noop
 from .register import registry
-from .base import Initer, Target
+from .base import Initer, Target, Task
 from .version import get_version, get_release
 
 __all__ = [
@@ -79,8 +81,15 @@ class PyErector(object):
         else:
             self.targets = [registry['Default']]
     def handle_error(self, text=''):
-        if debug:
-            raise
+        if True: #debug:
+            t, e, tb = sys.exc_info()
+            if tb:
+                print('processing stack')
+                exclist = extract_tb(tb, valid_classes=(Target, Task))
+                traceback.print_list(exclist)
+            lines = traceback.format_exception_only(t, e)
+            for line in lines:
+                print(line)
         else:
             e = sys.exc_info()[1]
             if text:
@@ -107,6 +116,8 @@ class PyErector(object):
                 self.handle_error()
             except AssertionError:
                 self.handle_error('AssertionError')
+            except Error:
+                self.handle_error()
 
 pymain = PyErector
 
