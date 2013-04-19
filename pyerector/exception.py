@@ -45,6 +45,7 @@ with the class name if a subclass of one of the valid_class entries."""
                 fself = last_object[0]
         elif last_object[0] is not None:
             fself = last_object[0]
+        del f # delete the frame reference so there is circular reference
         if fself:
             name = '%s.%s' % (fself.__class__.__name__, name)
         list.append( (filename, lineno, name, line) )
