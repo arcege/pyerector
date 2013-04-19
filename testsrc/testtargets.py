@@ -2,11 +2,15 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 import unittest
+import sys
 
 try:
     from io import StringIO
 except ImportError:
     from StringIO import StringIO
+
+if sys.version_info[0] == 2 and sys.version_info[1] < 7:
+    raise ImportError('wrong python version')
 
 from pyerector import normjoin, verbose, debug, noop
 from pyerector.helper import Verbose, u

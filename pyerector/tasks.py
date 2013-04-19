@@ -483,8 +483,9 @@ if True: #not hasattr(loader, 'discover'):
                     if fnmatch.fnmatch(path, pattern):
                         name = self._get_name_from_path(full_path)
                         package = self._get_module_from_name(name)
-                        load_tests = getattr(package, 'load_tests', None)
-                        tests = self.loadTestsFromModule(package, use_load_tests=False)
+                        if package is not None:
+                            load_tests = getattr(package, 'load_tests', None)
+                            tests = self.loadTestsFromModule(package, use_load_tests=False)
                     if load_tests is None:
                         if tests is not None:
                             yield tests
@@ -506,8 +507,12 @@ if True: #not hasattr(loader, 'discover'):
             return name
         def _get_module_from_name(self, name):
             import sys
-            __import__(name)
-            return sys.modules[name]
+            try:
+                __import__(name)
+            except ImportError:
+                return None
+            else:
+                return sys.modules[name]
         # return a TestClass subclass wrapped in a suite on error
         def _make_failed_import_test(self, name, suiteClass):
             import traceback
