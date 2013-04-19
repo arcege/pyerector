@@ -208,8 +208,6 @@ class Target(Initer):
                 self.rewrap_exception()
             else:
                 raise
-        except Error:
-            raise
         except Exception:
             if not debug:
                 self.rewrap_exception()
