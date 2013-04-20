@@ -12,8 +12,9 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-if sys.version_info[0] == 2 and sys.version_info[1] < 7:
-    raise ImportError('wrong python version')
+from .base import PyVersionCheck, TestCase
+
+PyVersionCheck()
 
 from pyerector import normjoin, verbose, debug, noop
 from pyerector.helper import normjoin, Verbose
@@ -24,65 +25,7 @@ from pyerector.targets import *
 from pyerector.tasks import *
 from pyerector.iterators import Uptodate
 
-if hasattr(unittest.TestCase, 'assertIsNone'):
-    testcasewrapper = unittest.TestCase
-else:
-    class testcasewrapper(unittest.TestCase):
-        def assertIs(self, a, b, msg=None):
-            return self.assertTrue(a is b, msg=msg)
-        def assertIsNot(self, a, b, msg=None):
-            return self.assertFalse(a is b, msg=msg)
-        def assertIsNone(self, x, msg=None):
-            return self.assertIs(x, None, msg=msg)
-        def assertIsNotNone(self, x, msg=None):
-            return self.assertIsNot(x, None, msg=msg)
-        def assertIn(self, a, b, msg=None):
-            return self.assertTrue(a in b, msg=msg)
-        def assertNotIn(self, a, b, msg=None):
-            return self.assertFalse(a in b, msg=msg)
-        def assertIsInstance(self, a, b, msg=None):
-            return self.assertTrue(isinstance(a, b), msg=msg)
-        def assertNotIsInstance(self, a, b, msg=None):
-            return self.assertFalse(isinstance(a, b), msg=msg)
-        def assertRaisesRegexp(self, exp, regexp, callable=None, *args, **kwds):
-            raise NotImplementedError('assertRaisesRegexp')
-        def assertGreater(self, a, b, msg=None):
-            return self.assertTrue(a > b, msg=msg)
-        def assertGreaterEqual(self, a, b, msg=None):
-            return self.assertTrue(a >= b, msg=msg)
-        def assertLess(self, a, b, msg=None):
-            return self.assertTrue(a < b, msg=msg)
-        def assertLessEqual(self, a, b, msg=None):
-            return self.assertTrue(a <= b, msg=msg)
-        def assertRegexpMatches(self, a, b, msg=None):
-            import re
-            return self.assertIsNot(re.search(b, a), None, msg=msg)
-        def assertNotRegexpMatches(self, a, b, msg=None):
-            return self.assertIs(re.search(b, a), None, msg=msg)
-        def assertItemsEqual(self, a, b, msg=None):
-            return self.assertEqual(sorted(a), sorted(b), msg=msg)
-        def assertDictContainsSubset(self, a, b, msg=None):
-            raise NotImplementedError('assertDictContainsSubset')
-        def assertMultiLineEqual(self, a, b, msg=None):
-            raise NotImplementedError('assertMultiLineEqual')
-        def assertSequenceEqual(self, a, b, msg=None, seq_type=None):
-            if seq_type is not None:
-                self.assertIsInstance(a, seq_type, msg=msg)
-                self.assertIsInstance(b, seq_type, msg=msg)
-            return self.assertEqual(a, b, msg=msg)
-        def assertListEqual(self, a, b, msg=None):
-            return self.assertSequenceEqual(a, b, msg=msg, seq_type=list)
-        def assertTupleEqual(self, a, b, msg=None):
-            return self.assertSequenceEqual(a, b, msg=msg, seq_type=tuple)
-        def assertSetEqual(self, a, b, msg=None):
-            return self.assertSequenceEqual(a, b, msg=msg, seq_type=set)
-        def assertDictEqual(self, a, b, msg=None):
-            return self.assertSequenceEqual(
-                sorted(a.items()),
-                sorted(b.items()),
-                msg=msg)
-
-class TestIniter(testcasewrapper):
+class TestIniter(TestCase):
     def setUpClass(cls):
         debug('%s.setUpClass()' % cls.__name__)
         cls.dir = tempfile.mkdtemp()
@@ -178,7 +121,7 @@ class TestIniter(testcasewrapper):
                           normjoin(self.dir, subdir, 'get_files_simple-t*')])
 
 '''
-class TestUptodate(testcasewrapper):
+class TestUptodate(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
@@ -349,7 +292,7 @@ class TestE2E_T(Target):
     uptodates = ('TestE2E_utd',)
     tasks = ('TestE2E_t1', 'TestE2E_t2')
 
-class TestTarget_basics(testcasewrapper):
+class TestTarget_basics(TestCase):
     maxDiff = None
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
@@ -386,7 +329,7 @@ class TestTarget_basics(testcasewrapper):
         target.verbose('hi', 'there')
         self.assertEqual(verbose.stream.getvalue(), 'Target: hi there\n')
 
-class TestTarget_functionality(testcasewrapper):
+class TestTarget_functionality(TestCase):
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
         debug('%s.dir =' % cls.__name__, cls.dir)
@@ -444,7 +387,7 @@ class TestTarget_functionality(testcasewrapper):
         #    round(os.path.getmtime(normjoin(self.dir, 'e2e_t2')), 4)
         #)
 
-class TestTask(testcasewrapper):
+class TestTask(TestCase):
     def setUpClass(cls):
         cls.dir = tempfile.mkdtemp()
         cls.oldconfigbasedir = Initer.config.basedir
