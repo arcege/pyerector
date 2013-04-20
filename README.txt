@@ -35,7 +35,7 @@ Start by importing from ``pyerector``::
   #!/usr/bin/python
   from pyerector import *
 
-Next create subclasses to modify attributes of standard targets::
+Next create subclasses or modify attributes of standard targets::
 
   class PreCompile(Target):
       tasks = (
