@@ -66,7 +66,7 @@ class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
     directories = (os.curdir,
             'pyerector', 'pyerector/py2', 'pyerector/py3',
-            'pyerector/vcs', 'testsrc'
+            'pyerector/vcs', 'pyerector/test'
     )
     tasks = (
         Remove(files=(
