@@ -2,7 +2,15 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 from distutils.core import setup
+import os
 import release
+import sys
+
+program = sys.argv[0]
+progdir = os.path.dirname(program)
+# do not run if from the source directory
+if os.path.exists(os.path.join(progdir, 'pyerect')):
+    raise SystemExit('please run "pyerect" instead of %s.' % sys.argv[0])
 
 setup(
     name=release.product,
