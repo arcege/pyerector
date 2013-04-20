@@ -253,24 +253,17 @@ class Task(Initer):
             self.kwargs = dict(kwargs)
 
 class Iterator(Initer):
+    def __init__(self, *path, **kwargs):
+        from .helper import Exclusions
+        super(Iterator, self).__init__(*path, **kwargs)
+        exclude = self.get_kwarg('exclude',
+                    (Exclusions, set, str, tuple, list, type(None))
+        )
+        self.exclusion = Exclusions(exclude)
     def __iter__(self):
         return self
     def next(self):
         raise StopIteration
-    def apply_exclusion(self, filename):
-        exclude = self.get_kwarg('exclude', (str, tuple, list))
-        if exclude is None:
-            return False
-        elif not isinstance(exclude, (tuple, list)):
-            exclude = (exclude,)
-        for e in exclude:
-            result = fnmatch.fnmatch(filename, e)
-            debug('apply_exclusion(%s, %s) =' % (filename, e),
-                    result)
-            if result:
-                return True
-        else:
-            return False
 
 class Mapper(Iterator):
     pass

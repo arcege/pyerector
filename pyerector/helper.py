@@ -59,8 +59,10 @@ class Exclusions(set):
          '.hg', '.svn', 'CVS', '__pycache__')
     )
     def __init__(self, items=(), usedefaults=True):
-        if not isinstance(items, (set, tuple, list)):
-            raise TypeError('Exclusions: expecting set, tuple or list')
+        if not isinstance(items, (str, set, tuple, list, type(None))):
+            raise TypeError('Exclusions: expecting str, set, tuple or list')
+        if isinstance(items, str): # proper casting
+            items = (str,)
         if items:
             initialset = set(items)
         else:

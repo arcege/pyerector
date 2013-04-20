@@ -71,7 +71,7 @@ class StaticIterator(Iterator):
                 self.getnextset()
             item = self.curpoolset[self.setpos]
             self.setpos += 1
-            if not self.apply_exclusion(item):
+            if not self.exclusion.match(item):
                 return item
     def getnextset(self):
         while True:
@@ -116,11 +116,11 @@ class DirList(FileIterator):
             del dirs[0]
             if not self.filesonly:
                 paths.append(thisdir)
-            if not self.apply_exclusion(os.path.basename(thisdir)):
+            if not self.exclusion.match(os.path.basename(thisdir)):
                 for name in os.listdir(os.path.join(self.config.basedir, thisdir)):
                     spath = os.path.join(thisdir, name)
                     dpath = os.path.join(self.config.basedir, thisdir, name)
-                    if self.apply_exclusion(name):
+                    if self.exclusion.match(name):
                         pass
                     elif os.path.islink(dpath) or os.path.isfile(dpath):
                         paths.append(spath)
@@ -130,6 +130,7 @@ class DirList(FileIterator):
 
 class FileSet(Iterator):
     klass = StaticIterator
+    exclude = None
     def __init__(self, *set, **kwargs):
         super(FileSet, self).__init__(*set, **kwargs)
         self.set = []
@@ -165,7 +166,7 @@ class FileMapper(Mapper):
     destdir = None
     map = None
     mapper = None
-    exclude = ()
+    exclude = None
     iteratorclass = FileIterator
     def __init__(self, *files, **kwargs):
         if 'iteratorclass' in kwargs:
@@ -243,7 +244,7 @@ class FileMapper(Mapper):
             return True
     def checkpair(self, src, dst):
         """Return True if destination is newer than source."""
-        if self.apply_exclusion(os.path.basename(src)):
+        if self.exclusion.match(os.path.basename(src)):
             return True
         try:
             s = round(os.path.getmtime(src), 4)
@@ -264,7 +265,7 @@ class FileMapper(Mapper):
             for fname in os.listdir(normjoin(src, dir)):
                 sname = normjoin(src, dir, fname)
                 dname = normjoin(dst, dir, fname)
-                if self.apply_exclusion(fname):
+                if self.exclusion.match(fname):
                     continue
                 if os.path.isdir(sname):
                     debug('adding %s to fifo' % normjoin(dir, fname))
