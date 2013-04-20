@@ -217,3 +217,37 @@ class Subcommand(object):
         if ef == self.PIPE:
             self.stderr = proc.stderr
 
+class Timer(object):
+    def __init__(self):
+        self.starttime = None
+        self.duration = None
+    def __repr__(self):
+        name = self.__class__.__name__
+        if self.starttime is not None:
+            return '<%s started>' % name
+        elif self.duration is not None:
+            return '<%s duration: %0.3f>' % (name, self.duration)
+        else:
+            return '<%s unstarted>' % name
+    def now(self):
+        from time import time
+        return time()
+    def start(self):
+        if self.starttime is not None:
+            raise RuntimeError('cannot start more than once without stopping')
+        self.starttime = self.now()
+    def stop(self):
+        if self.starttime is None:
+            raise RuntimeError('cannot stop without starting')
+        self.duration = self.now() - self.starttime
+        self.starttime = None
+    def __enter__(self):
+        self.start()
+    def __exit__(self, etype, evalue, etb):
+        self.stop()
+    def __float__(self):
+        if self.duration is not None:
+            return float(self.duration)
+        return 0.0
+    def __int__(self):
+        return int(float(self))

@@ -24,6 +24,9 @@ from os import environ
 debug = Verbose('DEBUG' in environ and environ['DEBUG'] != '')
 del environ
 
+# display timing information, changed in pyerector.main.PyErector
+noTimer = False
+
 from .main import PyErector, pymain
 from .base import Target, Task
 from .tasks import  *

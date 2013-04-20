@@ -12,7 +12,7 @@ if version[0] > '2': # python 3+
 else:
     from .py2.base import Base
 from . import debug, verbose, noop
-from .helper import normjoin, u
+from .helper import normjoin, u, Timer
 from .register import registry
 from .exception import Error
 from .config import Config
@@ -180,6 +180,7 @@ class Target(Initer):
             return obj(*args)
     def __call__(self, *args):
         debug('%s.__call__(*%s)' % (self.__class__.__name__, args))
+        timer = Timer()
         if self.been_called:
             return
         if self.uptodates:
@@ -191,31 +192,35 @@ class Target(Initer):
                 return
         for dep in self.dependencies:
             self.call(dep, Target, 'dependencies')
-        for task in self.tasks:
+        with timer:
+            for task in self.tasks:
+                try:
+                    self.call(task, Task, 'task', args)
+                except Error:
+                    if not debug:
+                        self.rewrap_exception()
+                    else:
+                        raise
             try:
-                self.call(task, Task, 'task', args)
+                self.run()
+            except (TypeError, RuntimeError, AttributeError):
+                raise
             except Error:
                 if not debug:
                     self.rewrap_exception()
                 else:
                     raise
-        try:
-            self.run()
-        except (TypeError, RuntimeError, AttributeError):
-            raise
-        except Error:
-            if not debug:
-                self.rewrap_exception()
-            else:
-                raise
-        except Exception:
-            if not debug:
-                self.rewrap_exception()
-            else:
-                raise
-        else:
+            except Exception:
+                if not debug:
+                    self.rewrap_exception()
+                else:
+                    raise
+        import pyerector
+        if pyerector.noTimer:
             self.verbose('done.')
-            self.been_called = True
+        else:
+            self.verbose('done. (%0.3f)' % timer)
+        self.been_called = True
     def run(self):
         pass
     def verbose(self, *args):

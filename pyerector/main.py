@@ -4,6 +4,7 @@
 import sys
 import traceback
 from .exception import Error, extract_tb
+from .helper import Timer
 from . import verbose, debug, noop
 from .register import registry
 from .base import Initer, Target, Task
@@ -29,6 +30,8 @@ class PyErector(object):
                             help='more verbose output')
         parser.add_argument('--version', '-V', action='store_true',
                             help='show version information')
+        parser.add_argument('--notimer', action='store_true',
+                            help='do not show timing information')
     except ImportError:
         import optparse
         parser = optparse.OptionParser(description='Pyerector build system')
@@ -40,6 +43,8 @@ class PyErector(object):
                           help='more verbose output')
         parser.add_option('--version', '-V', action='store_true',
                           help='show version information')
+        parser.add_option('--notimer', action='store_true',
+                          help='do not show timing information')
     def __init__(self, *args):
         self.basedir = None
         self.targets = []
@@ -53,6 +58,9 @@ class PyErector(object):
             args, arglist = args
             args.targets = arglist
         # check --verbose before --version
+        if args.notimer:
+            import pyerector
+            pyerector.noTimer = True
         if args.verbose:
             verbose.on()
         if args.noop:
@@ -104,19 +112,26 @@ class PyErector(object):
             except ValueError:
                 self.handle_error('Error')
     def run(self):
+        timer = Timer()
         # run all targets in the tree of each argument
-        for target in self.targets:
-            try:
-                debug('PyErector.basedir =', self.basedir)
-                target(basedir=self.basedir)()
-            except ValueError:
-                self.handle_error()
-            except KeyboardInterrupt:
-                self.handle_error()
-            except AssertionError:
-                self.handle_error('AssertionError')
-            except Error:
-                self.handle_error()
+        with timer:
+            for target in self.targets:
+                try:
+                    debug('PyErector.basedir =', self.basedir)
+                    target(basedir=self.basedir)()
+                except ValueError:
+                    self.handle_error()
+                except KeyboardInterrupt:
+                    self.handle_error()
+                except AssertionError:
+                    self.handle_error('AssertionError')
+                except Error:
+                    self.handle_error()
+        import pyerector
+        if pyerector.noTimer:
+            verbose.write('Done.')
+        else:
+            verbose.write('Done. (%0.3f)' % timer)
 
 pymain = PyErector
 
