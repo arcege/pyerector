@@ -1,14 +1,16 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
+import fnmatch
 import os
 from sys import version, exc_info
 
 from .exception import Error
 
 __all__ = [
+    'Exclusions',
     'normjoin',
-    'spawn',
+    'Subcommand',
 ]
 
 class Verbose(object):
@@ -50,7 +52,45 @@ else:
     def u(x):
         return x
 
+class Exclusions(set):
+    """A list of exclusion patterns."""
+    defaults = set(
+        ('*.pyc', '*~', '.*.swp', '.git',
+         '.hg', '.svn', 'CVS', '__pycache__')
+    )
+    def __init__(self, items=(), usedefaults=True):
+        if not isinstance(items, (set, tuple, list)):
+            raise TypeError('Exclusions: expecting set, tuple or list')
+        if items:
+            initialset = set(items)
+        else:
+            initialset = set()
+        super(Exclusions, self).__init__(initialset)
+        self.usedefaults = usedefaults
+    def __iter__(self):
+        if self.usedefaults:
+            return iter(self.defaults | self)
+        else:
+            return super(Exclusions, self).__iter__()
+    def match(self, str):
+        values = [v for v in self if fnmatch.fnmatchcase(str, v)]
+        return len(values) > 0
+    @classmethod
+    def set_defaults(cls, items=(), reset=False):
+        """Change or reset the defaults for all instances."""
+        if reset and hasattr(cls, 'real_defaults'):
+            cls.defaults = cls.real_defaults
+            return
+        elif reset:
+            return
+        if not hasattr(cls, 'real_defaults'):
+            cls.real_defaults = cls.defaults
+        if not isinstance(items, (set, tuple, list)):
+            raise TypeError('Exclusions: expecting set, tuple or list')
+        cls.defaults = set(items)
+
 class Subcommand(object):
+    """Handles some of the subprocess details."""
     try:
         import subprocess
     except ImportError:

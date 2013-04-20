@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from .helper import normjoin, Verbose
+from .helper import normjoin, Verbose, Exclusions
 from .version import get_version
 
 # Future Py3000 work prevents the use of string formatting using '%'
@@ -35,6 +35,7 @@ V = Variable  # an alias for exporting to clients, internally use 'Variable'
 
 __all__ = [
     # base routines
+    'Exclusions',
     'normjoin',
     'PyErector',
     'pymain',

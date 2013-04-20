@@ -6,7 +6,7 @@ import shutil
 import sys
 
 from .exception import Error
-from .helper import Subcommand
+from .helper import Exclusions, Subcommand
 from .base import Task
 from . import debug, verbose, warn, hasformat
 from .iterators import FileMapper, MergeMapper, StaticIterator
@@ -37,15 +37,13 @@ class Container(Task):
     from os import curdir as root
     name = None
     files = ()
-    exclude = ()
+    exclude = Exclusions(usedefaults=False)
     def run(self):
         name = self.get_kwarg('name', str, noNone=True)
         root = self.join(self.get_kwarg('root', str))
-        excludes = self.get_kwarg('exclude', (tuple, list))
-        if excludes:
-            exctest = lambda t, e=excludes: [v for v in e if t.endswith(v)]
-        else:
-            exctest = None
+        excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
+        if not isinstance(excludes, Exclusions):
+            excludes = Exclusions(excludes)
         toadd = []
         from glob import glob
         queue = list(self.get_args('files'))
@@ -53,7 +51,7 @@ class Container(Task):
             entry = queue[0]
             del queue[0]
             for fn in glob(self.join(root, entry)):
-                if exctest and exctest(fn): # if true, then ignore
+                if excludes.match(fn): # if true, then ignore
                     pass
                 elif os.path.islink(fn) or os.path.isfile(fn):
                     toadd.append(fn)
@@ -68,12 +66,14 @@ files."""
     files = ()
     dest = None
     noglob = False
-    exclude = ('*.pyc', '*~', '.*.swp', '.git', '.hg', '.svn', 'CVS')
+    exclude = Exclusions()
     def run(self):
         from .base import Mapper
         dest = self.get_kwarg('dest', str, noNone=False)
         files = self.get_args('files')
-        excludes = self.get_kwarg('exclude', (tuple, list), noNone=True)
+        excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
+        if not isinstance(excludes, Exclusions):
+            excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
             debug('Copy.fmap =', vars(fmap))
@@ -89,58 +89,46 @@ files."""
         for (sname, dname) in fmap:
             srcfile = self.join(sname)
             dstfile = self.join(dname)
-            if self.check_exclusion(os.path.basename(sname), excludes):
+            if not excludes.match(os.path.basename(sname)):
                 if os.path.isfile(dstfile) and fmap.checkpair(srcfile, dstfile):
                     debug('uptodate:', dstfile)
                 else:
                     verbose('copy2(' + str(sname) + ', ' + str(dname) + ')')
                     shutil.copy2(srcfile, dstfile)
-    def check_exclusion(self, filename, excludes):
-        from fnmatch import fnmatch
-        for excl in excludes:
-            if fnmatch(filename, excl):
-                return False
-        else:
-            return True
 
 class CopyTree(Task):
     """Copy directory tree. Exclude standard hidden files."""
     srcdir = None
     dstdir = None
-    excludes = Copy.exclude # deprecated
-    exclude = Copy.exclude
+    exclude = Exclusions()
+    excludes = exclude # deprecated
     def run(self):
         from fnmatch import fnmatch
         srcdir = self.get_kwarg('srcdir', str, noNone=True)
         dstdir = self.get_kwarg('dstdir', str, noNone=True)
-        excludes = self.get_kwarg('exclude', (tuple, list), noNone=True)
+        excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
+        if not isinstance(excludes, Exclusions):
+            excludes = Exclusions(excludes)
         if not os.path.exists(self.join(srcdir)):
             raise OSError(2, "No such file or directory: " + srcdir)
         elif not os.path.isdir(self.join(srcdir)):
             raise OSError(20, "Not a directory: " + srcdir)
-        copy_t = Copy(noglob=True)
+        copy_t = Copy(noglob=True, exclude=excludes)
         mkdir_t = Mkdir()
         dirs = [os.curdir]
         while dirs:
             dir = dirs[0]
             del dirs[0]
-            if self.check_exclusion(dir, excludes):
+            if not excludes.match(dir):
                 mkdir_t(self.join(dstdir, dir))
                 for fname in os.listdir(self.join(srcdir, dir)):
-                    if self.check_exclusion(fname, excludes):
+                    if not excludes.match(fname):
                         spath = self.join(srcdir, dir, fname)
                         dpath = self.join(dstdir, dir, fname)
                         if os.path.isdir(spath):
                             dirs.append(os.path.join(dir, fname))
                         else:
                             copy_t(spath, dest=dpath)
-    def check_exclusion(self, filename, excludes):
-        from fnmatch import fnmatch
-        for excl in excludes:
-            if fnmatch(filename, excl):
-                return False
-        else:
-            return True
 
 class HashGen(Task):
     """Generate file(s) containing md5 or sha1 hash string.
