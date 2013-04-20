@@ -84,7 +84,6 @@ class PyErector(object):
         if True: #debug:
             t, e, tb = sys.exc_info()
             if tb:
-                print('processing stack')
                 exclist = extract_tb(tb, valid_classes=(Target, Task))
                 traceback.print_list(exclist)
             lines = traceback.format_exception_only(t, e)
