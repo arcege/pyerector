@@ -26,17 +26,6 @@ from pyerector.tasks import *
 from pyerector.iterators import Uptodate
 
 class TestIniter(TestCase):
-    def setUpClass(cls):
-        debug('%s.setUpClass()' % cls.__name__)
-        cls.dir = tempfile.mkdtemp()
-        cls.oldconfigbasedir = Initer.config.basedir
-        Initer.config.basedir = cls.dir
-    setUpClass = classmethod(setUpClass)
-    def tearDownClass(cls):
-        debug('%s.tearDownClass()' % cls.__name__)
-        Initer.config.basedir = cls.oldconfigbasedir
-        shutil.rmtree(cls.dir)
-    tearDownClass = classmethod(tearDownClass)
     def test_initialized(self):
         #"""Is system initialized on first instantiation."""
         old_config = Initer.config
@@ -50,7 +39,8 @@ class TestIniter(TestCase):
             Initer.config = old_config
     def test_basedir(self):
         obj = Initer()
-        #self.assertEqual(obj.config.basedir, os.path.realpath(os.getcwd()))
+        Initer.config.basedir = os.path.realpath(os.getcwd())
+        self.assertEqual(obj.config.basedir, os.path.realpath(os.getcwd()))
         Initer.config.initialized = False
         obj = Initer(basedir=self.dir)
         self.assertTrue(obj.config.initialized)
@@ -122,15 +112,6 @@ class TestIniter(TestCase):
 
 '''
 class TestUptodate(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.dir = tempfile.mkdtemp()
-        cls.oldconfigbasedir = Initer.config.basedir
-        Initer.config.basedir = cls.dir
-    @classmethod
-    def tearDownClass(cls):
-        Initer.config.basedir = cls.oldconfigbasedir
-        shutil.rmtree(cls.dir)
     #@unittest.skip('to fix Uptodate')
     def _test_older(self):
         #"""Test that newer files indeed do trigger the test."""
@@ -294,17 +275,6 @@ class TestE2E_T(Target):
 
 class TestTarget_basics(TestCase):
     maxDiff = None
-    def setUpClass(cls):
-        cls.dir = tempfile.mkdtemp()
-        debug('%s.dir =' % cls.__name__, cls.dir)
-        Target.allow_reexec = True
-        cls.oldconfigbasedir = Initer.config.basedir
-        Initer.config.basedir = cls.dir
-    setUpClass = classmethod(setUpClass)
-    def tearDownClass(cls):
-        Initer.config.basedir = cls.oldconfigbasedir
-        shutil.rmtree(cls.dir)
-    tearDownClass = classmethod(tearDownClass)
     def setUp(self):
         self.realstream = verbose.stream
         verbose.stream = StringIO()
@@ -330,17 +300,6 @@ class TestTarget_basics(TestCase):
         self.assertEqual(verbose.stream.getvalue(), 'Target: hi there\n')
 
 class TestTarget_functionality(TestCase):
-    def setUpClass(cls):
-        cls.dir = tempfile.mkdtemp()
-        debug('%s.dir =' % cls.__name__, cls.dir)
-        Target.allow_reexec = True
-        cls.oldconfigbasedir = Initer.config.basedir
-        Initer.config.basedir = cls.dir
-    setUpClass = classmethod(setUpClass)
-    def tearDownClass(cls):
-        Initer.config.basedir = cls.oldconfigbasedir
-        shutil.rmtree(cls.dir)
-    tearDownClass = classmethod(tearDownClass)
     def test_nothing(self):
         class NothingTarget(Target):
             pass
@@ -388,15 +347,6 @@ class TestTarget_functionality(TestCase):
         #)
 
 class TestTask(TestCase):
-    def setUpClass(cls):
-        cls.dir = tempfile.mkdtemp()
-        cls.oldconfigbasedir = Initer.config.basedir
-        Initer.config.basedir = cls.dir
-    setUpClass = classmethod(setUpClass)
-    def tearDownClass(cls):
-        Initer.config.basedir = cls.oldconfigbasedir
-        shutil.rmtree(cls.dir)
-    tearDownClass = classmethod(tearDownClass)
     def test_instantiation(self):
         obj = Task()
         self.assertEqual(str(obj), Task.__name__)
