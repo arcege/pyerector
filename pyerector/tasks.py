@@ -394,7 +394,7 @@ try:
     loader = unittest.loader.TestLoader()
 except AttributeError:
     loader = unittest.TestLoader()
-if True: #not hasattr(loader, 'discover'):
+if not hasattr(loader, 'discover'):
     class TestLoaderNoDiscover(loader.__class__):
         # ported almost directly from Py2.7 unittest.loader module
         _top_level_dir = None
