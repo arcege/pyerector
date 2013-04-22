@@ -1,13 +1,9 @@
 #!/usr/bin/python
 
 import os
-try:
-    import subprocess
-except ImportError:
-    import popen2
-    subprocess = None
 
 from .base import VCS_Base
+from ..helper import Subcommand
 from ..variables import Variable
 
 __all__ = [
@@ -23,13 +19,13 @@ class Subversion(VCS_Base):
     vcs_check = staticmethod(vcs_check)
     def current_info(self):
         svn = Subcommand(
-                (self.prog, 'info'),
+                (self.prog, 'info', self.rootdir),
                 wait=True,
                 stdout=Subcommand.PIPE,
                 stderr=os.devnull
         )
         svn.wait()
-        svnout = hg.stdout.read()
+        svnout = svn.stdout.read()
         if svn.returncode == 0:
             for line in svnout.rstrip(os.linesep).split(os.linesep):
                 if line.startswith('Revision: '):

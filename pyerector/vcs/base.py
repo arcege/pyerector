@@ -5,7 +5,8 @@ from ..helper import Subcommand
 from ..exception import Error
 
 class Base(object):
-    def __init__(self):
+    def __init__(self, rootdir=os.curdir):
+        self.rootdir = rootdir
         self.current_info()
     def __str__(self):
         return self.name
@@ -21,13 +22,13 @@ class VCS_Base(Base):
                 (self.prog, 'checkout', url, destdir),
                 wait=True
         )
-    def update(self, destdir=os.curdir, rev=None):
+    def update(self, destdir=None, rev=None):
         if rev is None:
             revopts = ()
         else:
             revopts = ('-r', str(rev))
         rc = Subcommand(
-                (self.prog, 'update') + revops + (destdir,),
+                (self.prog, 'update') + revops + (destdir or self.rootdir,),
                 wait=True,
                 stderr=Subcommand.PIPE,
         )
@@ -40,9 +41,9 @@ class VCS_Base(Base):
             raise Error(self, 'error %d: %s' % (abs(rc.returncode), errput))
 
 class DVCS_Base(Base):
-    def checkout(self, url, destdir=os.curdir):
+    def checkout(self, url, destdir=None):
         rc = Subcommand(
-                (self.prog, 'clone', url, destdir),
+                (self.prog, 'clone', url, destdir or self.reposdir),
                 wait=True
         )
     def update(self, source=None, rev=None):
@@ -57,6 +58,7 @@ class DVCS_Base(Base):
         rc = Subcommand(
                 (self.prog, 'pull', '-u') + revopts + sourcearg,
                 wait=True,
+                wdir=self.rootdir,
                 stderr=Subcommand.PIPE,
         )
         rc.wait()

@@ -32,7 +32,7 @@ class Git(DVCS_Base):
         else:
             git_version = None
         rc = Subcommand(
-                (self.prog, 'branch', '-no-color', '--list'),
+                (self.prog, 'branch', '--no-color', '--list'),
                 wait=True,
                 stdout=Subcommand.PIPE,
                 stderr=os.devnull

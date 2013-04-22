@@ -26,6 +26,7 @@ class Mercurial(DVCS_Base):
         hg = Subcommand(
                 (self.prog, 'identify', '--id', '--branch', '--tags'),
                 wait=True,
+                wdir=self.rootdir,
                 stdout=Subcommand.PIPE,
                 stderr=os.devnull
         )
