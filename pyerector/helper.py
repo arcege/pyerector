@@ -42,6 +42,8 @@ class Verbose(object):
 
 # helper routines
 def normjoin(*args):
+    if not args:
+        args = ('',)
     return os.path.normpath(os.path.join(*args))
 
 if version < '3':
@@ -67,13 +69,9 @@ class Exclusions(set):
             initialset = set(items)
         else:
             initialset = set()
+        if usedefaults:
+            initialset |= self.defaults
         super(Exclusions, self).__init__(initialset)
-        self.usedefaults = usedefaults
-    def __iter__(self):
-        if self.usedefaults:
-            return iter(self.defaults | self)
-        else:
-            return super(Exclusions, self).__iter__()
     def match(self, str):
         values = [v for v in self if fnmatch.fnmatchcase(str, v)]
         return len(values) > 0
@@ -82,6 +80,7 @@ class Exclusions(set):
         """Change or reset the defaults for all instances."""
         if reset and hasattr(cls, 'real_defaults'):
             cls.defaults = cls.real_defaults
+            del cls.real_defaults
             return
         elif reset:
             return
@@ -121,6 +120,7 @@ class Subcommand(object):
             self.wait()
 
     def __del__(self):
+        debug('starting %s.__del__()' % self.__class__.__name__)
         self.close()
         if self.returncode is None and self.proc is not None:
             self.proc.terminate()
@@ -130,6 +130,7 @@ class Subcommand(object):
                 pass
             else:
                 self.proc.kill()
+            self.proc.wait()
             self.proc = None
 
     def close(self):
@@ -143,12 +144,20 @@ class Subcommand(object):
             self.stderr.close()
         self.stderr = None
 
+    def terminate(self):
+        assert self.proc is not None, 'subprocess not spawned'
+        return self.proc.terminate()
+    def kill(self):
+        assert self.proc is not None, 'subprocess not spawned'
+        return self.proc.kill()
     def poll(self):
+        assert self.proc is not None, 'subprocess not spawned'
         rc = self.proc.poll()
-        if rc != -1:
+        if rc is not None:
             self.returncode = rc
         return (self.returncode is not None)
     def wait(self):
+        assert self.proc is not None, 'subprocess not spawned'
         if self.stdin:
             self.stdin.close()
         self.returncode = self.proc.wait()
@@ -197,10 +206,10 @@ class Subcommand(object):
             ef = None
         (self.stdin, self.stdout, self.stderr) = (ifl, of, ef)
         shellval = not isinstance(self.cmd, tuple)
-        from . import verbose
-        verbose("Popen(%s, shell=%s, stdin=%s, stdout=%s, stderr=%s, bufsize=0, env=%s)" % (self.cmd, shellval, ifl, of, ef, realenv))
+        from . import verbose, debug
+        debug("Popen(%s, shell=%s, stdin=%s, stdout=%s, stderr=%s, bufsize=0, env=%s)" % (self.cmd, shellval, ifl, of, ef, self.env))
         try:
-            proc = Popen(self.cmd, shell=shellval,
+            proc = Popen(self.cmd, shell=shellval, cwd=self.wdir,
                          stdin=ifl, stdout=of, stderr=ef,
                          bufsize=0, env=realenv)
         except (IOError, OSError):
