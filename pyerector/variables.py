@@ -73,6 +73,7 @@ class VariableSet(dict):
         #del self[item].value  # also clear out the value?
         super(VariableSet, self).__delitem__(item)
     def update(self, *args, **kwargs):
+        # how would args have 'keys' when it is a tuple?
         if hasattr(args, 'keys'):
             for k in args:
                 self[k] = args[k]
