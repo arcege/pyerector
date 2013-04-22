@@ -21,7 +21,12 @@ class Verbose(object):
         from os import environ
         self.state = bool(state)
         if 'PYERECTOR_PREFIX' in environ:
-            self.prefix = environ['PYERECTOR_PREFIX'].decode('UTF-8')
+            value = environ['PYERECTOR_PREFIX']
+            if isinstance(value, bytes):
+                value = value.decode('UTF-8')
+            else:
+                value = str(value)
+            self.prefix = value
     def __bool__(self):
         return self.state
     __nonzero__ = __bool__

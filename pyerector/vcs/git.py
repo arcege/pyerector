@@ -25,7 +25,7 @@ class Git(DVCS_Base):
                 stderr=os.devnull
         )
         rc.wait()
-        gitout = rc.stdout.read()
+        gitout = rc.stdout.read().decode('UTF-8')
         if rc == 0:
             Variable('git.version', gitout.strip())
             git_version = gitout.strip()
@@ -38,7 +38,7 @@ class Git(DVCS_Base):
                 stderr=os.devnull
         )
         rc.wait()
-        gitout = rc.stdout.read()
+        gitout = rc.stdout.read().decode('UTF-8')
         if rc == 0:
             for line in gitout.rstrip(os.linesep).split(os.linesep):
                 if line.startswith('*'):
@@ -52,7 +52,7 @@ class Git(DVCS_Base):
                     stderr=os.devnull
             )
             rc.wait()
-            gitout = rc.stdout.read()
+            gitout = rc.stdout.read().decode('UTF-8')
             if rc == 0:
                 if gitout.strip():
                     Variable('git.tag', gitout.strip())

@@ -25,7 +25,7 @@ class Subversion(VCS_Base):
                 stderr=os.devnull
         )
         svn.wait()
-        svnout = svn.stdout.read()
+        svnout = svn.stdout.read().decode('UTF-8')
         if svn.returncode == 0:
             for line in svnout.rstrip(os.linesep).split(os.linesep):
                 if line.startswith('Revision: '):

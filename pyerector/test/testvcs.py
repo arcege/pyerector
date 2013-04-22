@@ -22,8 +22,10 @@ class TestVCS(TestCase):
         cls.svndir = os.path.join(cls.dir, 'subversion')
         p = os.popen('hg init %s' % cls.hgdir, 'r')
         assert p.close() is None, "could not create mercurial repository"
-        p = os.popen('git init %s' % cls.gitdir, 'r')
-        assert p.close() is None, "could not create git repository"
+        p = os.popen('git init %s 2>&1' % cls.gitdir, 'r')
+        output = p.read()
+        rc = p.close()
+        assert rc is None, "could not create git repository: %s" % output
         p = os.popen('svnadmin create %s' % cls.svnadmdir, 'r')
         assert p.close() is None, "could not create subversion repository"
         p = os.popen('svn co file://%s %s' % (cls.svnadmdir, cls.svndir), 'r')

@@ -31,7 +31,7 @@ class Mercurial(DVCS_Base):
                 stderr=os.devnull
         )
         hg.wait()
-        hgout = hg.stdout.read()
+        hgout = hg.stdout.read().decode('UTF-8')
         if hg.returncode == 0:
             parts = hgout.rstrip().split()
             try:

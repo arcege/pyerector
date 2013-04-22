@@ -171,13 +171,13 @@ class TestSubcommand(TestCase):
         open(infile, 'wt').write('Spam, Spam, Spam, Spam!\nWonderful spam, beautiful spam!\n')
         proc = Subcommand(('wc',), stdin=infile, stdout=Subcommand.PIPE)
         self.assertEqual(proc.returncode, 0)
-        self.assertEqual(proc.stdout.read(), ' 2  8 56\n')
+        self.assertEqual(proc.stdout.read().decode('UTF-8'), ' 2  8 56\n')
         inf = open(infile, 'rt')
         try:
             proc = Subcommand(('wc',), stdin=inf, stdout=Subcommand.PIPE)
             self.assertEqual(proc.returncode, 0)
             self.assertIs(proc.stdin, inf)
-            self.assertEqual(proc.stdout.read(), ' 2  8 56\n')
+            self.assertEqual(proc.stdout.read().decode('UTF-8'), ' 2  8 56\n')
         finally:
             inf.close()
     def test_stdout(self):
