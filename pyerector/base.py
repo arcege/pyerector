@@ -137,7 +137,7 @@ class Target(Initer):
             klass = registry[ktype]
             klasses = registry.get(ktype)
             for name in kset:
-                if ktype == 'Uptodate' and isinstance(name, klass):
+                if ktype == 'Mapper' and isinstance(name, klass):
                     # special case, allow direct instance of Uptodate
                     obj = name
                 elif isinstance(name, str) and name in klasses:
@@ -152,7 +152,7 @@ class Target(Initer):
                     )
                 obj.validate_tree()
         validate_class(klass.__name__, klass.dependencies, 'Target', 'dependency')
-        validate_class(klass.__name__, klass.uptodates, 'Uptodate', 'uptodate')
+        validate_class(klass.__name__, klass.uptodates, 'Mapper', 'uptodate')
         validate_class(klass.__name__, klass.tasks, 'Task', 'task')
     def call(self, name, klass, ktype, args=None):
         if (isinstance(name, type) and issubclass(name, klass)):
