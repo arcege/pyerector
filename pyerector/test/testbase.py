@@ -110,131 +110,6 @@ class TestIniter(TestCase):
                          [normjoin(self.dir, subdir, 'get_files_simple-bar'),
                           normjoin(self.dir, subdir, 'get_files_simple-t*')])
 
-'''
-class TestUptodate(TestCase):
-    #@unittest.skip('to fix Uptodate')
-    def _test_older(self):
-        #"""Test that newer files indeed do trigger the test."""
-        older = normjoin(self.dir, 'older-older')
-        newer = normjoin(self.dir, 'older-newer')
-        open(older, 'w').close()
-        open(newer, 'w').close()
-        now = time.time()
-        then = now - 600 # 10 minutes
-        os.utime(older, (then, then))
-        os.utime(newer, (now, now))
-        utd = Uptodate(basedir=self.dir)
-        utd.sources = (older,)
-        utd.destinations = (newer,)
-        self.assertTrue(utd())
-    #@unittest.skip('to fix Uptodate')
-    def _test_newer(self):
-        #"""Test that older files indeed do not trigger the test."""
-        older = normjoin(self.dir, 'newer-older')
-        newer = normjoin(self.dir, 'newer-newer')
-        open(older, 'w').close()
-        open(newer, 'w').close()
-        now = time.time()
-        then = now - 600 # 10 minutes
-        os.utime(older, (now, now))
-        os.utime(newer, (then, then))
-        utd = Uptodate(basedir=self.dir)
-        utd.sources = (older,)
-        utd.destinations = (newer,)
-        self.assertFalse(utd())
-    #@unittest.skip('to fix Uptodate')
-    def _test_same(self):
-        #"""Test that files of the same age do trigger the test."""
-        older = normjoin(self.dir, 'same-older')
-        newer = normjoin(self.dir, 'same-newer')
-        open(older, 'w').close()
-        open(newer, 'w').close()
-        now = time.time()
-        then = now  # no change
-        os.utime(older, (then, then))
-        os.utime(newer, (now, now))
-        utd = Uptodate(basedir=self.dir)
-        utd.sources = (older,)
-        utd.destinations = (newer,)
-        self.assertTrue(utd())
-    #@unittest.skip('to fix Uptodate')
-    def _test_multi_older(self):
-        #"""Test that files in directories are handled properly."""
-        older_d = normjoin(self.dir, 'multi_older-older')
-        newer_d = normjoin(self.dir, 'multi_older-newer')
-        os.mkdir(older_d)
-        os.mkdir(newer_d)
-        now = time.time()
-        then = now - 600 # 10 minutes
-        files = {older_d: [], newer_d: []}
-        for dir, when in ((older_d, then), (newer_d, now)):
-            for i in range(0, 3):
-                fn = normjoin(dir, str(i))
-                files[dir].append(fn)
-                open(fn, 'w').close()
-                os.utime(fn, (when-(i * 60), when-(i*60)))
-        utd = Uptodate(basedir=self.dir)
-        utd.sources = tuple(files[older_d])
-        utd.destinations = tuple(files[newer_d])
-        self.assertTrue(utd())
-    #@unittest.skip('to fix Uptodate')
-    def _test_multi_newer(self):
-        older_d = normjoin(self.dir, 'multi_newer-older')
-        newer_d = normjoin(self.dir, 'multi_newer-newer')
-        os.mkdir(older_d)
-        os.mkdir(newer_d)
-        now = time.time()
-        then = now - 600 # 10 minutes
-        files = {older_d: [], newer_d: []}
-        for dir, when in ((older_d, now), (newer_d, then)):
-            for i in range(0, 3):
-                fn = normjoin(dir, str(i))
-                files[dir].append(fn)
-                open(fn, 'w').close()
-                os.utime(fn, (when-(i * 60), when-(i*60)))
-        utd = Uptodate(basedir=self.dir)
-        utd.sources = tuple(files[older_d])
-        utd.destinations = tuple(files[newer_d])
-        self.assertFalse(utd())
-    #@unittest.skip('to fix Uptodate')
-    def _test_multi_same(self):
-        older_d = normjoin(self.dir, 'multi_same-older')
-        newer_d = normjoin(self.dir, 'multi_same-newer')
-        os.mkdir(older_d)
-        os.mkdir(newer_d)
-        now = time.time()
-        then = now - 600 # 10 minutes
-        files = {older_d: [], newer_d: []}
-        for dir, when in ((older_d, then), (newer_d, now)):
-            for i in range(0, 11, 5):
-                fn = normjoin(dir, str(i))
-                files[dir].append(fn)
-                open(fn, 'w').close()
-                os.utime(fn, (when-(i * 60), when-(i*60)))
-        utd = Uptodate(basedir=self.dir)
-        utd.sources = tuple(files[older_d])
-        utd.destinations = tuple(files[newer_d])
-        self.assertTrue(utd())
-    #@unittest.skip('to fix Uptodate')
-    def _test_multi_mixed(self):
-        older_d = normjoin(self.dir, 'multi_mixed-older')
-        newer_d = normjoin(self.dir, 'multi_mixed-newer')
-        os.mkdir(older_d)
-        os.mkdir(newer_d)
-        now = time.time()
-        then = now - 600 # 10 minutes
-        files = {older_d: [], newer_d: []}
-        for dir, when in ((older_d, now), (newer_d, then)):
-            for i in range(0, 16, 5):
-                fn = normjoin(dir, str(i))
-                files[dir].append(fn)
-                open(fn, 'w').close()
-                os.utime(fn, (when-(i * 60), when-(i*60)))
-        utd = Uptodate(basedir=self.dir)
-        utd.sources = tuple(files[older_d])
-        utd.destinations = tuple(files[newer_d])
-        self.assertFalse(utd())
-'''
 
 class TestBeenCalled(Target):
     allow_reexec = False
@@ -306,11 +181,8 @@ class TestTarget_functionality(TestCase):
         target = NothingTarget(basedir=self.dir)
         self.assertIsNone(NothingTarget.validate_tree())
         self.assertIsNone(target())
-    #@unittest.skip("failing...")
-    def _test_call_uptodate(self):
+    def test_call_uptodate(self):
         open(normjoin(self.dir, 'call_uptodate.older'), 'w').close()
-        #time.sleep(0.2)
-        debug(normjoin(self.dir, 'call_uptodate.newer'))
         open(normjoin(self.dir, 'call_uptodate.newer'), 'w').close()
         utd = TestCallUptodate_utd(basedir=self.dir)
         self.assertTrue(utd())
@@ -339,12 +211,12 @@ class TestTarget_functionality(TestCase):
         target = TestE2E_T(basedir=self.dir)
         self.assertIsNone(target())
         # not testing what I think should be tested
-        #self.assertEqual(round(t1, 4),
-        #    round(os.path.getmtime(normjoin(self.dir, 'e2e_t1')), 4)
-        #)
-        #self.assertEqual(round(t2, 4),
-        #    round(os.path.getmtime(normjoin(self.dir, 'e2e_t2')), 4)
-        #)
+        self.assertEqual(round(t1, 4),
+            round(os.path.getmtime(normjoin(self.dir, 'e2e_t1')), 4)
+        )
+        self.assertEqual(round(t2, 4),
+            round(os.path.getmtime(normjoin(self.dir, 'e2e_t2')), 4)
+        )
 
 class TestTask(TestCase):
     def test_instantiation(self):

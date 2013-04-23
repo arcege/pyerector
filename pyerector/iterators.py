@@ -292,24 +292,27 @@ class Uptodate(FileMapper):
     sources = ()
     destinations = ()
     def __call__(self, *args):
-        debug('%s.__call__(*%s)' % (self.__class__.__name__, args))
         klsname = self.__class__.__name__
+        debug('%s.__call__(*%s)' % (klsname, args))
         srcs = self.get_kwarg('sources', (list, tuple, Iterator))
         dsts = self.get_kwarg('destinations', (list, tuple, Iterator))
-        if not self.files and (not srcs or not dsts):
+        files = self.get_args('files')
+        #debug('srcs =', srcs, 'dsts =', dsts, 'files =', files)
+        if not files and (not srcs or not dsts):
             debug(klsname, '*>', False)
             return False
-        if srcs and dsts:
+        elif srcs and dsts:
             def get_times(lst, s=self):
                 return [os.path.getmtime(s.join(f)) for f in lst]
             maxval = float('inf')
-            lastest_src = reduce(max, get_times(self.get_files(srcs)), 0)
-            earliest_dst = reduce(max, get_times(self.get_files(dsts)), maxval)
+            latest_src = reduce(max, get_times(self.get_files(srcs)), 0)
+            earliest_dst = reduce(min, get_times(self.get_files(dsts)), maxval)
             if earliest_dst == maxval: # empty list case
                 return False
             result = round(earliest_dst, 4) >= round(latest_src, 4)
             debug(klsname, '=>', result and 'False' or 'True')
             return result
         else:
+            raise RuntimeError('call uptodate()')
             return self.uptodate()
 
