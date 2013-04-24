@@ -20,7 +20,7 @@ from pyerector import normjoin, verbose, debug, noop
 from pyerector.helper import normjoin, Verbose
 from pyerector.config import Config
 from pyerector.exception import Error
-from pyerector.base import Initer, Target, Task
+from pyerector.base import Initer, Target, Task, Iterator
 from pyerector.targets import *
 from pyerector.tasks import *
 from pyerector.iterators import Uptodate
@@ -66,49 +66,50 @@ class TestIniter(TestCase):
         self.assertEqual(str(exc), "Must supply str to 'foobar' in 'Initer'")
     def test_get_files_simple(self):
         #"""Retrieve files in basedir properly."""
-        obj = Initer(basedir=self.dir)
+        subdir = normjoin(self.dir, 'get_files_simple')
+        os.mkdir(subdir)
+        obj = Initer(basedir=subdir)
         # no files
-        self.assertEqual(list(obj.get_files(('get_files_simple-*',))), [])
-        subdir = os.curdir
+        self.assertEqual(list(obj.get_files(('*',))), [])
         for n in ('bar', 'far', 'tar'):
-            fn = normjoin(self.dir, 'get_files_simple-%s' % n)
+            fn = normjoin(subdir, '%s' % n)
             open(fn, 'w').close()
-        debug('files are', os.listdir(self.dir))
+        debug('files in', subdir, 'are', os.listdir(subdir))
         # test simple glob
-        self.assertEqual(sorted(obj.get_files(('get_files_simple-*',))),
-                         [normjoin(subdir, 'get_files_simple-bar'),
-                          normjoin(subdir, 'get_files_simple-far'),
-                          normjoin(subdir, 'get_files_simple-tar')])
+        self.assertEqual(sorted(obj.get_files(('*',))),
+                         ['bar',
+                          'far',
+                          'tar'])
         # test single file
-        self.assertEqual(list(obj.get_files(('get_files_simple-bar',))),
-                         [normjoin(subdir, 'get_files_simple-bar')])
+        self.assertEqual(list(obj.get_files(('bar',))),
+                         ['bar'])
         # test single file, no glob
-        self.assertEqual(list(obj.get_files(('get_files_simple-tar',), noglob=True)),
-                         [normjoin(subdir, 'get_files_simple-tar')])
+        self.assertEqual(list(obj.get_files(('tar',), noglob=True)),
+                         ['tar'])
         # test simple file tuple, with glob
-        self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-tar'))),
-                         [normjoin(subdir, 'get_files_simple-bar'),
-                          normjoin(subdir, 'get_files_simple-tar')])
+        self.assertEqual(sorted(obj.get_files(('bar', 'tar'))),
+                         ['bar',
+                          'tar'])
         # test glob file tuple, with glob
-        self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-t*'))),
-                         [normjoin(subdir, 'get_files_simple-bar'),
-                          normjoin(subdir, 'get_files_simple-tar')])
+        self.assertEqual(sorted(obj.get_files(('bar', 't*'))),
+                         ['bar',
+                          'tar'])
     #@unittest.skip('noglob not working from this level')
     def _test_get_files_noglob(self):
         #"""Retrieve files in basedir properly."""
-        obj = Initer(basedir=self.dir)
-        subdir = '.'
+        subdir = normjoin(self.dir, 'get_files_noglob')
+        os.mkdir(subdir)
+        obj = Initer(basedir=subdir)
         #open(normjoin(self.dir, subdir, 'get_files_simple-*'), 'wt')
-        open(normjoin(self.dir, subdir, 'get_files_simple-bar'), 'wt')
+        open(normjoin(subdir, 'bar'), 'wt')
         # test glob pattern against noglob
-        self.assertEqual(list(obj.get_files(('get_files_simple-*',),
+        self.assertEqual(list(obj.get_files(('*',),
                                             noglob=True)),
-                         [normjoin(subdir, 'get_files_simple-*')])
-        # test globl file tuple, no glob
-        self.assertEqual(sorted(obj.get_files(('get_files_simple-bar', 'get_files_simple-t*'),
+                         ['bar', '*'])
+        # test glob file tuple, no glob
+        self.assertEqual(sorted(obj.get_files(('bar', 't*'),
                                               noglob=True)),
-                         [normjoin(self.dir, subdir, 'get_files_simple-bar'),
-                          normjoin(self.dir, subdir, 'get_files_simple-t*')])
+                         ['bar', 't*'])
 
 
 class TestBeenCalled(Target):
@@ -116,7 +117,7 @@ class TestBeenCalled(Target):
 class TestUptodate_utd(Uptodate):
     pass
 class TestCallUptodate_utd(Uptodate):
-    sources = ('call_uptodate,older',)
+    sources      = ('call_uptodate.older',)
     destinations = ('call_uptodate.newer',)
 class TestCallUptodate_T(Target):
     uptodates = (TestCallUptodate_utd,)
@@ -185,7 +186,8 @@ class TestTarget_functionality(TestCase):
         open(normjoin(self.dir, 'call_uptodate.older'), 'w').close()
         open(normjoin(self.dir, 'call_uptodate.newer'), 'w').close()
         utd = TestCallUptodate_utd(basedir=self.dir)
-        self.assertTrue(utd())
+        result = utd()
+        self.assertTrue(result)
         target = TestCallUptodate_T(basedir=self.dir)
         self.assertTrue(target.call(TestCallUptodate_utd, Uptodate, 'uptodate'))
     def test_call_task(self):

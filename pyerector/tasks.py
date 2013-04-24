@@ -150,10 +150,11 @@ contents of foobar.txt.  By default, generates for both md5 and sha1."""
                 h = md5()
             elif dname.endswith('.sha1') and 'sha1' in hashs:
                 h = sha1()
-            if h and os.path.isfile(sname) and not fmap.checkpair(sname, dname):
-                h.update(open(sname, 'rb').read())
+            if (h and os.path.isfile(sname) and
+                not fmap.checkpair(self.join(sname), self.join(dname))):
+                h.update(open(self.join(sname), 'rb').read())
                 verbose('writing', dname)
-                open(dname, 'wt').write(h.hexdigest() + '\n')
+                open(self.join(dname), 'wt').write(h.hexdigest() + '\n')
 
 class Java(Task):
     """Call a Java routine."""
@@ -233,7 +234,7 @@ class PyCompile(Task):
         if self.version[:1] == sys.version[:1]:  # compile inline
             for s in fileset:
                 debug('py_compile.compile(%s)' % s)
-                py_compile.compile(s)
+                py_compile.compile(self.join(s))
         else:
             if self.version[:1] == '2':
                 cmd = 'python2'
@@ -243,7 +244,7 @@ class PyCompile(Task):
                 cmd, '-c',
                 'import sys; from py_compile import compile; ' +
                 '[compile(s) for s in sys.argv[1:]]'
-            ) + tuple(fileset)
+            ) + tuple([self.join(s) for s in fileset])
             try:
                 proc = Subcommand(cmdp)
             except Error:
@@ -263,8 +264,9 @@ class Remove(Task):
     files = ()
     noglob = False
     def run(self):
-        for fname in self.get_files(self.get_args('files'), self.noglob):
-            self.asserttype(fname, str, 'files')
+        for name in self.get_files(self.get_args('files'), self.noglob):
+            self.asserttype(name, str, 'files')
+            fname = self.join(name)
             if os.path.isfile(fname) or os.path.islink(fname):
                 verbose('remove(' + str(fname) + ')')
                 os.remove(fname)
@@ -311,9 +313,9 @@ class Spawn(Task):
     errfile = None
     env = {}
     def run(self):
-        infile = self.get_kwarg('infile', str)
-        outfile = self.get_kwarg('outfile', str)
-        errfile = self.get_kwarg('errfile', str)
+        infile = self.join(self.get_kwarg('infile', str))
+        outfile = self.join(self.get_kwarg('outfile', str))
+        errfile = self.join(self.get_kwarg('errfile', str))
         env = self.get_kwarg('env', dict)
         cmd = self.get_args('cmd')
         rc = Subcommand(cmd, env=env,
@@ -341,7 +343,7 @@ class Tar(Container):
                         str(fname) + ', ' +
                         str(fn) + ')'
                 )
-                file.add(fname, fn)
+                file.add(self.join(fname), fn)
             file.close()
 
 class Tokenize(Task):
@@ -580,7 +582,7 @@ class Uncontainer(Task):
         name = self.get_kwarg('name', str, noNone=True)
         root = self.get_kwarg('root', str)
         self.asserttype(root, str, 'root')
-        files = tuple(self.get_args('files'))
+        files = self.get_args('files')
         try:
             contfile = self.get_file(name)
         except IOError:
@@ -597,6 +599,7 @@ class Untar(Uncontainer):
         return open(self.join(fname), 'r:gz')
     def retrieve_members(self, contfile, files):
         fileset = []
+        files = tuple(files) # needed for contents test
         for member in contfile.getmembers():
             if (member.name.startswith(os.sep) or
                 member.name.startswith(os.pardir)):
@@ -616,6 +619,7 @@ class Unzip(Uncontainer):
         return ZipFile(self.join(fname), 'r')
     def retrieve_members(self, contfile, files):
         fileset = []
+        files = tuple(files) # needed for contents test
         for member in contfile.namelist():
             if member.startswith(os.sep) or member.startswith(os.pardir):
                 pass

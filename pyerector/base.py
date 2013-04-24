@@ -52,8 +52,11 @@ class Initer(Base):
                     self.kwargs['noglob']) or
                 (hasattr(self, 'noglob') and self.noglob))
     def get_files(self, files=None, noglob=None):
-        if not files:
-            files = self.files
+        if files is None:
+            try:
+                files = self.files
+            except AttributeError:
+                files = ()
         if isinstance(files, Iterator):
             return files
         else:
@@ -259,8 +262,8 @@ class Task(Initer):
 
 class Iterator(Initer):
     def __init__(self, *path, **kwargs):
-        from .helper import Exclusions
         super(Iterator, self).__init__(*path, **kwargs)
+        from .helper import Exclusions
         exclude = self.get_kwarg('exclude',
                     (Exclusions, set, str, tuple, list, type(None))
         )

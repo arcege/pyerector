@@ -75,10 +75,12 @@ class StaticIterator(Iterator):
                 return item
     def getnextset(self):
         while True:
+            debug('poolpos =', self.poolpos, 'pool =', self.pool)
             if self.poolpos >= len(self.pool):
                 raise StopIteration
             self.curpoolitem = self.pool[self.poolpos]
             self.poolpos += 1
+            debug('calling %s.glob(%s)' % (self, self.curpoolitem))
             self.curpoolset = self.glob(self.curpoolitem)
             self.setpos = 0
             if self.curpoolset:
@@ -92,11 +94,13 @@ class FileIterator(StaticIterator):
         # separator
         # XXX should we be returning an iter() object?
         if isinstance(pattern, Iterator): # an iterator, so convert to a list
+            debug('%s.pattern is iterator', pattern)
             return list(pattern)
         base = os.path.join(self.config.basedir, '')
         files = glob.glob(self.join(pattern))
+        base = os.path.dirname(os.path.commonprefix(files))
         debug('%s.glob(%s) = %s' % (self.__class__.__name__, self.join(pattern), files))
-        return [name.replace(base, '') for name in files]
+        return [name.replace(base + os.sep, '') for name in files]
 
 class FileList(FileIterator):
     def __init__(self, *args, **kwargs):
@@ -294,8 +298,8 @@ class Uptodate(FileMapper):
     def __call__(self, *args):
         klsname = self.__class__.__name__
         debug('%s.__call__(*%s)' % (klsname, args))
-        srcs = self.get_kwarg('sources', (list, tuple, Iterator))
-        dsts = self.get_kwarg('destinations', (list, tuple, Iterator))
+        srcs = FileIterator(self.get_kwarg('sources', (list, tuple, Iterator)))
+        dsts = FileIterator(self.get_kwarg('destinations', (list, tuple, Iterator)))
         files = self.get_args('files')
         #debug('srcs =', srcs, 'dsts =', dsts, 'files =', files)
         if not files and (not srcs or not dsts):
@@ -305,9 +309,10 @@ class Uptodate(FileMapper):
             def get_times(lst, s=self):
                 return [os.path.getmtime(s.join(f)) for f in lst]
             maxval = float('inf')
-            latest_src = reduce(max, get_times(self.get_files(srcs)), 0)
-            earliest_dst = reduce(min, get_times(self.get_files(dsts)), maxval)
+            latest_src = reduce(max, get_times(srcs), 0)
+            earliest_dst = reduce(min, get_times(dsts), maxval)
             if earliest_dst == maxval: # empty list case
+                debug(klsname, '/> False')
                 return False
             result = round(earliest_dst, 4) >= round(latest_src, 4)
             debug(klsname, '=>', result and 'False' or 'True')
