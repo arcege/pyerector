@@ -98,9 +98,8 @@ class FileIterator(StaticIterator):
             return list(pattern)
         base = os.path.join(self.config.basedir, '')
         files = glob.glob(self.join(pattern))
-        base = os.path.dirname(os.path.commonprefix(files))
         debug('%s.glob(%s) = %s' % (self.__class__.__name__, self.join(pattern), files))
-        return [name.replace(base + os.sep, '') for name in files]
+        return [name.replace(base, '') for name in files]
 
 class FileList(FileIterator):
     def __init__(self, *args, **kwargs):
