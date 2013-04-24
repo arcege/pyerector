@@ -313,18 +313,21 @@ class Spawn(Task):
     errfile = None
     env = {}
     def run(self):
-        infile = self.join(self.get_kwarg('infile', str))
-        outfile = self.join(self.get_kwarg('outfile', str))
-        errfile = self.join(self.get_kwarg('errfile', str))
+        infile = self.get_kwarg('infile', str)
+        outfile = self.get_kwarg('outfile', str)
+        errfile = self.get_kwarg('errfile', str)
+        infile = infile and self.join(infile) or None
+        outfile = outfile and self.join(outfile) or None
+        errfile = errfile and self.join(errfile) or None
         env = self.get_kwarg('env', dict)
         cmd = self.get_args('cmd')
         rc = Subcommand(cmd, env=env,
                 stdin=infile, stdout=outfile, stderr=errfile,
         )
         if rc.returncode < 0:
-            raise Error('%s signal %d raised' % (str(self), abs(rc.returncode)))
-        elif rc > 0:
-            raise Error('%s returned error = %d' % (self(self), rc.returncode))
+            raise Error('Subcommand', '%s signal %d raised' % (str(self), abs(rc.returncode)))
+        elif rc.returncode > 0:
+            raise Error('Subcommand', '%s returned error = %d' % (str(self), rc.returncode))
 
 class Tar(Container):
     """Generate a 'tar' archive file."""
