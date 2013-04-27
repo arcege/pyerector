@@ -14,7 +14,7 @@ from .variables import VariableSet
 
 
 __all__ = [
-    'Chmod', 'Copy', 'CopyTree', 'HashGen', 'Java', 'Mkdir',
+    'Chmod', 'Copy', 'CopyTree', 'Egg', 'HashGen', 'Java', 'Mkdir',
     'PyCompile', 'Remove', 'Shebang', 'Spawn', 'Tar', 'Tokenize',
     'Unittest', 'Untar', 'Unzip', 'Zip',
 ]
@@ -44,6 +44,7 @@ class Container(Task):
         excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
+        self.preop(name, root, excludes)
         toadd = []
         from glob import glob
         queue = list(self.get_args('files'))
@@ -58,7 +59,18 @@ class Container(Task):
                 elif os.path.isdir(fn):
                     fnames = [os.path.join(fn, f) for f in os.listdir(fn)]
                     queue.extend(fnames)
+        #verbose('toadd =', toadd)
+        self.manifest(name, root, toadd)
         self.contain(name, root, toadd)
+        self.postop(name, root, toadd)
+    def preop(self, name, root, excludes):
+        pass
+    def postop(self, name, root, excludes):
+        pass
+    def manifest(self, name, root, toadd):
+        pass
+    def contain(self, name, root, toadd):
+        pass
 
 class Copy(Task):
     """Copy files to a destination directory. Exclude standard hidden
@@ -653,4 +665,89 @@ class Zip(Container):
                 verbose('zip.add(' + str(fname) + ',' + str(fn) + ')' )
                 file.write(fname, fn)
             file.close()
+
+class Egg(Zip):
+    def manifest(self, name, root, toadd):
+        if os.path.exists(os.path.join(root, 'setup.py')):
+            setupvalue = self.get_setup_py(os.path.join(root, 'setup.py'))
+        else:
+            raise Error('Egg', 'unable to find a setup.py file')
+        pkg_data = {
+            'classifiers': '',
+        }
+        for key in sorted(setupvalue):
+            if key == 'classifiers':
+                pkg_data[key] = '\n'.join(
+                    ['Classifier: %s' % c for c in setupvalue[key]]
+                )
+            else:
+                pkg_data[key] = setupvalue[key]
+        pkg_info = '''\
+Metadata-Version: 1.1
+Name: %(name)s
+Version: %(version)s
+Summary: %(description)s
+Home-page: %(url)s
+Author: %(author)s
+Author-email: %(author_email)s
+License: %(license)s
+Download-URL: %(download_url)s
+Description: %(long_description)s
+Platform: UNKNOWN
+%(classifiers)s
+''' % pkg_data
+        try:
+            os.mkdir(os.path.join(root, 'EGG-INFO'))
+        except OSError:
+            pass
+        open(os.path.join(root, 'EGG-INFO', 'PKG-INFO'), 'wt').write(pkg_info)
+        for fn in ('dependency_links.txt', 'zip-safe'):
+            open(os.path.join(root, 'EGG-INFO', fn), 'wt').write(os.linesep)
+        open(os.path.join(root, 'EGG-INFO', 'top_level.txt'), 'wt').write(
+                'pyerector' + os.linesep
+        )
+        open(os.path.join(root, 'EGG-INFO', 'SOURCES.txt'), 'wt').write(
+            '\n'.join(sorted([s.replace(root+os.sep, '') for s in toadd]))
+        )
+        verbose('toadd =', toadd)
+        toadd.extend(
+            [os.path.join(root, 'EGG-INFO', 'PKG-INFO'),
+             os.path.join(root, 'EGG-INFO', 'dependency_links.txt'),
+             os.path.join(root, 'EGG-INFO', 'zip-safe'),
+             os.path.join(root, 'EGG-INFO', 'top_level.txt'),
+             os.path.join(root, 'EGG-INFO', 'SOURCES.txt')
+            ]
+        )
+
+    def get_setup_py(self, filename):
+        # simulate setup() in a fake distutils and setuptools
+        import imp, sys
+        backups = {}
+        script='''
+def setup(**kwargs):
+    global myvalue
+    myvalue = dict(kwargs)
+'''
+        code = compile(script, 'setuptools.py', 'exec')
+        try:
+            for modname in ('setuptools', 'distutils'):
+                if modname in sys.modules:
+                    backups[modname] = sys.modules[modname]
+                else:
+                    backups[modname] = None
+                mod = sys.modules[modname] = imp.new_module(modname)
+                exec(code, mod.__dict__, mod.__dict__)
+            mod = {'__builtins__': __builtins__, 'myvalue': None}
+            execfile(filename, mod, mod)
+            for modname in ('setuptools', 'distutils'):
+                if sys.modules[modname].myvalue is not None:
+                    return sys.modules[modname].myvalue
+            else:
+                return None
+        finally:
+            for modname in backups:
+                if backups[modname] is None:
+                    del sys.modules[modname]
+                else:
+                    sys.modules[modname] = backups[modname]
 

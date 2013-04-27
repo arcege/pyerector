@@ -64,16 +64,16 @@ class Cleantest(Target):
     )
 class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
-    directories = (os.curdir,
-            'pyerector', 'pyerector/py2', 'pyerector/py3',
-            'pyerector/vcs', 'pyerector/test'
+    directories = (
+            os.curdir, 'pyerector', 'pyerector/test'
+            'pyerector/py2', 'pyerector/py3', 'pyerector/vcs',
     )
     dontexclude = Exclusions(usedefaults=False)
     tasks = (
-        Remove(files=(
+        Remove(
             FileIterator(directories, pattern='*.pyc', exclude=dontexclude),
             FileIterator(directories, pattern='__pycache__', exclude=dontexclude),
-        )),
+        ),
     )
     dependencies = (Clean,)
 class Localtest(Target):
@@ -81,6 +81,7 @@ class Localtest(Target):
     tasks = (
         Untar(root='testdir/tar', name='dist/%s.tgz' % distfile),
         Unzip(root='testdir/zip', name='dist/%s.zip' % distfile),
+        Unzip(root='testdir/egg', name='dist/%s.egg' % distfile)
     )
     dependencies = (InitDirs, Packaging,)
 
@@ -89,14 +90,20 @@ Clean.files = ('build', 'dist', 'MANIFEST')
 Clean.dependencies = (Cleantest,)
 InitDirs.files = (
     normjoin('build', distfile), 'dist',
-    'testdir/zip', 'testdir/tar'
+    'testdir/egg', 'testdir/zip', 'testdir/tar',
 )
 Compile.dependencies = (PreCompile,)
 Distlist = StaticIterator([distfile])
 Packaging.tasks = (
     Zip(name='dist/%s.zip' % distfile, files=Distlist, root='build'),
     Tar(name='dist/%s.tgz' % distfile, files=Distlist, root='build'),
-    HashGen('dist/%s.zip' % distfile, 'dist/%s.tgz' % distfile),
+    Egg(name='dist/%s.egg' % distfile, files=('*',),
+        root=normjoin('build', distfile)),
+    HashGen(
+        'dist/%s.egg' % distfile,
+        'dist/%s.zip' % distfile,
+        'dist/%s.tgz' % distfile,
+    ),
 )
 
 PyErector()

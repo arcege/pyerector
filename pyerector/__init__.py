@@ -53,6 +53,7 @@ __all__ = [
     'Chmod',
     'Copy',
     'CopyTree',
+    'Egg',
     'HashGen',
     'Java',
     'Mkdir',
