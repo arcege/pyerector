@@ -264,7 +264,7 @@ class Remove(Task):
     files = ()
     noglob = False
     def run(self):
-        for name in self.get_files(self.get_args('files'), self.noglob):
+        for name in self.get_files(self.get_args('files')):
             self.asserttype(name, str, 'files')
             fname = self.join(name)
             if os.path.isfile(fname) or os.path.islink(fname):

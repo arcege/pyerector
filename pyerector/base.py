@@ -51,7 +51,7 @@ class Initer(Base):
         return ((hasattr(self, 'kwargs') and 'noglob' in  self.kwargs and
                     self.kwargs['noglob']) or
                 (hasattr(self, 'noglob') and self.noglob))
-    def get_files(self, files=None, noglob=None):
+    def get_files(self, files=None):
         if files is None:
             try:
                 files = self.files

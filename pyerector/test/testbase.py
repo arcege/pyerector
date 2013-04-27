@@ -84,8 +84,10 @@ class TestIniter(TestCase):
         self.assertEqual(list(obj.get_files(('bar',))),
                          ['bar'])
         # test single file, no glob
-        self.assertEqual(list(obj.get_files(('tar',), noglob=True)),
+        obj.noglob=True
+        self.assertEqual(list(obj.get_files(('tar',))),
                          ['tar'])
+        obj.noglob=False
         # test simple file tuple, with glob
         self.assertEqual(sorted(obj.get_files(('bar', 'tar'))),
                          ['bar',
