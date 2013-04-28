@@ -294,16 +294,27 @@ class Remove(Task):
 class Shebang(Copy):
     """Replace the shebang string with a specific pathname."""
     files = ()
+    dest = None
     token = '#!'
+    program = None
     def run(self):
         verbose('starting Shebang')
         program = self.get_kwarg('program', str, noNone=True)
         srcs = self.get_files(self.get_args('files'))
+        dest = self.get_kwarg('dest', str)
         try:
             from io import BytesIO as StringIO
         except ImportError:
             from StringIO import StringIO
         for fname in srcs:
+            infname = self.join(fname)
+            head = infname.replace(fname, '')
+            if dest is None:
+                outfname = infname
+            else:
+                outfname = self.join(
+                    dest, fname.replace(head, '')
+                )
             inf = open(self.join(fname), 'r')
             outf = StringIO()
             first = inf.readline()
@@ -316,10 +327,10 @@ class Shebang(Copy):
                 outf.write(first)
             else:
                 outf.write(first)
-            copyfileobj(inf, outf)
+            shutil.copyfileobj(inf, outf)
             inf.close()
             outf.seek(0)
-            inf = open(self.join(fname), 'w')
+            inf = open(outfname, 'w')
             shutil.copyfileobj(outf, inf)
 
 class Spawn(Task):
