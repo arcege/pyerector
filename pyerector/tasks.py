@@ -12,6 +12,11 @@ from . import debug, verbose, warn, hasformat
 from .iterators import FileMapper, MergeMapper, StaticIterator
 from .variables import VariableSet
 
+# Python 3.x removed the execfile function
+try:
+    execfile
+except NameError:
+    from .py3.execfile import execfile
 
 __all__ = [
     'Chmod', 'Copy', 'CopyTree', 'Egg', 'HashGen', 'Java', 'Mkdir',
