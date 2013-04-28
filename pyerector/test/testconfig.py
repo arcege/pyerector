@@ -29,9 +29,8 @@ class TestConfig(TestCase):
         self.assertEqual(c._basedir, self.dir)
     def test_property_set_None(self):
         c = Config()
-        with self.assertRaises(AttributeError):
-            c.basedir = None
-            self.assertEqual(c._basedir, self.thisdir)
+        c.basedir = None
+        self.assertEqual(c._basedir, self.thisdir)
     def test_property_set_notdir(self):
         c = Config()
         with self.assertRaises(ValueError):

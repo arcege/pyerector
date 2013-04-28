@@ -20,6 +20,8 @@ class Config(object):
         return self._basedir
     def _set_basedir(self, value):
         from . import debug
+        if value is None:
+            value = os.curdir
         dir = os.path.realpath(value)
         if dir == self._basedir:  # no change
             return
