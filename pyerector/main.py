@@ -5,7 +5,7 @@ import sys
 import traceback
 from .exception import Error, extract_tb
 from .helper import Timer
-from . import verbose, debug, noop
+from . import display, verbose, debug, noop
 from .register import registry
 from .base import Initer, Target, Task
 from .version import get_version, get_release
@@ -96,7 +96,7 @@ class PyErector(object):
                 traceback.print_list(exclist)
             lines = traceback.format_exception_only(t, e)
             for line in lines:
-                print(line)
+                display(line.rstrip())
         else:
             e = sys.exc_info()[1]
             if text:

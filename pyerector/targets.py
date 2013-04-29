@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from . import hasformat
+from . import hasformat, display
 from .register import registry
 from .base import Target
 from .tasks import Mkdir, Remove, Unittest
@@ -28,13 +28,13 @@ class Help(Target):
     def run(self):
         for name, obj in sorted(registry.get('Target').items()):
             if hasformat:
-                print('{0:20}  {1}'.format(
+                display('{0:20}  {1}'.format(
                         obj.__name__.lower(),
                         obj.__doc__ or ""
                     )
                 )
             else:
-                print('%-20s  %s' % (obj.__name__.lower(), obj.__doc__ or ""))
+                display('%-20s  %s' % (obj.__name__.lower(), obj.__doc__ or ""))
 class Clean(Target):
     """Clean directories and files used by the build"""
     files = ()

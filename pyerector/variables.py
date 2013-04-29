@@ -10,7 +10,7 @@ Usage:
     print Variable('name')
 """
 
-from . import debug
+from . import display, debug
 from .exception import Error
 
 __all__ = [
@@ -55,7 +55,7 @@ class VariableSet(dict):
     def add(self, var):
         if not isinstance(var, Variable):
             var = Variable(var)
-        #print('%s.add(%s)' % (self.__class__.__name__, repr(var)))
+        #display('%s.add(%s)' % (self.__class__.__name__, repr(var)))
         super(VariableSet, self).__setitem__(var, var)
     def __getitem__(self, item):
         if not isinstance(item, Variable):
@@ -66,7 +66,7 @@ class VariableSet(dict):
             item = Variable(item)
         if item not in self:
             self.add(item)
-        #print('setitem(%s, %s)' % (repr(item), repr(value)))
+        #display('setitem(%s, %s)' % (repr(item), repr(value)))
         if item is not value: # didn't pass in the same object
             self[item].value = value
     def __delitem__(self, item):
