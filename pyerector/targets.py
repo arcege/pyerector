@@ -27,14 +27,19 @@ class Help(Target):
     """This information"""
     def run(self):
         for name, obj in sorted(registry.get('Target').items()):
+            # use display.write to get around --quiet option
+            if name[1:].lower() != name[1:]:
+                continue
             if hasformat:
-                display('{0:20}  {1}'.format(
+                display.write('{0:20}  {1}'.format(
                         obj.__name__.lower(),
                         obj.__doc__ or ""
                     )
                 )
             else:
-                display('%-20s  %s' % (obj.__name__.lower(), obj.__doc__ or ""))
+                display.write(
+                    '%-20s  %s' % (obj.__name__.lower(), obj.__doc__ or "")
+                )
 class Clean(Target):
     """Clean directories and files used by the build"""
     files = ()

@@ -11,7 +11,7 @@ if version[0] > '2': # python 3+
     from .py3.base import Base
 else:
     from .py2.base import Base
-from . import debug, verbose, noop
+from . import debug, display, noop
 from .helper import normjoin, u, Timer
 from .register import registry
 from .exception import Error
@@ -228,7 +228,7 @@ class Target(Initer):
         pass
     def verbose(self, *args):
         msg = u('%s: %s' % (str(self), ' '.join(str(s) for s in args)))
-        verbose.write(msg)
+        display(msg)
 
 # Tasks
 class Task(Initer):

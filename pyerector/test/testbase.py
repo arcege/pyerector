@@ -16,7 +16,7 @@ from .base import PyVersionCheck, TestCase
 
 PyVersionCheck()
 
-from pyerector import normjoin, verbose, debug, noop
+from pyerector import normjoin, verbose, display, debug, noop
 from pyerector.helper import normjoin, Verbose
 from pyerector.config import Config
 from pyerector.exception import Error
@@ -156,6 +156,7 @@ class TestTarget_basics(TestCase):
     def setUp(self):
         self.realstream = verbose.stream
         verbose.stream = StringIO()
+        display.stream = verbose.stream
         self.realverbose = verbose.state
         self.realdebug = debug.state
     def tearDown(self):
@@ -173,7 +174,7 @@ class TestTarget_basics(TestCase):
         target = Target()
         target.verbose('hi there')
         self.assertEqual(verbose.stream.getvalue(), 'Target: hi there\n')
-        verbose.stream = StringIO()
+        display.stream = StringIO()
         target.verbose('hi', 'there')
         self.assertEqual(verbose.stream.getvalue(), 'Target: hi there\n')
 

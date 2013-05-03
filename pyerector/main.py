@@ -18,7 +18,9 @@ __all__ = [
 class PyErector(object):
     try:
         import argparse
-        parser = argparse.ArgumentParser(description='Pyerector build system')
+        parser = argparse.ArgumentParser(
+            description='Pyerector build system; '
+                'use the "help" target for more information')
         del argparse
         parser.add_argument('targets', metavar='TARGET', nargs='*',
                             help='name of target to call, default is "default"')
@@ -26,25 +28,33 @@ class PyErector(object):
                             help='base directory')
         parser.add_argument('--dry-run', '-N', dest='noop', action='store_true',
                             help='do not perform operations')
+        parser.add_argument('--quiet', '-q', action='store_true',
+                            help='less output')
         parser.add_argument('--verbose', '-v', action='store_true',
                             help='more verbose output')
         parser.add_argument('--version', '-V', action='store_true',
                             help='show version information')
         parser.add_argument('--notimer', action='store_true',
                             help='do not show timing information')
+        parser.add_argument('--DEBUG', action='store_true')
     except ImportError:
         import optparse
-        parser = optparse.OptionParser(description='Pyerector build system')
+        parser = optparse.OptionParser(
+                description='Pyerector build system; '
+                    'use the "help" target for more information')
         del optparse
         parser.add_option('--directory', '-d', help='base directory')
         parser.add_option('--dry-run', '-N', dest='noop', action='store_true',
                           help='do not perform operations')
+        parser.add_option('--quiet', '-q', action='store_true',
+                          help='less output')
         parser.add_option('--verbose', '-v', action='store_true',
                           help='more verbose output')
         parser.add_option('--version', '-V', action='store_true',
                           help='show version information')
         parser.add_option('--notimer', action='store_true',
                           help='do not show timing information')
+        parser.add_option('--DEBUG', action='store_true')
     def __init__(self, *args):
         self.basedir = None
         self.targets = []
@@ -63,13 +73,20 @@ class PyErector(object):
             pyerector.noTimer = True
         if args.verbose:
             verbose.on()
+        if args.DEBUG:
+            debug.on()
+        # check --quiet after --verbose
+        if args.quiet:
+            display.off()
+            verbose.off()
+            debug.off()
         if args.noop:
             noop.on()
         if args.version:
             if verbose:
-                sys.stdout.write('%s %s\n' % (get_release(), get_version()))
+                display('%s %s\n' % (get_release(), get_version()))
             else:
-                sys.stdout.write('%s\n' % get_release())
+                display('%s\n' % get_release())
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
@@ -129,9 +146,9 @@ class PyErector(object):
                     self.handle_error()
         import pyerector
         if pyerector.noTimer:
-            verbose.write('Done.')
+            display('Done.')
         else:
-            verbose.write('Done. (%0.3f)' % timer)
+            display('Done. (%0.3f)' % timer)
 
 pymain = PyErector
 
