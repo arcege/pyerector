@@ -9,6 +9,7 @@ from . import display, verbose, debug, noop
 from .register import registry
 from .base import Initer, Target, Task
 from .version import get_version, get_release
+from .variables import Variable
 
 __all__ = [
     'PyErector', 'pymain',
@@ -59,8 +60,11 @@ class PyErector(object):
         self.basedir = None
         self.targets = []
         self.arguments(args or sys.argv[1:])
+        self.initialize_variables()
         self.validate_targets()
         self.run()
+    def initialize_variables(self):
+        Variable('basedir', Initer.config.basedir)
     def arguments(self, args):
         global verbose, noop
         args = self.parser.parse_args(args)
@@ -90,7 +94,10 @@ class PyErector(object):
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
-            Initer.config.basedir = args.directory
+        else:
+            import os
+            self.basedir = os.curdir
+        Initer.config.basedir = self.basedir
         if args.targets:
             self.targets = []
             all_targets = registry.get('Target')

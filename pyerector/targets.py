@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from . import hasformat, display
+from . import hasformat, display, verbose
 from .register import registry
 from .base import Target
 from .tasks import Mkdir, Remove, Unittest
 from .iterators import StaticIterator
+from .variables import V
 
 __all__ =  [
     'All',
@@ -40,6 +41,11 @@ class Help(Target):
                 display.write(
                     '%-20s  %s' % (obj.__name__.lower(), obj.__doc__ or "")
                 )
+        for var in V:
+            if hasformat:
+                verbose('var {} = "{}"'.format(var.name, var.value))
+            else:
+                verbose('var %s = "%s"' % (var.name, var.value))
 class Clean(Target):
     """Clean directories and files used by the build"""
     files = ()
