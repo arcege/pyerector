@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
+import os
 import sys
 import traceback
 from .exception import Error, extract_tb
@@ -58,6 +59,12 @@ name of target to call or variable assignment, default target is "default"')
                           help='do not show timing information')
         parser.add_option('--DEBUG', action='store_true')
     def __init__(self, *args):
+        program = sys.argv[0]
+        self.progdir, self.progname = os.path.split(program)
+        if self.progdir == '':
+            self.progdir = os.curdir
+        else:
+            self.progdir = os.path.realpath(self.progdir)
         self.basedir = None
         self.targets = []
         self.arguments(args or sys.argv[1:])
@@ -97,9 +104,8 @@ name of target to call or variable assignment, default target is "default"')
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
-        else:
-            import os
-            self.basedir = os.curdir
+        elif self.basedir is None:
+            self.basedir = self.progdir
         Initer.config.basedir = self.basedir
         self.targets = []
         if args.targets:
