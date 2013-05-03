@@ -98,8 +98,8 @@ class PyErector(object):
             import os
             self.basedir = os.curdir
         Initer.config.basedir = self.basedir
+        self.targets = []
         if args.targets:
-            self.targets = []
             all_targets = registry.get('Target')
             for name in args.targets:
                 try:
@@ -110,8 +110,8 @@ class PyErector(object):
                     if not issubclass(obj, Target):
                         raise SystemExit('Error: unknown target: ' + str(name))
                     self.targets.append(obj)
-        else:
-            self.targets = [registry['Default']]
+        if len(self.targets) == 0:
+            self.targets.append(registry['Default'])
     def handle_error(self, text=''):
         if True: #debug:
             t, e, tb = sys.exc_info()
