@@ -8,7 +8,7 @@ from .helper import Timer
 from . import display, verbose, debug, noop
 from .register import registry
 from .base import Initer, Target, Task
-from .version import get_version, get_release
+from .version import Version
 from .variables import Variable
 
 __all__ = [
@@ -88,9 +88,9 @@ class PyErector(object):
             noop.on()
         if args.version:
             if verbose:
-                display('%s %s\n' % (get_release(), get_version()))
+                display('%s %s\n' % (Version.release, Version.version))
             else:
-                display('%s\n' % get_release())
+                display('%s\n' % Version.release)
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
