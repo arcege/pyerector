@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
+import os
 import sys
 import traceback
 from .exception import Error, extract_tb
@@ -56,6 +57,12 @@ class PyErector(object):
                           help='do not show timing information')
         parser.add_option('--DEBUG', action='store_true')
     def __init__(self, *args):
+        program = sys.argv[0]
+        self.progdir, self.progname = os.path.split(program)
+        if self.progdir == '':
+            self.progdir = os.curdir
+        else:
+            self.progdir = os.path.realpath(self.progdir)
         self.basedir = None
         self.targets = []
         self.arguments(args or sys.argv[1:])
@@ -90,7 +97,9 @@ class PyErector(object):
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
-            Initer.config.basedir = args.directory
+        elif self.basedir is None:
+            self.basedir = self.progdir
+        Initer.config.basedir = self.basedir
         if args.targets:
             self.targets = []
             all_targets = registry.get('Target')
