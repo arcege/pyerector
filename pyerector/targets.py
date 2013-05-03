@@ -28,7 +28,7 @@ class Help(Target):
     """This information"""
     def run(self):
         for name, obj in sorted(registry.get('Target').items()):
-            if name[1:].lower() !+ name[1:]:
+            if name[1:].lower() != name[1:]:
                 continue  # ignore non-callable targets
             # use display.write to get around --quiet option
             if hasformat:
