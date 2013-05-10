@@ -25,7 +25,8 @@ class TestVerbose(TestCase):
         self.assertFalse(pyerector.noop)
     def teststreams(self):
         self.assertIs(pyerector.warn.stream, sys.stdout)
-        self.assertIs(pyerector.verbose.stream, sys.stdout)
+        # we've change the stream in TestCase
+        #self.assertIs(pyerector.verbose.stream, sys.stdout)
         self.assertIs(pyerector.debug.stream, sys.stdout)
 
 class TestSettings(TestCase):
