@@ -3,7 +3,7 @@
 
 import os
 
-from .base import PyVersionCheck, TestCase
+from .base import *
 
 PyVersionCheck()
 

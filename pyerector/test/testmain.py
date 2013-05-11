@@ -3,7 +3,7 @@
 
 import sys
 
-from .base import PyVersionCheck, TestCase
+from .base import *
 from pyerector.helper import Verbose  # we want the class to change stream
 
 PyVersionCheck()

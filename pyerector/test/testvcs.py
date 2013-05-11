@@ -4,7 +4,7 @@
 import os
 import sys
 
-from .base import PyVersionCheck, TestCase
+from .base import *
 
 PyVersionCheck()
 
@@ -21,9 +21,6 @@ class TestVCS(TestCase):
             'mac': '',
             '': '',
         }
-        platform = sys.platform[:3]
-        if platform not in ('win', 'lin', 'mac'):
-            platform = None
         super(TestVCS, cls).setUpClass()
         cls.nodir = os.path.join(cls.dir, 'novcs')
         cls.hgdir = os.path.join(cls.dir, 'mercurial')
@@ -33,36 +30,53 @@ class TestVCS(TestCase):
         # assume we have the tools
         cls.havehg = cls.havegit = cls.havesvn = True
         # checking Mercurial (hg)
-        p = os.popen('hg init %s' % cls.hgdir, 'r')
+        p = os.popen('hg init "%s"' % cls.hgdir, 'r')
         output = p.read()
         rc = p.close()
-        if rc is None and platform and output.find(notfound[platform]) != -1:
+        if rc and cls.platform and output.find(notfound[cls.platform]) != -1:
             cls.havehg = False
         else:
             assert rc is None, \
                     'could not create mercurial repository: %s' % output
         # checking Git
-        p = os.popen('git init %s 2>&1' % cls.gitdir, 'r')
+        p = os.popen('git init "%s" 2>&1' % cls.gitdir, 'r')
         output = p.read()
         rc = p.close()
-        if rc is None and platform and output.find(notfound[platform]) != -1:
+        if rc and cls.platform and output.find(notfound[cls.platform]) != -1:
             cls.havegit = False
         else:
             assert rc is None, \
                     'could not create git repository: %s' % output
         # checking Subversion (svn)
-        p = os.popen('svnadmin create %s' % cls.svnadmdir, 'r')
+        p = os.popen('svnadmin create "%s"' % cls.svnadmdir, 'r')
         output = p.read()
         rc = p.close()
-        if rc is None and platform and output.find(notfound[platform]) != -1:
+        if rc and cls.platform and output.find(notfound[cls.platform]) != -1:
             cls.havesvn = False
         else:
             assert rc is None, \
                     'could not create subversion repository: %s' % output
         if cls.havesvn:
-            p = os.popen('svn co file://%s %s' % (cls.svnadmdir, cls.svndir),
+            p = os.popen('svn co "file://%s" "%s"' % (cls.svnadmdir, cls.svndir),
                          'r')
-            assert p.close() is None, "could not create svn working copy"
+            output = p.read()
+            rc = p.close()
+            if rc:
+                cls.havesvn = False
+            #assert rc is None, \
+            #        '(%s) could not create svn working copy: %s' % (rc, output)
+    def _tearDownClass(cls):
+        userwritable = int('755', 8)
+        for (name, dirnames, filenames) in os.walk(self.dir, topdown=False):
+            for fn in filenames:
+                path = os.path.join(name, fn)
+                os.chmod(path, userwritable)
+                os.remove(path)
+            # we should have gotten rid of the children first
+            for fn in dirnames:
+                path = os.path.join(name, fn)
+                os.chmod(path, userwritable)
+                os.rmdir(path)
     def setUp(self):
         self.lastdir = pyerector.vcs.basedir
     def tearDown(self):

@@ -5,9 +5,18 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import SkipTest
+
+__all__ = [
+  'PyVersionCheck',
+  'SkipTest',
+  'TestCase',
+]
 
 from pyerector import debug
 from pyerector.base import Initer
+
+Platform = sys.platform[:3]
 
 def PyVersionCheck():
     from sys import version_info
@@ -21,9 +30,20 @@ class TestCase(unittest.TestCase):
         cls.dir = tempfile.mkdtemp()
         cls.oldconfigbasedir = Initer.config.basedir
         Initer.config.basedir = cls.dir
+        cls.platform = Platform
+        if cls.platform not in ('win', 'lin', 'mac'):
+            cls.platform = None
     @classmethod
     def tearDownClass(cls):
         debug('%s.tearDownClass()' % cls.__name__)
         Initer.config.basedir = cls.oldconfigbasedir
-        shutil.rmtree(cls.dir)
+        def handle_perms(func, path, exc_info):
+            import os
+            if cls.platform == 'win': # broken OS again
+                writable = os.path.stat.S_IWRITE
+            else:
+                writable = int('755', 8)
+            os.chmod(path, writable)
+            func(path)
+        shutil.rmtree(cls.dir, onerror=handle_perms)
 

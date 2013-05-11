@@ -12,7 +12,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from .base import PyVersionCheck, TestCase
+from .base import *
 
 PyVersionCheck()
 
@@ -173,10 +173,10 @@ class TestTarget_basics(TestCase):
         debug.off()
         target = Target()
         target.verbose('hi there')
-        self.assertEqual(verbose.stream.getvalue(), 'Target: hi there\n')
+        self.assertEqual(verbose.stream.getvalue(), 'Target: hi there' + os.linesep)
         display.stream = StringIO()
         target.verbose('hi', 'there')
-        self.assertEqual(verbose.stream.getvalue(), 'Target: hi there\n')
+        self.assertEqual(verbose.stream.getvalue(), 'Target: hi there' + os.linesep)
 
 class TestTarget_functionality(TestCase):
     def test_nothing(self):
@@ -270,7 +270,7 @@ class TestTask(TestCase):
             obj()
             self.assertFalse(obj.foobar)
             self.assertEqual(noop.stream.getvalue(),
-                             'Calling NoopTask(*(), **{})\n')
+                             'Calling NoopTask(*(), **{})' + os.linesep)
         finally:
             noop.state = old_noop
 

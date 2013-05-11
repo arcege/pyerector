@@ -9,7 +9,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from .base import PyVersionCheck, TestCase
+from .base import *
 
 PyVersionCheck()
 

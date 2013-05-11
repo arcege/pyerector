@@ -3,7 +3,7 @@
 
 import os
 
-from .base import PyVersionCheck, TestCase
+from .base import *
 
 PyVersionCheck()
 
@@ -22,6 +22,8 @@ class TestChmod(TestCase):
         Chmod('testsimple1.txt')()
         self.assertEqual(self.getmode(fname), 438)
     def testchange(self):
+        if self.platform == 'win':  # Broken OS
+            return
         fname = normjoin(self.dir, 'testchange1.txt')
         open(fname, 'w')
         oldmode = self.getmode(fname)
