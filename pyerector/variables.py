@@ -12,6 +12,7 @@ Usage:
 
 from . import display, debug
 from .exception import Error
+from . import version
 
 __all__ = [
     'Variable',
@@ -19,6 +20,14 @@ __all__ = [
 ]
 
 class Variable(str):
+    """A global variable.
+Usage:
+    Variable('name', 'value')
+    Variable('name').value = 'value'
+    (Variable('name').value is Variable('name').value)
+    (Variable('name').value == str(Variable('name'))
+    print Variable('name')
+"""
     cache = {}  # a class variable
     def __new__(cls, name, value=None):
         return super(Variable, cls).__new__(cls, name)
@@ -30,6 +39,9 @@ class Variable(str):
     def __repr__(self):
         return 'Var(%s)' % super(Variable, self).__repr__()
     def toString(self):
+        return self.name  # use the 'name' property
+    @property
+    def name(self):
         return super(Variable, self).__str__()
     @property
     def value(self):
@@ -44,6 +56,16 @@ class Variable(str):
     @value.deleter
     def value(self):
         del self.cache[self]
+    @classmethod
+    def list(cls):
+        return tuple(cls.cache)
+
+# initialize some variables
+Variable('pyerector.release.product', version.RELEASE_PRODUCT)
+Variable('pyerector.release.number', version.RELEASE_NUMBER)
+Variable('pyerector.vcs.version', version.HG_VERSION)
+Variable('pyerector.vcs.branch', version.HG_BRANCH)
+Variable('pyerector.vcs.tags', version.HG_TAGS)
 
 class VariableSet(dict):
     def __new__(cls, *variables):
