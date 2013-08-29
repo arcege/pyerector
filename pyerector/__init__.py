@@ -2,7 +2,7 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 from .helper import normjoin, Verbose, Exclusions
-from .version import get_version
+from .version import *
 
 # Future Py3000 work prevents the use of string formatting using '%'
 # trying to use both string formatting and ''.format is UGLY!!!!
