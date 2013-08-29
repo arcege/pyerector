@@ -25,7 +25,9 @@ __all__ = [
 ]
 
 class Chmod(Task):
-    """Change file permissions."""
+    """Change file permissions.
+constructor arguments:
+Chmod(*files, mode=0666)"""
     files = ()
     mode = int('666', 8) # gets around Python 2.x vs 3.x octal issue
     def run(self):
@@ -79,7 +81,9 @@ class Container(Task):
 
 class Copy(Task):
     """Copy files to a destination directory. Exclude standard hidden
-files."""
+files.
+constructor arguments:
+Copy(*files, dest=<destdir>, exclude=<defaults>)"""
     files = ()
     dest = None
     noglob = False
@@ -114,7 +118,9 @@ files."""
                     shutil.copy2(srcfile, dstfile)
 
 class CopyTree(Task):
-    """Copy directory tree. Exclude standard hidden files."""
+    """Copy directory tree. Exclude standard hidden files.
+constructor arguments:
+CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
     srcdir = None
     dstdir = None
     exclude = Exclusions()
@@ -150,7 +156,9 @@ class CopyTree(Task):
 class HashGen(Task):
     """Generate file(s) containing md5 or sha1 hash string.
 For example, generates foobar.txt.md5 and foobar.txt.sha1 for the
-contents of foobar.txt.  By default, generates for both md5 and sha1."""
+contents of foobar.txt.  By default, generates for both md5 and sha1.
+constructor arguments:
+HashGen(*files, hashs=('md5', 'sha1'))"""
     files = ()
     hashs = ('md5', 'sha1')
     def run(self):
@@ -174,7 +182,9 @@ contents of foobar.txt.  By default, generates for both md5 and sha1."""
                 open(self.join(dname), 'wt').write(h.hexdigest() + '\n')
 
 class Java(Task):
-    """Call a Java routine."""
+    """Call a Java routine.
+constructor arguments:
+Java(jar=<JAR>, java_home=<$JAVA_HOME>, classpath=(), properties=[])"""
     from os import environ
     try:
         java_home = environ['JAVA_HOME']
@@ -221,7 +231,9 @@ class Java(Task):
             )
 
 class Mkdir(Task):
-    """Recursively create directories."""
+    """Recursively create directories.
+constructor arguments:
+Mkdir(*files)"""
     files = ()
     noglob = True
     def run(self):
@@ -241,7 +253,9 @@ class Mkdir(Task):
             os.mkdir(path)
 
 class PyCompile(Task):
-    """Compile Python source files."""
+    """Compile Python source files.
+constructor arguments:
+PyCompile(*files, dest=<DIR>, version='2')"""
     files = ()
     dest = None
     version = '2'
@@ -277,7 +291,9 @@ class PyCompile(Task):
                     verbose('could not compile files with', cmd)
 
 class Remove(Task):
-    """Remove a file or directory tree."""
+    """Remove a file or directory tree.
+constructor arguments:
+Remove(*files)"""
     files = ()
     noglob = False
     def run(self):
@@ -292,7 +308,9 @@ class Remove(Task):
                 shutil.rmtree(fname)
 
 class Shebang(Copy):
-    """Replace the shebang string with a specific pathname."""
+    """Replace the shebang string with a specific pathname.
+constructor arguments:
+Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
     files = ()
     dest = None
     token = '#!'
@@ -334,7 +352,9 @@ class Shebang(Copy):
             shutil.copyfileobj(outf, inf)
 
 class Spawn(Task):
-    """Spawn a command."""
+    """Spawn a command.
+constructor arguments:
+Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
     cmd = ()
     infile = None
     outfile = None
@@ -358,7 +378,9 @@ class Spawn(Task):
             raise Error('Subcommand', '%s returned error = %d' % (str(self), rc.returncode))
 
 class Tar(Container):
-    """Generate a 'tar' archive file."""
+    """Generate a 'tar' archive file.
+Constructure arguments:
+Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""
     def contain(self, name, root, toadd):
         from tarfile import open
         try:
@@ -379,7 +401,9 @@ class Tar(Container):
 
 class Tokenize(Task):
     """Replace tokens found in tokenmap with their associated values in
-each file."""
+each file.
+constructor arguments:
+Tokenize(*files, dest=None, tokenmap=VariableSet())"""
     files = ()
     dest = None
     tokenmap = VariableSet()
@@ -413,7 +437,9 @@ each file."""
                 open(self.join(dname), 'wt').write(alteredcontents)
 
 class Unittest(Task):
-    """Call Python unit tests found."""
+    """Call Python unit tests found.
+constructor arguments:
+Unittest(*modules, path=())"""
     modules = ()
     path = ()
     script = '''\
@@ -624,7 +650,8 @@ class Uncontainer(Task):
             contfile.close()
 
 class Untar(Uncontainer):
-    """Extract a 'tar' archive file."""
+    """Extract a 'tar' archive file.
+Untar(*files, name=<tarfilename>, root=None)"""
     def get_file(self, fname):
         from tarfile import open
         return open(self.join(fname), 'r:gz')
@@ -644,7 +671,8 @@ class Untar(Uncontainer):
             contfile.extract(fileinfo, path=(root or ""))
 
 class Unzip(Uncontainer):
-    """Extract a 'zip' archive file."""
+    """Extract a 'zip' archive file.
+Unzip(*files, name=<tarfilename>, root=None)"""
     def get_file(self, fname):
         from zipfile import ZipFile
         return ZipFile(self.join(fname), 'r')
@@ -666,7 +694,8 @@ class Unzip(Uncontainer):
             dfile.write(contfile.read(member))
 
 class Zip(Container):
-    """Generate a 'zip' archive file."""
+    """Generate a 'zip' archive file.
+Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
     def contain(self, name, root, toadd):
         from zipfile import ZipFile
         try:
@@ -683,6 +712,8 @@ class Zip(Container):
             file.close()
 
 class Egg(Zip):
+    """Generate an egg file for Python deployments.
+Egg(*files, name=<eggfilename>, root=os.curdir, exclude=(defaults))"""
     def manifest(self, name, root, toadd):
         if os.path.exists(os.path.join(root, 'setup.py')):
             setupvalue = self.get_setup_py(os.path.join(root, 'setup.py'))
