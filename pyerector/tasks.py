@@ -417,7 +417,7 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
         def repltoken(m, map=self.tokenmap):
             debug('found', m.group(0))
             result = map.get(m.group(0))
-            return result is not None and result.value or ''
+            return result is not None and str(result) or ''
         def quote(s):
             return s.replace('\\', r'\\').replace('.', r'\.')\
                     .replace('$', r'\$').replace('(', r'\(')\
