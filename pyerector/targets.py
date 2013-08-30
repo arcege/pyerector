@@ -73,17 +73,17 @@ Members: None
 Methods: None
 """
     def run(self):
-        from . import verbose
-        from .vcs import VCS
-        from .variables import Variable
+        from . import verbose, VCS, Variable
         from .helper import Verbose
-        class LclVerbose(Verbose):
-            prefix = 'InitVCS'
-        lclverbose = LclVerbose(verbose)
-        v = VCS()
-        v.current_info()
-        Variable('pyerector.vcs', v)
-        lclverbose('Found', v)
+        lclverbose = Verbose(verbose, prefix='InitVCS')
+        try:
+            v = VCS()
+        except RuntimeError:
+            lclverbose('No VCS found')
+        else:
+            v.current_info()
+            Variable('pyerector.vcs', v)
+            lclverbose('Found', v)
 class InitDirs(Target):
     """Create initial directories.
 Tasks: internal [Mkdir(files)]
