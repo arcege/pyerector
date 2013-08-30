@@ -24,13 +24,16 @@ class Verbose(object):
             self.stream = stream
         if prefix is not None:
             self.prefix = str(prefix)
-        elif 'PYERECTOR_PREFIX' in environ:
+        if 'PYERECTOR_PREFIX' in environ:
             value = environ['PYERECTOR_PREFIX']
             if isinstance(value, bytes):
                 value = value.decode('UTF-8')
             else:
                 value = str(value)
-            self.prefix = value
+            if self.prefix != '':
+                self.prefix = '%s: %s' % (value, self.prefix)
+            else:
+                self.prefix = value
     def __bool__(self):
         return self.state
     __nonzero__ = __bool__
@@ -221,7 +224,7 @@ class Subcommand(object):
         (self.stdin, self.stdout, self.stderr) = (ifl, of, ef)
         shellval = not isinstance(self.cmd, tuple)
         from . import verbose, debug
-        debug("Popen(%s, shell=%s, stdin=%s, stdout=%s, stderr=%s, bufsize=0, env=%s)" % (self.cmd, shellval, ifl, of, ef, self.env))
+        debug("Popen(%s, shell=%s, cwd=%s, stdin=%s, stdout=%s, stderr=%s, bufsize=0, env=%s)" % (self.cmd, shellval, self.wdir, ifl, of, ef, self.env))
         try:
             proc = Popen(self.cmd, shell=shellval, cwd=self.wdir,
                          stdin=ifl, stdout=of, stderr=ef,
