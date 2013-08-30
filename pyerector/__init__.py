@@ -79,6 +79,7 @@ __all__ = [
     'Help',
     'Init',
     'InitDirs',
+    'InitVCS',
     'Packaging',
     'Test',
 

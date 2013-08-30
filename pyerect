@@ -7,23 +7,8 @@ import release
 
 distfile = '%s-%s' % (release.product, release.number)
 
-class VersionInfo(Tokenize):
-    files = (normjoin('build', distfile, 'pyerector', 'version.py'),)
-    tokenmap = VariableSet(
-        V('%release.product%', release.product),
-        V('%release.number%', release.number),
-        V('%hg.version%'),
-        V('%hg.branch%'),
-        V('%hg.tags%'),
-    )
-    def update_tokenmap(self):
-        vcs = VCS()
-        assert vcs.name == 'mercurial', 'Expecting Mercurial source tree'
-        self.tokenmap['%hg.version%'].value = V('hg.version').value
-        self.tokenmap['%hg.branch%'].value = V('hg.branch').value
-        self.tokenmap['%hg.tags%'].value = V('hg.tags').value
-
 class PyCopy(Target):
+    dependencies = (InitVCS,)
     tasks = (
         CopyTree(srcdir='pyerector',
                  dstdir=normjoin('build', distfile, 'pyerector'),
@@ -33,7 +18,16 @@ class PyCopy(Target):
              'README.txt', 'LICENSE.txt', 'CHANGES.txt',
              dest=normjoin('build', distfile)
         ),
-        VersionInfo,
+        Tokenize(
+            normjoin('build', distfile, 'pyerector', 'version.py'),
+            tokenmap=VariableSet(
+                V('%release.product%', release.product),
+                V('%release.number%', release.number),
+                V('%hg.version%', V('hg.version')),
+                V('%hg.branch%', V('hg.branch')),
+                V('%hg.tags%', V('hg.tags')),
+            )
+        )
     )
 
 class PreCompile(Target):

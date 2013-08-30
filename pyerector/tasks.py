@@ -410,11 +410,12 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
     def update_tokenmap(self):
         pass
     def run(self):
-        if not isinstance(self.tokenmap, VariableSet):
+        tokenmap = self.get_kwarg('tokenmap', VariableSet)
+        if not isinstance(tokenmap, VariableSet):
             raise TypeError('tokenmap must be a VariableSet instance')
         self.update_tokenmap()
         import re
-        def repltoken(m, map=self.tokenmap):
+        def repltoken(m, map=tokenmap):
             debug('found', m.group(0))
             result = map.get(m.group(0))
             return result is not None and str(result) or ''

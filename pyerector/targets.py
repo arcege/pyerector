@@ -17,6 +17,7 @@ __all__ =  [
     'Help',
     'Init',
     'InitDirs',
+    'InitVCS',
     'Packaging',
     'Test',
 
@@ -63,6 +64,26 @@ Methods: None
     files = ()
     def run(self):
         Remove()(*self.files)
+class InitVCS(Target):
+    """Initialize information about the version control system, VCS.
+The VCS instance is stored as a global Variable.
+Tasks: None
+Dependencies: None
+Members: None
+Methods: None
+"""
+    def run(self):
+        from . import verbose
+        from .vcs import VCS
+        from .variables import Variable
+        from .helper import Verbose
+        class LclVerbose(Verbose):
+            prefix = 'InitVCS'
+        lclverbose = LclVerbose(verbose)
+        v = VCS()
+        v.current_info()
+        Variable('pyerector.vcs', v)
+        lclverbose('Found', v)
 class InitDirs(Target):
     """Create initial directories.
 Tasks: internal [Mkdir(files)]
@@ -77,11 +98,11 @@ Methods: None
 class Init(Target):
     """Initialize the build.
 Tasks: None
-Dependencies: InitDirs
+Dependencies: InitDirs, InitVCS
 Members: None
 Methods: None
 """
-    dependencies = (InitDirs,)
+    dependencies = (InitDirs, InitVCS)
 class Compile(Target):
     """Compile source files.
 Tasks: None

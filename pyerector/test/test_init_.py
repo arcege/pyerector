@@ -11,7 +11,7 @@ import pyerector
 
 class Test_all_(TestCase):
     def test__all__(self):
-        self.assertEqual(len(pyerector.__all__), 47)
+        self.assertEqual(len(pyerector.__all__), 48)
 
 # we don't need to test the functionality of these, that's done in
 # testhelpers.py
