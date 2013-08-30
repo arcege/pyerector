@@ -17,10 +17,14 @@ class Verbose(object):
     from os import linesep as eoln
     from sys import stdout as stream
     prefix = ''
-    def __init__(self, state=False):
+    def __init__(self, state=False, prefix=None, stream=None):
         from os import environ
         self.state = bool(state)
-        if 'PYERECTOR_PREFIX' in environ:
+        if stream is not None:
+            self.stream = stream
+        if prefix is not None:
+            self.prefix = str(prefix)
+        elif 'PYERECTOR_PREFIX' in environ:
             value = environ['PYERECTOR_PREFIX']
             if isinstance(value, bytes):
                 value = value.decode('UTF-8')
