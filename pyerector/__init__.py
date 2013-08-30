@@ -62,6 +62,7 @@ __all__ = [
     'Remove',
     'Shebang',
     'Spawn',
+    'SubPyErector',
     'Tar',
     'Tokenize',
     'Unittest',

@@ -20,8 +20,8 @@ except NameError:
 
 __all__ = [
     'Chmod', 'Copy', 'CopyTree', 'Egg', 'HashGen', 'Java', 'Mkdir',
-    'PyCompile', 'Remove', 'Shebang', 'Spawn', 'Tar', 'Tokenize',
-    'Unittest', 'Untar', 'Unzip', 'Zip',
+    'PyCompile', 'Remove', 'Shebang', 'Spawn', 'SubPyErector', 'Tar',
+    'Tokenize', 'Unittest', 'Untar', 'Unzip', 'Zip',
 ]
 
 class Chmod(Task):
@@ -376,6 +376,45 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
             raise Error('Subcommand', '%s signal %d raised' % (str(self), abs(rc.returncode)))
         elif rc.returncode > 0:
             raise Error('Subcommand', '%s returned error = %d' % (str(self), rc.returncode))
+
+class SubPyErector(Task):
+    """Call a PyErector program in a different directory.
+constructor arguments:
+SubPyErector(*targets, wdir=None, prog='pyerect', env={})
+Adds PYERECTOR_PREFIX environment variable."""
+    targets = ()
+    prog = 'pyerect'
+    wdir = None
+    env = {}
+    def run(self):
+        from . import noTimer
+        targets = self.get_args('targets')
+        prog = self.get_kwarg('prog', str)
+        # we explicitly add './' to prevent searching PATH
+        options = []
+        if not warn:
+            options.append('--quiet')
+        elif verbose:
+            options.append('--verbose')
+        if noTimer:
+            options.append('--timer')
+        if debug:
+            options.append('--DEBUG')
+        cmd = (os.path.join('.', prog),) + tuple(options) + tuple(targets)
+        env = self.get_kwarg('env', dict)
+        wdir = self.get_kwarg('wdir', str)
+        from os import environ
+        evname = 'PYERECTOR_PREFIX'
+        nevname = os.path.basename(wdir)
+        if evname in environ and environ[evname]:
+            env[evname] = '%s: %s' % (environ['evname'], nevname)
+        else:
+            env[evname] = nevname
+        rc = Subcommand(cmd, wdir=wdir, env=env)
+        if rc.returncode < 0:
+            raise Error('SubPyErector', '%s signal %d raised' % (str(self), abs(rc.returncode)))
+        elif rc.returncode > 0:
+            raise Error('SubPyErector', '%s returned error = %d' % (str(self), rc.returncode))
 
 class Tar(Container):
     """Generate a 'tar' archive file.
