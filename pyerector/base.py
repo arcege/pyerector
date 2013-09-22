@@ -21,6 +21,30 @@ __all__ = [
     'Target', 'Task',
 ]
 
+class ExecStack(object):
+    def __init__(self):
+        self.stack = []
+        self.pos = None
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, self.stack)
+    def push(self, frame):
+        self.stack.append(frame)
+    def pop(self):
+        return self.stack.pop()
+    def __len__(self):
+        return len(self.stack)
+    def __iter__(self):
+        self.pos = 0
+        return self
+    def next(self):
+        if self.pos >= len(self):
+            raise StopIteration
+        item = self.stack[self.pos]
+        self.pos += 1
+        return item
+
+stack = ExecStack()
+
 # the base class to set up the others
 class Initer(Base):
     config = Config()
@@ -182,48 +206,53 @@ class Target(Initer):
         else:
             return obj(*args)
     def __call__(self, *args):
+        global stack
         debug('%s.__call__(*%s)' % (self.__class__.__name__, args))
         timer = Timer()
         if self.been_called:
             return
-        if self.uptodates:
-            for utd in self.uptodates:
-                if not self.call(utd, Mapper, 'uptodate'):
-                    break
-            else:
-                self.verbose('uptodate.')
-                return
-        for dep in self.dependencies:
-            self.call(dep, Target, 'dependencies')
-        with timer:
-            for task in self.tasks:
+        stack.push(self) # push me onto the execution stack
+        try:
+            if self.uptodates:
+                for utd in self.uptodates:
+                    if not self.call(utd, Mapper, 'uptodate'):
+                        break
+                else:
+                    self.verbose('uptodate.')
+                    return
+            for dep in self.dependencies:
+                self.call(dep, Target, 'dependencies')
+            with timer:
+                for task in self.tasks:
+                    try:
+                        self.call(task, Task, 'task', args)
+                    except Error:
+                        if not debug:
+                            self.rewrap_exception()
+                        else:
+                            raise
                 try:
-                    self.call(task, Task, 'task', args)
+                    self.run()
+                except (TypeError, RuntimeError, AttributeError):
+                    raise
                 except Error:
                     if not debug:
                         self.rewrap_exception()
                     else:
                         raise
-            try:
-                self.run()
-            except (TypeError, RuntimeError, AttributeError):
-                raise
-            except Error:
-                if not debug:
-                    self.rewrap_exception()
-                else:
-                    raise
-            except Exception:
-                if not debug:
-                    self.rewrap_exception()
-                else:
-                    raise
-        import pyerector
-        if pyerector.noTimer:
-            self.verbose('done.')
-        else:
-            self.verbose('done. (%0.3f)' % timer)
-        self.been_called = True
+                except Exception:
+                    if not debug:
+                        self.rewrap_exception()
+                    else:
+                        raise
+            import pyerector
+            if pyerector.noTimer:
+                self.verbose('done.')
+            else:
+                self.verbose('done. (%0.3f)' % timer)
+            self.been_called = True
+        finally:
+            stack.pop()
     def run(self):
         pass
     def verbose(self, *args):
@@ -236,20 +265,25 @@ class Task(Initer):
     def __str__(self):
         return self.__class__.__name__
     def __call__(self, *args, **kwargs):
+        global stack
         debug('%s.__call__(*%s, **%s)' % (self.__class__.__name__, args, kwargs))
-        self.handle_args(args, kwargs)
-        if noop:
-            noop('Calling %s(*%s, **%s)' % (self, args, kwargs))
-            return
+        stack.push(self) # push me onto the execution stack
         try:
-            rc = self.run()
-        except (TypeError, RuntimeError):
-            raise
-        except Exception:
-            if not debug:
-                self.rewrap_exception()
-            else:
+            self.handle_args(args, kwargs)
+            if noop:
+                noop('Calling %s(*%s, **%s)' % (self, args, kwargs))
+                return
+            try:
+                rc = self.run()
+            except (TypeError, RuntimeError):
                 raise
+            except Exception:
+                if not debug:
+                    self.rewrap_exception()
+                else:
+                    raise
+        finally:
+            stack.pop()
         if rc:
             raise Error(str(self), 'return error = ' + str(rc))
     def run(self):
