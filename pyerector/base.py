@@ -16,6 +16,7 @@ from .helper import normjoin, u, Timer, extract_stack
 from .register import registry
 from .exception import Abort, Error
 from .config import Config
+from .variables import V
 
 __all__ = [
     'Target', 'Task',
@@ -54,7 +55,7 @@ stack = ExecStack()
 
 # the base class to set up the others
 class Initer(Base):
-    config = Config()
+    config = Config()  # for backward compatibility only
     def __init__(self, *args, **kwargs):
         debug('%s.__init__(*%s, **%s)' % (self.__class__.__name__, args, kwargs))
         try:
@@ -74,10 +75,8 @@ class Initer(Base):
         if kwargs:
             for key in kwargs:
                 setattr(self, key, kwargs[key])
-        #if not self.config.initialized:
-        if self.config.basedir is None or basedir is not None:
-            self.config.basedir = basedir or os.curdir
-        self.config.initialized = True
+        if basedir is not None:
+            V['basedir'] = basedir or curdir
     def wantnoglob(self):
         return ((hasattr(self, 'kwargs') and 'noglob' in  self.kwargs and
                     self.kwargs['noglob']) or
@@ -108,8 +107,8 @@ class Initer(Base):
                 fs.append(i)
             return fs
     def join(self, *path):
-        debug('%s.join(%s, *%s)' % (self.__class__.__name__, self.config.basedir, path))
-        return normjoin(self.config.basedir, *path)
+        debug('%s.join(%s, *%s)' % (self.__class__.__name__, V['basedir'], path))
+        return normjoin(V['basedir'], *path)
     def asserttype(self, value, typeval, valname):
         if isinstance(typeval, type):
             typename = typeval.__name__

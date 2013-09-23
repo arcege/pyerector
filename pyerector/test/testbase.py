@@ -18,33 +18,19 @@ PyVersionCheck()
 
 from pyerector import normjoin, verbose, display, debug, noop
 from pyerector.helper import normjoin, Verbose
-from pyerector.config import Config
 from pyerector.exception import Error
 from pyerector.base import Initer, Target, Task, Iterator
 from pyerector.targets import *
 from pyerector.tasks import *
 from pyerector.iterators import Uptodate
+from pyerector.variables import V
 
 class TestIniter(TestCase):
-    def test_initialized(self):
-        #"""Is system initialized on first instantiation."""
-        old_config = Initer.config
-        try:
-            Initer.config = Config()
-            Initer.config.initialized = False
-            self.assertFalse(Initer.config.initialized)
-            obj = Initer()
-            self.assertTrue(Initer.config.initialized)
-        finally:
-            Initer.config = old_config
     def test_basedir(self):
-        obj = Initer()
-        Initer.config.basedir = os.path.realpath(os.getcwd())
-        self.assertEqual(obj.config.basedir, os.path.realpath(os.getcwd()))
-        Initer.config.initialized = False
+        #obj = Initer()
+        #self.assertEqual(V['basedir'].value, os.path.realpath(os.getcwd()))
         obj = Initer(basedir=self.dir)
-        self.assertTrue(obj.config.initialized)
-        self.assertEqual(obj.config.basedir, self.dir)
+        self.assertEqual(V['basedir'].value, self.dir)
     def test_join(self):
         #"""Ensure that join() method returns proper values."""
         obj = Initer(basedir=self.dir)

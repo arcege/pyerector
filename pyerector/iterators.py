@@ -8,6 +8,7 @@ import os
 from .helper import normjoin
 from . import debug
 from .base import Initer, Iterator, Mapper
+from .variables import V
 
 try:
     reduce
@@ -96,7 +97,7 @@ class FileIterator(StaticIterator):
         if isinstance(pattern, Iterator): # an iterator, so convert to a list
             debug('%s.pattern is iterator', pattern)
             return list(pattern)
-        base = os.path.join(self.config.basedir, '')
+        base = os.path.join(V['basedir'], '')
         files = glob.glob(self.join(pattern))
         debug('%s.glob(%s) = %s' % (self.__class__.__name__, self.join(pattern), files))
         return [name.replace(base, '') for name in files]
@@ -120,9 +121,9 @@ class DirList(FileIterator):
             if not self.filesonly:
                 paths.append(thisdir)
             if not self.exclusion.match(os.path.basename(thisdir)):
-                for name in os.listdir(os.path.join(self.config.basedir, thisdir)):
+                for name in os.listdir(os.path.join(V['basedir'], thisdir)):
                     spath = os.path.join(thisdir, name)
-                    dpath = os.path.join(self.config.basedir, thisdir, name)
+                    dpath = os.path.join(V['basedir'], thisdir, name)
                     if self.exclusion.match(name):
                         pass
                     elif os.path.islink(dpath) or os.path.isfile(dpath):

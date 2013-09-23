@@ -8,8 +8,9 @@ from .exception import Abort, Error, extract_tb
 from .helper import Timer
 from . import display, verbose, debug, noop
 from .register import registry
-from .base import Initer, Target, Task
+from .base import Target, Task
 from .version import get_version, get_release
+from .variables import V, Variable
 
 __all__ = [
     'PyErector', 'pymain',
@@ -99,7 +100,7 @@ class PyErector(object):
             self.basedir = args.directory
         elif self.basedir is None:
             self.basedir = self.progdir
-        Initer.config.basedir = self.basedir
+        V['basedir'] = Variable('basedir', self.basedir)
         if args.targets:
             self.targets = []
             all_targets = registry.get('Target')

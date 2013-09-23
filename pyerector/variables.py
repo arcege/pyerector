@@ -15,6 +15,7 @@ from .exception import Error
 from . import version
 
 __all__ = [
+    'V',
     'Variable',
     'VariableSet',
 ]
@@ -34,6 +35,11 @@ Usage:
     def __init__(self, name, value=None):
         if value is not None:
             self.cache[self] = value
+    # this gets around the concatenating the name instead of the value
+    def __add__(self, other):
+        return self.value + other
+    def __radd__(self, other):
+        return other + self.value
     def __str__(self):
         return str(self.value)
     def __repr__(self):
@@ -59,13 +65,6 @@ Usage:
     @classmethod
     def list(cls):
         return tuple(cls.cache)
-
-# initialize some variables
-Variable('pyerector.release.product', version.RELEASE_PRODUCT)
-Variable('pyerector.release.number', version.RELEASE_NUMBER)
-Variable('pyerector.vcs.version', version.HG_VERSION)
-Variable('pyerector.vcs.branch', version.HG_BRANCH)
-Variable('pyerector.vcs.tags', version.HG_TAGS)
 
 class VariableSet(dict):
     def __new__(cls, *variables):
@@ -104,4 +103,13 @@ class VariableSet(dict):
                 self[k] = v
         for k in kwargs:
             self[k] = kwargs[k]
+
+V = VariableSet()
+
+# initialize some variables
+V['pyerector.release.product'] = version.RELEASE_PRODUCT
+V['pyerector.release.number'] = version.RELEASE_NUMBER
+V['pyerector.vcs.version'] = version.HG_VERSION
+V['pyerector.vcs.branch'] = version.HG_BRANCH
+V['pyerector.vcs.tags'] = version.HG_TAGS
 

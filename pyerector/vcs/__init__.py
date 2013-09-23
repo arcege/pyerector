@@ -16,9 +16,12 @@ __all__ = [
     'VCS'
 ]
 
-basedir = os.curdir
-
 def VCS(*args, **kwargs):
+    from ..variables import V
+    try:
+        basedir = V['basedir'].value
+    except KeyError:
+        basedir = os.curdir
     for vcs in vcs_set:
         if vcs.vcs_check(dir=basedir):
             break

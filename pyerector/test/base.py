@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
+import os
 import shutil
 import sys
 import tempfile
@@ -14,7 +15,7 @@ __all__ = [
 ]
 
 from pyerector import debug
-from pyerector.base import Initer
+from pyerector.variables import V
 
 Platform = sys.platform[:3]
 
@@ -28,15 +29,18 @@ class TestCase(unittest.TestCase):
     def setUpClass(cls):
         debug('%s.setupClass()' % cls.__name__)
         cls.dir = tempfile.mkdtemp()
-        cls.oldconfigbasedir = Initer.config.basedir
-        Initer.config.basedir = cls.dir
+        try:
+            cls.oldconfigbasedir = V['basedir'].value
+        except KeyError:
+            cls.oldconfigbasedir = os.curdir
+        V['basedir'] = cls.dir
         cls.platform = Platform
         if cls.platform not in ('win', 'lin', 'mac'):
             cls.platform = None
     @classmethod
     def tearDownClass(cls):
         debug('%s.tearDownClass()' % cls.__name__)
-        Initer.config.basedir = cls.oldconfigbasedir
+        V['basedir'] = cls.oldconfigbasedir
         def handle_perms(func, path, exc_info):
             import os
             if cls.platform == 'win': # broken OS again

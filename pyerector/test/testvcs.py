@@ -10,6 +10,7 @@ PyVersionCheck()
 
 from pyerector.variables import Variable
 from pyerector.vcs import VCS, Git, Mercurial, Subversion
+from pyerector.variables import V
 import pyerector
 
 class TestVCS(TestCase):
@@ -78,42 +79,42 @@ class TestVCS(TestCase):
                 os.chmod(path, userwritable)
                 os.rmdir(path)
     def setUp(self):
-        self.lastdir = pyerector.vcs.basedir
+        self.lastdir = V['basedir'].value
     def tearDown(self):
-        pyerector.vcs.basedir = self.lastdir
+        V['basedir'] = self.lastdir
     def testvcs_check_novcs(self):
         # set to temp directory with no version control
-        pyerector.vcs.basedir = self.nodir
+        V['basedir'] = self.nodir
         self.assertRaises(RuntimeError, VCS)
     def testvcs_check_mercurial(self):
         if self.havehg:
-            pyerector.vcs.basedir = self.hgdir
+            V['basedir'] = self.hgdir
             self.assertIsInstance(VCS(), Mercurial)
     def testvcs_check_git(self):
         if self.havegit:
-            pyerector.vcs.basedir = self.gitdir
+            V['basedir'] = self.gitdir
             self.assertIsInstance(VCS(), Git)
     def testvcs_check_subversion(self):
         if self.havesvn:
-            pyerector.vcs.basedir = self.svndir
+            V['basedir'] = self.svndir
             self.assertIsInstance(VCS(), Subversion)
     def testvcs_info_mercurial(self):
         if self.havehg:
-            pyerector.vcs.basedir = self.hgdir
+            V['basedir'] = self.hgdir
             vcs = VCS(rootdir=self.hgdir)
             self.assertEqual(Variable('hg.version').value, '000000000000')
             self.assertEqual(Variable('hg.branch').value, 'default')
             self.assertEqual(Variable('hg.tags').value, 'tip')
     def testvcs_info_git(self):
         if self.havegit:
-            pyerector.vcs.basedir = self.gitdir
+            V['basedir'] = self.gitdir
             vcs = VCS(rootdir=self.gitdir)
             self.assertEqual(Variable('git.version').value, '')
             self.assertEqual(Variable('git.branch').value, '')
             self.assertEqual(Variable('git.tags').value, '')
     def testcvs_info_svn(self):
         if self.havesvn:
-            pyerector.vcs.basedir = self.svndir
+            V['basedir'] = self.svndir
             vcs = VCS(rootdir=self.svndir)
             self.assertEqual(Variable('svn.version').value, '0')
             self.assertEqual(Variable('svn.branch').value, '')
