@@ -171,12 +171,3 @@ as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
         for k in kwargs:
             self[k] = kwargs[k]
 
-def initialize_variables():
-    from .version import Version
-    # initialize some variables
-    #V['pyerector.release.product'] = Version.RELEASE_PRODUCT
-    #V['pyerector.release.number'] = Version.RELEASE_NUMBER
-    #V['pyerector.vcs.version'] = Version.HG_VERSION
-    #V['pyerector.vcs.branch'] = Version.HG_BRANCH
-    #V['pyerector.vcs.tags'] = Version.HG_TAGS
-
