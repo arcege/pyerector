@@ -11,10 +11,10 @@ if version[0] > '2': # python 3+
     from .py3.base import Base
 else:
     from .py2.base import Base
-from . import debug, display, noop
-from .helper import normjoin, u, Timer
+from . import debug, display, warn, noop
+from .helper import normjoin, u, Timer, extract_stack
 from .register import registry
-from .exception import Error
+from .exception import Abort, Error
 from .config import Config
 
 __all__ = [
@@ -42,6 +42,13 @@ class ExecStack(object):
         item = self.stack[self.pos]
         self.pos += 1
         return item
+    def extract(self):
+        lines = []
+        indent = 0
+        for item in self:
+            lines.append('%s%s\n' % ('  ' * indent, item.__class__.__name__))
+            indent += 1
+        return lines
 
 stack = ExecStack()
 
@@ -233,18 +240,17 @@ class Target(Initer):
                             raise
                 try:
                     self.run()
-                except (TypeError, RuntimeError, AttributeError):
-                    raise
+                except (KeyError, ValueError, TypeError,
+                        RuntimeError, AttributeError):
+                    raise # reraise
+                except Abort:
+                    raise # reraise
                 except Error:
-                    if not debug:
-                        self.rewrap_exception()
-                    else:
-                        raise
+                    warn(extract_stack(stack).rstrip())
+                    raise Abort
                 except Exception:
-                    if not debug:
-                        self.rewrap_exception()
-                    else:
-                        raise
+                    warn(extract_stack(stack).rstrip())
+                    raise Abort
             import pyerector
             if pyerector.noTimer:
                 self.verbose('done.')
@@ -275,13 +281,17 @@ class Task(Initer):
                 return
             try:
                 rc = self.run()
-            except (TypeError, RuntimeError):
+            except (KeyError, ValueError, TypeError,
+                    RuntimeError, AttributeError):
                 raise
+            except Abort:
+                raise # reraise
+            except Error:
+                warn(extract_stack(stack))
+                raise Abort
             except Exception:
-                if not debug:
-                    self.rewrap_exception()
-                else:
-                    raise
+                warn(extract_stack(stack))
+                raise Abort
         finally:
             stack.pop()
         if rc:

@@ -248,10 +248,7 @@ class TestTask(TestCase):
             def run(self):
                 raise ValueError
         self.assertRaises(TypeError, TypeErrorTask())
-        if debug:
-            self.assertRaises(ValueError, ValueErrorTask())
-        else:
-            self.assertRaises(Error, ValueErrorTask())
+        self.assertRaises(ValueError, ValueErrorTask())
     def test_noop(self):
         try:
             from io import StringIO

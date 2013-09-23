@@ -4,7 +4,7 @@
 import os
 import sys
 import traceback
-from .exception import Error, extract_tb
+from .exception import Abort, Error, extract_tb
 from .helper import Timer
 from . import display, verbose, debug, noop
 from .register import registry
@@ -145,6 +145,8 @@ class PyErector(object):
                 try:
                     debug('PyErector.basedir =', self.basedir)
                     target(basedir=self.basedir)()
+                except Abort:
+                    break  # handled already internally
                 except ValueError:
                     self.handle_error()
                 except KeyboardInterrupt:

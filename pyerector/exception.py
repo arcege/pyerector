@@ -3,6 +3,9 @@
 
 import sys, linecache
 
+class Abort(Exception):
+    """Roll back to the PyErector call."""
+
 class Error(Exception):
     def __str__(self):
         return str(self.args[0]) + ': ' + str(self.args[1])

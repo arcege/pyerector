@@ -4,6 +4,7 @@
 import fnmatch
 import os
 from sys import version, exc_info
+import traceback
 
 from .exception import Error
 
@@ -277,3 +278,10 @@ class Timer(object):
         return 0.0
     def __int__(self):
         return int(float(self))
+
+def extract_stack(stack):
+    #from .base import stack  # do not move outside of this routine
+    t, e, tb = exc_info()
+    lines = stack.extract() + traceback.format_exception_only(t, e)
+    return ''.join(lines)
+
