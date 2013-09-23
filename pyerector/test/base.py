@@ -30,7 +30,7 @@ class TestCase(unittest.TestCase):
         debug('%s.setupClass()' % cls.__name__)
         cls.dir = tempfile.mkdtemp()
         try:
-            cls.oldconfigbasedir = V['basedir'].value
+            cls.oldconfigbasedir = V['basedir']
         except KeyError:
             cls.oldconfigbasedir = os.curdir
         V['basedir'] = cls.dir

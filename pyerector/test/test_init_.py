@@ -34,5 +34,5 @@ class TestSettings(TestCase):
         self.assertEqual(pyerector.hasformat, hasattr('', 'format'))
     def test_V(self):
         self.assertTrue(hasattr(pyerector, 'V'))
-        self.assertIs(pyerector.V, pyerector.Variable)
+        self.assertIsInstance(pyerector.V, pyerector.variables.VariableCache)
 

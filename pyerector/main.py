@@ -9,7 +9,7 @@ from .helper import Timer
 from . import display, verbose, debug, noop
 from .register import registry
 from .base import Target, Task
-from .version import get_version, get_release
+from .version import Version
 from .variables import V, Variable
 
 __all__ = [
@@ -25,7 +25,8 @@ class PyErector(object):
                 'use the "help" target for more information')
         del argparse
         parser.add_argument('targets', metavar='TARGET', nargs='*',
-                            help='name of target to call, default is "default"')
+                            help='\
+name of target to call or variable assignment, default target is "default"')
         parser.add_argument('--directory', '-d',
                             help='base directory')
         parser.add_argument('--dry-run', '-N', dest='noop', action='store_true',
@@ -92,9 +93,9 @@ class PyErector(object):
             noop.on()
         if args.version:
             if verbose:
-                display('%s %s\n' % (get_release(), get_version()))
+                display('%s %s\n' % (Version.release, Version.version))
             else:
-                display('%s\n' % get_release())
+                display('%s\n' % Version.release)
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
@@ -105,16 +106,20 @@ class PyErector(object):
             self.targets = []
             all_targets = registry.get('Target')
             for name in args.targets:
-                try:
-                    obj = all_targets[name.capitalize()]
-                except KeyError:
-                    raise SystemExit('Error: unknown target: ' + str(name))
+                if '=' in name:  # variable assignment?
+                    var, val = name.split('=', 1)
+                    Variable(var.strip(), val.strip())
                 else:
-                    if not issubclass(obj, Target):
+                    try:
+                        obj = all_targets[name.capitalize()]
+                    except KeyError:
                         raise SystemExit('Error: unknown target: ' + str(name))
-                    self.targets.append(obj)
-        else:
-            self.targets = [registry['Default']]
+                    else:
+                        if not issubclass(obj, Target):
+                            raise SystemExit('Error: unknown target: ' + str(name))
+                        self.targets.append(obj)
+        if len(self.targets) == 0:
+            self.targets.append(registry['Default'])
     def handle_error(self, text=''):
         if True: #debug:
             t, e, tb = sys.exc_info()

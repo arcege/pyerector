@@ -21,11 +21,11 @@ class PyCopy(Target):
         Tokenize(
             normjoin('build', distfile, 'pyerector', 'version.py'),
             tokenmap=VariableSet(
-                V('%release.product%', release.product),
-                V('%release.number%', release.number),
-                V('%hg.version%', V('hg.version')),
-                V('%hg.branch%', V('hg.branch')),
-                V('%hg.tags%', V('hg.tags')),
+                Variable('%release.product%', release.product),
+                Variable('%release.number%', release.number),
+                Variable('%hg.version%', Variable('hg.version')),
+                Variable('%hg.branch%', Variable('hg.branch')),
+                Variable('%hg.tags%', Variable('hg.tags')),
             )
         )
     )

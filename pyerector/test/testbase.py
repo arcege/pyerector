@@ -28,9 +28,9 @@ from pyerector.variables import V
 class TestIniter(TestCase):
     def test_basedir(self):
         #obj = Initer()
-        #self.assertEqual(V['basedir'].value, os.path.realpath(os.getcwd()))
+        #self.assertEqual(V['basedir'], os.path.realpath(os.getcwd()))
         obj = Initer(basedir=self.dir)
-        self.assertEqual(V['basedir'].value, self.dir)
+        self.assertEqual(V['basedir'], self.dir)
     def test_join(self):
         #"""Ensure that join() method returns proper values."""
         obj = Initer(basedir=self.dir)

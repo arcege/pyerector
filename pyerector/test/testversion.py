@@ -5,17 +5,17 @@ from .base import *
 
 PyVersionCheck()
 
-from pyerector.version import get_release, get_version
+from pyerector.version import Version
 
 class TestVersion(TestCase):
-    def test_get_version(self):
+    def test_version(self):
         self.assertEqual(
-                get_version(),
+                Version.version,
                 'r%hg.version% (%hg.branch%) <%hg.tags%>'
         )
-    def test_get_release(self):
+    def test_release(self):
         self.assertEqual(
-                get_release(),
+                Version.release,
                 '%release.product% %release.number%'
         )
 

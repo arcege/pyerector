@@ -2,7 +2,6 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 from .helper import normjoin, Verbose, Exclusions
-from .version import *
 
 # Future Py3000 work prevents the use of string formatting using '%'
 # trying to use both string formatting and ''.format is UGLY!!!!
@@ -28,6 +27,7 @@ del environ
 # display timing information, changed in pyerector.main.PyErector
 noTimer = False
 
+from .version import *
 from .main import PyErector, pymain
 from .base import Target, Task
 from .tasks import  *
@@ -35,7 +35,6 @@ from .targets import *
 from .iterators import *
 from .variables import *
 from .vcs import *
-V = Variable  # an alias for exporting to clients, internally use 'Variable'
 
 __all__ = [
     # base routines
@@ -97,3 +96,5 @@ __all__ = [
     'Uptodate',
 ]
 
+from .variables import initialize_variables
+initialize_variables()

@@ -4,15 +4,46 @@
 Usage:
     Variable('name', 'value')
     Variable('name').value = 'value'
-
-    (Variable('name').value == Variable('name').value)
-    (Variable('name').value == str(Variable('name')))
     print Variable('name')
+
+    (Variable('name') == Variable('name'))
+    (Variable('name1') < Variable('name2'))
+    (hash(Variable('name')) == hash('name'))
+    (Variable('name').name == 'name')
+    (Variable('name').value == 'value)
+    (Variable('name').toString() == Variable('name').name)
+    (Variable('name').value is Variable('name').value)
+    (Variable('name').value == str(Variable('name')))
+    (V['name'] == Variable('name').value)
+    (V('name') == Variable('name'))  # for backward compatibility
+
+    # VariableSet is an augmented dictionary
+    vs = VariableSet(
+        Variable('name', 'michael'),
+        Variable('number', '42'),
+        Variable('address', '1313'),
+        Variable('city', 'springfield')
+    )
+    (vs['name'] == Variable('name'))
+    (vs['name'] == vs[Variable('name')])
+    (vs == {Variable('name'): Variable('name'),
+           Variable('number'): Variable('number'),
+           Variable('address'): Variable('address'),
+           Variable('city'): Variable('city')})
+    (len(vs) == 4)
+    (sorted(vs.keys()) == ['address', 'city', 'name', 'number']
+    vs.add(Variable('zipcode', '00000'))
+    vs.update(phone='888-555-1234')
+    vs.update(('phone', '888-555-1234'))
+    (vs['phone'] == 'phone')
+    (vs['phone'].value == '888-555-1234')
+    ('name' in vs == True)
+
 """
 
+import pyerector
 from . import display, debug
 from .exception import Error
-from . import version
 
 __all__ = [
     'V',
@@ -20,16 +51,50 @@ __all__ = [
     'VariableSet',
 ]
 
+class VariableCache(object):
+    """Mimic part of the functionality of a dictionary, but keep things
+minimalistic.  And some functionality, like copy(), we don't want."""
+    def __init__(self):
+        self.cache = {}
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, self.cache)
+    def __len__(self):
+        return len(self.cache)
+    def __iter__(self):
+        if hasattr(self.cache, 'iterkeys'):
+            return self.cache.iterkeys()
+        else:
+            return iter(self.cache.keys())
+    def __contains__(self, name):
+        if not isinstance(name, Variable):
+            name = Variable(name)
+        return name in self.cache
+    def __getitem__(self, name):
+        if not isinstance(name, Variable):
+            name = Variable(name)
+        if name in self.cache:
+            return self.cache[name]
+        else:
+            raise KeyError(name)
+    def __setitem__(self, name, value):
+        if not isinstance(name, Variable):
+            name = Variable(name)
+        debug('name = %s; name.value = %s; value= %s' % (repr(name), repr(name.value), repr(value)))
+        self.cache[name] = value
+    def __delitem__(self, name):
+        if not isinstance(name, Variable):
+            name = Variable(name)
+        if name in self.cache:
+            del self.cache[name]
+        else:
+            raise KeyError(name)
+    def __call__(self, name):
+        return Variable(name)
+
+V = VariableCache()
+
 class Variable(str):
-    """A global variable.
-Usage:
-    Variable('name', 'value')
-    Variable('name').value = 'value'
-    (Variable('name').value is Variable('name').value)
-    (Variable('name').value == str(Variable('name'))
-    print Variable('name')
-"""
-    cache = {}  # a class variable
+    cache = V
     def __new__(cls, name, value=None):
         return super(Variable, cls).__new__(cls, name)
     def __init__(self, name, value=None):
@@ -67,6 +132,8 @@ Usage:
         return tuple(cls.cache)
 
 class VariableSet(dict):
+    """A dictionary where all keys are variables and all values are the same
+as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
     def __new__(cls, *variables):
         # assign the variables in the initializer routine, not creater
         return super(VariableSet, cls).__new__(cls)
@@ -104,12 +171,12 @@ class VariableSet(dict):
         for k in kwargs:
             self[k] = kwargs[k]
 
-V = VariableSet()
-
-# initialize some variables
-V['pyerector.release.product'] = version.RELEASE_PRODUCT
-V['pyerector.release.number'] = version.RELEASE_NUMBER
-V['pyerector.vcs.version'] = version.HG_VERSION
-V['pyerector.vcs.branch'] = version.HG_BRANCH
-V['pyerector.vcs.tags'] = version.HG_TAGS
+def initialize_variables():
+    from .version import Version
+    # initialize some variables
+    #V['pyerector.release.product'] = Version.RELEASE_PRODUCT
+    #V['pyerector.release.number'] = Version.RELEASE_NUMBER
+    #V['pyerector.vcs.version'] = Version.HG_VERSION
+    #V['pyerector.vcs.branch'] = Version.HG_BRANCH
+    #V['pyerector.vcs.tags'] = Version.HG_TAGS
 

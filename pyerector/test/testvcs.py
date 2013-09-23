@@ -79,7 +79,7 @@ class TestVCS(TestCase):
                 os.chmod(path, userwritable)
                 os.rmdir(path)
     def setUp(self):
-        self.lastdir = V['basedir'].value
+        self.lastdir = V['basedir']
     def tearDown(self):
         V['basedir'] = self.lastdir
     def testvcs_check_novcs(self):

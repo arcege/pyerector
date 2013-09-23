@@ -19,7 +19,7 @@ __all__ = [
 def VCS(*args, **kwargs):
     from ..variables import V
     try:
-        basedir = V['basedir'].value
+        basedir = V['basedir']
     except KeyError:
         basedir = os.curdir
     for vcs in vcs_set:
