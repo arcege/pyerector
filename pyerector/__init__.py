@@ -96,5 +96,3 @@ __all__ = [
     'Uptodate',
 ]
 
-from .variables import initialize_variables
-initialize_variables()
