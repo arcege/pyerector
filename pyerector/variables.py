@@ -41,7 +41,6 @@ Usage:
 
 """
 
-import pyerector
 from . import display, debug
 from .exception import Error
 
