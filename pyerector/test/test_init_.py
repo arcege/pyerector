@@ -30,8 +30,6 @@ class TestVerbose(TestCase):
         self.assertIs(pyerector.debug.stream, sys.stdout)
 
 class TestSettings(TestCase):
-    def test_hasformat(self):
-        self.assertEqual(pyerector.hasformat, hasattr('', 'format'))
     def test_V(self):
         self.assertTrue(hasattr(pyerector, 'V'))
         self.assertIsInstance(pyerector.V, pyerector.variables.VariableCache)
