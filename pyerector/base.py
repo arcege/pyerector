@@ -276,7 +276,7 @@ class Task(Initer):
         try:
             self.handle_args(args, kwargs)
             if noop:
-                noop('Calling %s(*%s, **%s)' % (self, args, kwargs))
+                display('Calling %s(*%s, **%s)' % (self, args, kwargs))
                 return
             try:
                 rc = self.run()

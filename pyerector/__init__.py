@@ -5,16 +5,27 @@ from .helper import normjoin, Verbose, Exclusions
 
 # must define 'verbose', 'noop' and 'debug' before importing other submodules
 
+class State(object):
+    def __init__(self, initial=False):
+        self.state = initial
+    def __bool__(self):
+        return self.state
+    __nonzero__ = __bool__
+    def on(self):
+        self.state = True
+    def off(self):
+        self.state = False
+
 display = Verbose(True)  # always emit
 warn = Verbose(True) # always emit (unless --quiet)
 verbose = Verbose()
-noop = Verbose()
+noop = State()
 from os import environ
 debug = Verbose('DEBUG' in environ and environ['DEBUG'] != '')
 del environ
 
 # display timing information, changed in pyerector.main.PyErector
-noTimer = False
+noTimer = State()
 
 from .version import *
 from .main import PyErector, pymain

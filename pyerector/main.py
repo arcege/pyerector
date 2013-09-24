@@ -79,7 +79,7 @@ name of target to call or variable assignment, default target is "default"')
         # check --verbose before --version
         if args.notimer:
             import pyerector
-            pyerector.noTimer = True
+            pyerector.noTimer.on()
         if args.verbose:
             verbose.on()
         if args.DEBUG:

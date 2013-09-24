@@ -252,8 +252,6 @@ class TestTask(TestCase):
             obj = NoopTask()
             obj()
             self.assertFalse(obj.foobar)
-            self.assertEqual(noop.stream.getvalue(),
-                             'Calling NoopTask(*(), **{})' + os.linesep)
         finally:
             noop.state = old_noop
 
