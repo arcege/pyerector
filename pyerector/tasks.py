@@ -8,7 +8,7 @@ import sys
 from .exception import Error
 from .helper import Exclusions, Subcommand
 from .base import Task
-from . import debug, verbose, warn, hasformat
+from . import debug, verbose, warn
 from .iterators import FileMapper, MergeMapper, StaticIterator
 from .variables import VariableSet
 
@@ -213,10 +213,7 @@ Java(jar=<JAR>, java_home=<$JAVA_HOME>, classpath=(), properties=[])"""
         from os.path import pathsep
         jar = self.get_kwarg('jar', str, noNone=True)
         if self.properties:
-            if hasformat:
-                sp = ['-D{0}={1}'.format(x[0], x[1]) for x in self.properties]
-            else:
-                sp = ['-D%s=%s' % x for x in self.properties]
+            sp = ['-D%s=%s' % x for x in self.properties]
         else:
             sp = ()
         cmd = (self.java_prog,) + tuple(sp) + ('-jar', jar,) + \

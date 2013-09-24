@@ -3,17 +3,6 @@
 
 from .helper import normjoin, Verbose, Exclusions
 
-# Future Py3000 work prevents the use of string formatting using '%'
-# trying to use both string formatting and ''.format is UGLY!!!!
-# A LOT of the code may be using the less efficient string
-# concatentation which is supported across both sets of releases.
-try:
-    ''.format
-except AttributeError:
-    hasformat = False
-else:
-    hasformat = True
-
 # must define 'verbose', 'noop' and 'debug' before importing other submodules
 
 display = Verbose(True)  # always emit
