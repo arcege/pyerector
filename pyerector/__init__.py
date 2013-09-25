@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from .helper import normjoin, Verbose, Exclusions
+from .helper import normjoin, Verbose, Exclusions, init_logging
 
 # must define 'verbose', 'noop' and 'debug' before importing other submodules
 
@@ -96,3 +96,4 @@ __all__ = [
     'Uptodate',
 ]
 
+init_logging()

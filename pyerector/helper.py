@@ -2,6 +2,7 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 import fnmatch
+import logging
 import os
 from sys import version, exc_info
 import traceback
@@ -284,4 +285,45 @@ def extract_stack(stack):
     t, e, tb = exc_info()
     lines = stack.extract() + traceback.format_exception_only(t, e)
     return ''.join(lines)
+class LogFormatter(logging.Formatter):
+    logPrefix = None
+    def format(self, record):
+        newrecord = super(LogFormatter, self).format(record)
+        if self.logPrefix is None:
+            try:
+                prefix = os.environ['PYERECTOR_PREFIX']
+            except (AttributeError,KeyError):
+                prefix = ''
+            self.logPrefix = prefix
+        else:
+            prefix = self.logPrefix
+        if prefix:
+            if isinstance(newrecord, logging.Record):
+                self.message = '%s: %s' % (prefix, self.message)
+            else:
+                self.message = '%s: %s' % (prefix, newrecord)
+    def formatException(self, exc_info):
+        from .exceptions import extract_tb
+        t, e, tb = exc_info
+        exc = traceback.format_exception_only(t, e)
+        st = traceback.format_list(extract_tb(tb))
+        return ''.join(st + exc)
+class LogExecFormatter(logging.Formatter):
+    def formatException(self, exc_info):
+        from .base import stack  # do not move outside of this method
+        t, e, tb = exc_info
+        lines = stack.extract() + traceback.format_exception_only(t, e)
+        return ''.join(lines)
+def init_logging(deflevel=logging.WARNING, message='%(message)s'):
+    def setup(name, handlerklass, formatterklass,
+              deflevel=deflevel, message=message):
+        f = formatterklass(message)
+        h = handlerklass(deflevel)
+        h.setFormatter(f)
+        l = logging.getLogger(name)
+        l.addHandler(h)
+        l.setLevel(deflevel)
+        return l
+    setup('pyerector', logging.StreamHandler, LogFormatter)
+    setup('pyerector.execute', logging.StreamHandler, LogExecFormatter)
 

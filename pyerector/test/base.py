@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
+import logging
 import os
 import shutil
 import sys
@@ -9,12 +10,18 @@ import unittest
 from unittest import SkipTest
 
 __all__ = [
+  'logger',
   'PyVersionCheck',
   'SkipTest',
   'TestCase',
 ]
 
-from pyerector import debug
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('pyerector.test')
+logger.propagate = False
+logger.addHandler(logging.StreamHandler())
+
+from pyerector import init_logging
 from pyerector.variables import V
 
 Platform = sys.platform[:3]
@@ -27,7 +34,7 @@ def PyVersionCheck():
 class TestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        debug('%s.setupClass()' % cls.__name__)
+        logger.debug('%s.setupClass()', cls.__name__)
         cls.dir = tempfile.mkdtemp()
         try:
             cls.oldconfigbasedir = V['basedir']
@@ -39,7 +46,7 @@ class TestCase(unittest.TestCase):
             cls.platform = None
     @classmethod
     def tearDownClass(cls):
-        debug('%s.tearDownClass()' % cls.__name__)
+        logger.debug('%s.tearDownClass()', cls.__name__)
         V['basedir'] = cls.oldconfigbasedir
         def handle_perms(func, path, exc_info):
             import os
@@ -50,4 +57,6 @@ class TestCase(unittest.TestCase):
             os.chmod(path, writable)
             func(path)
         shutil.rmtree(cls.dir, onerror=handle_perms)
+
+init_logging()
 

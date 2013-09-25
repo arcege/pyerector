@@ -60,7 +60,7 @@ class TestIniter(TestCase):
         for n in ('bar', 'far', 'tar'):
             fn = normjoin(subdir, '%s' % n)
             open(fn, 'w').close()
-        debug('files in', subdir, 'are', os.listdir(subdir))
+        logger.debug('files in %s are %s', subdir, os.listdir(subdir))
         # test simple glob
         self.assertEqual(sorted(obj.get_files(('*',))),
                          ['bar',
@@ -111,7 +111,7 @@ class TestCallUptodate_T(Target):
     uptodates = (TestCallUptodate_utd,)
 class TestCallTask_t(Task):
     def run(self):
-        verbose('Creating', self.join(self.args[0]))
+        logger.debug('Creating %s', self.join(self.args[0]))
         open(self.join(self.args[0]), 'w').close()
 class TestCallTask_T(Target):
     tasks = (TestCallTask_t,)
@@ -243,7 +243,6 @@ class TestTask(TestCase):
         old_noop = noop.state
         try:
             noop.on()
-            noop.stream = StringIO()
             self.assertTrue(bool(noop))
             class NoopTask(Task):
                 foobar = False
