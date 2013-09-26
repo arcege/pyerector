@@ -42,6 +42,7 @@ Usage:
 """
 
 import logging
+import threading
 
 from .exception import Error
 
@@ -56,6 +57,7 @@ class VariableCache(object):
 minimalistic.  And some functionality, like copy(), we don't want."""
     def __init__(self):
         self.cache = {}
+        self.lock = threading.RLock()
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.cache)
     def __len__(self):
@@ -68,27 +70,31 @@ minimalistic.  And some functionality, like copy(), we don't want."""
     def __contains__(self, name):
         if not isinstance(name, Variable):
             name = Variable(name)
-        return name in self.cache
+        with self.lock:
+            return name in self.cache
     def __getitem__(self, name):
         if not isinstance(name, Variable):
             name = Variable(name)
-        if name in self.cache:
-            return self.cache[name]
-        else:
-            raise KeyError(name)
+        with self.lock:
+            if name in self.cache:
+                return self.cache[name]
+            else:
+                raise KeyError(name)
     def __setitem__(self, name, value):
         if not isinstance(name, Variable):
             name = Variable(name)
-        logger = logging.getLogger('pyerector.execute')
-        logger.debug('name = %s; name.value = %s; value= %s' % (repr(name), repr(name.value), repr(value)))
-        self.cache[name] = value
+        with self.lock:
+            logger = logging.getLogger('pyerector.execute')
+            logger.debug('name = %s; name.value = %s; value= %s' % (repr(name), repr(name.value), repr(value)))
+            self.cache[name] = value
     def __delitem__(self, name):
         if not isinstance(name, Variable):
             name = Variable(name)
-        if name in self.cache:
-            del self.cache[name]
-        else:
-            raise KeyError(name)
+        with self.lock:
+            if name in self.cache:
+                del self.cache[name]
+            else:
+                raise KeyError(name)
     def __call__(self, name):
         return Variable(name)
 
