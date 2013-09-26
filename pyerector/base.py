@@ -12,7 +12,7 @@ if version[0] > '2': # python 3+
     from .py3.base import Base
 else:
     from .py2.base import Base
-from . import display, noop
+from . import noop
 from .helper import normjoin, u, Timer, extract_stack
 from .register import registry
 from .exception import Abort, Error
@@ -222,6 +222,7 @@ class Target(Initer):
                             break
                     except Error:
                         self.logger.exception('Exception in %s.uptodate', myname)
+                        raise Abort
                 else:
                     self.verbose('uptodate.')
                     return
@@ -230,6 +231,7 @@ class Target(Initer):
                     self.call(dep, Target, 'dependencies')
                 except Error:
                     self.logger.exception('Exception in %s.dependencies', myname)
+                    raise Abort
             with timer:
                 try:
                     for task in self.tasks:
@@ -248,8 +250,7 @@ class Target(Initer):
                     self.logger.exception('Exception in %s.tasks', myname)
                     raise Abort
                 except Exception:
-                    logger = logging.getLogger('pyerector')
-                    logger.exception('Exception')
+                    logging.getLogger('pyerector').exception('Exception')
                     raise Abort
             import pyerector
             if pyerector.noTimer:
@@ -291,7 +292,8 @@ class Task(Initer):
                 self.logger.exception('Exception in %s.run', myname)
                 raise Abort
             except Exception:
-                raise
+                self.logger.exception('Exception')
+                raise Abort
         finally:
             stack.pop()
         if rc:
