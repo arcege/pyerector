@@ -12,7 +12,7 @@ if version[0] > '2': # python 3+
     from .py3.base import Base
 else:
     from .py2.base import Base
-from . import display, noop
+from . import noop
 from .helper import normjoin, u, Timer, extract_stack
 from .register import registry
 from .exception import Abort, Error
@@ -200,6 +200,7 @@ class Target(Initer):
                 assert issubclass(kobj, klass), \
                     "%s is not a %s" % (kobj, klass)
             except (KeyError, AssertionError):
+                raise Error('%s no such %s: %s' % (self, ktype, name))
                 logging.getLogger('pyerector').exception('Cannot find %s', name)
             else:
                 obj = kobj()
@@ -211,8 +212,9 @@ class Target(Initer):
         else:
             return obj(*args)
     def __call__(self, *args):
+        myname = self.__class__.__name__
         global stack
-        self.logger.debug('%s.__call__(*%s)', self.__class__.__name__, args)
+        self.logger.debug('%s.__call__(*%s)', myname, args)
         timer = Timer()
         if self.been_called:
             return
@@ -220,20 +222,30 @@ class Target(Initer):
         try:
             if self.uptodates:
                 for utd in self.uptodates:
-                    if not self.call(utd, Mapper, 'uptodate'):
-                        break
+                    try:
+                        if not self.call(utd, Mapper, 'uptodate'):
+                            break
+                    except Error:
+                        self.logger.exception('Exception in %s.uptodates', myname)
+                        raise Abort
                 else:
                     self.verbose('uptodate.')
                     return
             for dep in self.dependencies:
-                self.call(dep, Target, 'dependencies')
+                try:
+                    self.call(dep, Target, 'dependencies')
+                except Error:
+                    self.logger.exception('Exception in %s.dependencies', myname)
+                    raise Abort
             with timer:
                 for task in self.tasks:
                     try:
                         self.call(task, Task, 'task', args)
                     except Error:
-                        self.logger.exception('tasks')
+                        self.logger.exception('Exception in %s.tasks', myname)
+                        raise Abort
                 try:
+                    self.logger.debug('starting %s.run', myname)
                     self.run()
                 except (KeyError, ValueError, TypeError,
                         RuntimeError, AttributeError):
@@ -241,10 +253,10 @@ class Target(Initer):
                 except Abort:
                     raise # reraise
                 except Error:
-                    self.logger.exception('run')
+                    self.logger.exception('Exception in %s.run', myname)
                     raise Abort
                 except Exception:
-                    self.logger.exception('run')
+                    logging.getLogger('pyerector').exception('Exception')
                     raise Abort
             import pyerector
             if pyerector.noTimer:
@@ -266,13 +278,14 @@ class Task(Initer):
     def __str__(self):
         return self.__class__.__name__
     def __call__(self, *args, **kwargs):
+        myname = self.__class__.__name__
         global stack
-        self.logger.debug('%s.__call__(*%s, **%s)', self.__class__.__name__, args, kwargs)
+        self.logger.debug('%s.__call__(*%s, **%s)', myname, args, kwargs)
         stack.push(self) # push me onto the execution stack
         try:
             self.handle_args(args, kwargs)
             if noop:
-                self.logger.warning('Calling %s(*%s, **%s)' % (self, args, kwargs))
+                self.logger.warning('Calling %s(*%s, **%s)', myname, args, kwargs)
                 return
             try:
                 rc = self.run()
@@ -282,10 +295,10 @@ class Task(Initer):
             except Abort:
                 raise # reraise
             except Error:
-                self.logger.exception('run')
+                self.logger.exception('Exception in %s.run', myname))
                 raise Abort
             except Exception:
-                self.logger.exception('run')
+                self.logger.exception('Exception')
                 raise Abort
         finally:
             stack.pop()
