@@ -6,8 +6,8 @@ import os
 import sys
 import traceback
 from .exception import Abort, Error, extract_tb
-from .helper import Timer
-from . import display, noop
+from .helper import display, Timer
+from . import noop
 from .register import registry
 from .base import Target, Task
 from .version import Version
@@ -96,9 +96,9 @@ name of target to call or variable assignment, default target is "default"')
             noop.on()
         if args.version:
             if logging.getLogger().isEnabledFor(logging.INFO):
-                display('%s %s\n' % (Version.release, Version.version))
+                display('%s %s', Version.release, Version.version)
             else:
-                display('%s\n' % Version.release)
+                display('%s', Version.release)
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
@@ -166,9 +166,9 @@ name of target to call or variable assignment, default target is "default"')
                     self.logger.exception(self.__class__.__name__)
         import pyerector
         if pyerector.noTimer:
-            display('Done.')
+            self.logger.warning('Done.')
         else:
-            display('Done. (%0.3f)' % timer)
+            self.logger.warning('Done. (%0.3f)', timer)
 
 pymain = PyErector
 

@@ -4,7 +4,6 @@
 import sys
 
 from .base import *
-from pyerector.helper import Verbose  # we want the class to change stream
 
 PyVersionCheck()
 
@@ -15,15 +14,6 @@ class Test_pymain(TestCase):
         self.assertIs(PyErector, pymain)
 
 class TestPyErectorArguments(TestCase):
-    def setUp(self):
-        try:
-            from io import StringIO
-        except ImportError:
-            from StringIO import StringIO
-        self.real_stdout = Verbose.stream
-        Verbose.stream = StringIO()
-    def tearDown(self):
-        Verbose.stream = self.real_stdout
     # causing failures in other tests
     def _test_result(self):
         PyErector('--dry-run')

@@ -15,45 +15,6 @@ __all__ = [
     'Subcommand',
 ]
 
-class Verbose(object):
-    from os import linesep as eoln
-    from sys import stdout as stream
-    prefix = ''
-    def __init__(self, state=False, prefix=None, stream=None):
-        from os import environ
-        self.state = bool(state)
-        if stream is not None:
-            self.stream = stream
-        if prefix is not None:
-            self.prefix = str(prefix)
-        if 'PYERECTOR_PREFIX' in environ:
-            value = environ['PYERECTOR_PREFIX']
-            if isinstance(value, bytes):
-                value = value.decode('UTF-8')
-            else:
-                value = str(value)
-            if self.prefix != '':
-                self.prefix = '%s: %s' % (value, self.prefix)
-            else:
-                self.prefix = value
-    def __bool__(self):
-        return self.state
-    __nonzero__ = __bool__
-    def on(self):
-        self.state = True
-    def off(self):
-        self.state = False
-    def write(self, msg):
-        if self.prefix != '':
-            self.stream.write(u(self.prefix))
-            self.stream.write(u(': '))
-        self.stream.write(u(msg))
-        self.stream.write(u(self.eoln))
-        self.stream.flush()
-    def __call__(self, *args):
-        if self.state:
-            self.write(u(' ').join([u(str(s)) for s in args]))
-
 # helper routines
 def normjoin(*args):
     if not args:
@@ -297,23 +258,29 @@ class LogFormatter(logging.Formatter):
         else:
             prefix = self.logPrefix
         if prefix:
-            if isinstance(newrecord, logging.Record):
-                self.message = '%s: %s' % (prefix, self.message)
+            if isinstance(newrecord, logging.LogRecord):
+                message = '%s: %s' % (prefix, newrecord.message)
             else:
-                self.message = '%s: %s' % (prefix, newrecord)
+                message = '%s: %s' % (prefix, newrecord)
+        elif isinstance(newrecord, logging.LogRecord):
+            message = newrecord.message
+        else:
+            message = newrecord
+        return message
     def formatException(self, exc_info):
         from .exceptions import extract_tb
         t, e, tb = exc_info
         exc = traceback.format_exception_only(t, e)
         st = traceback.format_list(extract_tb(tb))
         return ''.join(st + exc)
-class LogExecFormatter(logging.Formatter):
+class LogExecFormatter(LogFormatter):
     def formatException(self, exc_info):
         from .base import stack  # do not move outside of this method
         t, e, tb = exc_info
         lines = stack.extract() + traceback.format_exception_only(t, e)
-        return ''.join(lines)
+        return ''.join(lines).rstrip()
 def init_logging(deflevel=logging.WARNING, message='%(message)s'):
+    global DISPLAY
     def setup(name, handlerklass, formatterklass,
               deflevel=deflevel, message=message):
         f = formatterklass(message)
@@ -324,6 +291,10 @@ def init_logging(deflevel=logging.WARNING, message='%(message)s'):
         l.propagate = False
         return l
     logging.basicConfig(level=deflevel, message=message)
+    DISPLAY = logging.ERROR + 5
+    logging.addLevelName(level=DISPLAY, levelName='DISPLAY')
     setup('pyerector', logging.StreamHandler, LogFormatter)
     setup('pyerector.execute', logging.StreamHandler, LogExecFormatter)
+def display(msg, *args, **kwargs):
+    logging.getLogger('pyerector.execute').log(DISPLAY, msg, *args, **kwargs)
 

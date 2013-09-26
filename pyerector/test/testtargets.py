@@ -15,7 +15,7 @@ from .base import *
 PyVersionCheck()
 
 from pyerector import normjoin, noop
-from pyerector.helper import Verbose, u
+from pyerector.helper import u
 from pyerector.exception import Error
 from pyerector.base import Initer, Target, Task
 from pyerector.iterators import Uptodate

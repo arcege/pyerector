@@ -17,7 +17,7 @@ from .base import *
 PyVersionCheck()
 
 from pyerector import normjoin, display, noop
-from pyerector.helper import normjoin, Verbose
+from pyerector.helper import normjoin
 from pyerector.exception import Error
 from pyerector.base import Initer, Target, Task, Iterator
 from pyerector.targets import *
@@ -139,11 +139,6 @@ class TestE2E_T(Target):
 
 class TestTarget_basics(TestCase):
     maxDiff = None
-    def setUp(self):
-        self.realstream = display.stream
-    def tearDown(self):
-        if hasattr(self, 'real_stream'):
-            Verbose.stream = getattr(self, 'real_stream')
     def test_been_called(self):
         target = TestBeenCalled(basedir=self.dir)
         self.assertFalse(target.been_called)

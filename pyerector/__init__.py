@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from .helper import normjoin, Verbose, Exclusions, init_logging
+from .helper import normjoin, display, Exclusions, init_logging
 
 # must define 'verbose', 'noop' and 'debug' before importing other submodules
 
@@ -16,7 +16,6 @@ class State(object):
     def off(self):
         self.state = False
 
-display = Verbose(True)  # always emit
 noop = State()
 
 # display timing information, changed in pyerector.main.PyErector
