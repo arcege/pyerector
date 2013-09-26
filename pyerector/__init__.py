@@ -17,12 +17,7 @@ class State(object):
         self.state = False
 
 display = Verbose(True)  # always emit
-warn = Verbose(True) # always emit (unless --quiet)
-verbose = Verbose()
 noop = State()
-from os import environ
-debug = Verbose('DEBUG' in environ and environ['DEBUG'] != '')
-del environ
 
 # display timing information, changed in pyerector.main.PyErector
 noTimer = State()

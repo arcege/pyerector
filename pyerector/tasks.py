@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
+import logging
 import os
 import shutil
 import sys
@@ -8,7 +9,6 @@ import sys
 from .exception import Error
 from .helper import Exclusions, Subcommand
 from .base import Task
-from . import debug, verbose, warn
 from .iterators import FileMapper, MergeMapper, StaticIterator
 from .variables import VariableSet
 
@@ -35,7 +35,7 @@ Chmod(*files, mode=0666)"""
         mode = self.get_kwarg('mode', int)
         for fname in self.get_files(self.get_args('files')):
             self.asserttype(fname, str, 'files')
-            verbose('chmod(' + fname + ', ' + oct(mode) + ')')
+            self.logger.info('chmod(%s, %o)', fname, mode)
             chmod(self.join(fname), mode)
 
 class Container(Task):
@@ -97,24 +97,22 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
             excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
-            debug('Copy.fmap =', vars(fmap))
         elif len(files) == 1 and dest is not None and not os.path.isdir(dest):
             fmap = MergeMapper(files[0], destdir=dest)
-            debug('Copy.fmap =', vars(fmap))
         elif dest is not None:
             fmap = FileMapper(self.get_files(files),
                               destdir=dest)
-            debug('Copy.fmap =', vars(fmap))
         else:
             raise Error('must supply dest to %s' % self.__class__.__name__)
+        self.logger.debug('Copy.fmap = %s', vars(fmap))
         for (sname, dname) in fmap:
             srcfile = self.join(sname)
             dstfile = self.join(dname)
             if not excludes.match(os.path.basename(sname)):
                 if os.path.isfile(dstfile) and fmap.checkpair(srcfile, dstfile):
-                    debug('uptodate:', dstfile)
+                    self.logger.debug('uptodate: %s', dstfile)
                 else:
-                    verbose('copy2(' + str(sname) + ', ' + str(dname) + ')')
+                    self.logger.info('copy2(%s, %s)', sname, dname)
                     shutil.copy2(srcfile, dstfile)
 
 class CopyTree(Task):
@@ -165,7 +163,7 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
         from hashlib import md5, sha1
         files = self.get_args('files')
         hashs = self.get_kwarg('hashs', tuple)
-        debug('files =', files, 'hashs =', hashs)
+        self.logger.debug('files = %s; hashs = %s', files, hashs)
         def mapping(s):
             return ('%s.md5' % s, '%s.sha1' % s)
         fmap = FileMapper(self.get_files(files), mapper=mapping)
@@ -178,7 +176,7 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
             if (h and os.path.isfile(sname) and
                 not fmap.checkpair(self.join(sname), self.join(dname))):
                 h.update(open(self.join(sname), 'rb').read())
-                verbose('writing', dname)
+                self.logger.info('writing %s', dname)
                 open(self.join(dname), 'wt').write(h.hexdigest() + '\n')
 
 class Java(Task):
@@ -240,13 +238,15 @@ Mkdir(*files)"""
             self.mkdir(self.join(arg))
     @classmethod
     def mkdir(klass, path):
+        from logging import getLogger
+        logger = getLogger('pyerector.execute')
         if os.path.islink(path) or os.path.isfile(path):
-            verbose('remove(' + str(path) + ')')
+            logger.info('remove(%s)', path)
             os.remove(path)
             klass.mkdir(path)
         elif not os.path.isdir(path):
             klass.mkdir(os.path.dirname(path))
-            verbose('mkdir(' + str(path) + ')')
+            logger.info('mkdir(%s)', path)
             os.mkdir(path)
 
 class PyCompile(Task):
@@ -261,7 +261,7 @@ PyCompile(*files, dest=<DIR>, version='2')"""
         fileset = self.get_files(self.get_args('files'))
         if self.version[:1] == sys.version[:1]:  # compile inline
             for s in fileset:
-                debug('py_compile.compile(%s)' % s)
+                self.logger.debug('py_compile.compile(%s)', s)
                 py_compile.compile(self.join(s))
         else:
             if self.version[:1] == '2':
@@ -278,14 +278,14 @@ PyCompile(*files, dest=<DIR>, version='2')"""
             except Error:
                 t, e, tb = sys.exc_info()
                 if e.args[0] == 'ENOENT':
-                    warn('%s: Error with %s: %s' %
-                        (self.__class__.__name__, cmd, e.args[1])
+                    self.logger.error('%s: Error with %s: %s',
+                        self.__class__.__name__, cmd, e.args[1]
                     )
                 else:
                     raise
             else:
                 if proc.returncode != 0:
-                    verbose('could not compile files with', cmd)
+                    self.logger.info('could not compile files with %s', cmd)
 
 class Remove(Task):
     """Remove a file or directory tree.
@@ -298,10 +298,10 @@ Remove(*files)"""
             self.asserttype(name, str, 'files')
             fname = self.join(name)
             if os.path.isfile(fname) or os.path.islink(fname):
-                verbose('remove(' + str(fname) + ')')
+                self.logger.info('remove(%s)', fname)
                 os.remove(fname)
             elif os.path.isdir(fname):
-                verbose('rmtree(' + str(fname) + ')')
+                self.logger.info('rmtree(%s)', fname)
                 shutil.rmtree(fname)
 
 class Shebang(Copy):
@@ -313,7 +313,7 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
     token = '#!'
     program = None
     def run(self):
-        verbose('starting Shebang')
+        self.logger.info('starting Shebang')
         program = self.get_kwarg('program', str, noNone=True)
         srcs = self.get_files(self.get_args('files'))
         dest = self.get_kwarg('dest', str)
@@ -389,14 +389,14 @@ Adds PYERECTOR_PREFIX environment variable."""
         prog = self.get_kwarg('prog', str)
         # we explicitly add './' to prevent searching PATH
         options = []
-        if not warn:
-            options.append('--quiet')
-        elif verbose:
+        if logging.isEnabledFor(logging.DEBUG):
+            options.append('--DEBUG')
+        elif logging.isEnabledFor(logging.INFO):
             options.append('--verbose')
+        elif logging.isEnabledFor(logging.ERROR):
+            options.append('--quiet')
         if noTimer:
             options.append('--timer')
-        if debug:
-            options.append('--DEBUG')
         cmd = (os.path.join('.', prog),) + tuple(options) + tuple(targets)
         env = self.get_kwarg('env', dict)
         wdir = self.get_kwarg('wdir', str)
@@ -428,10 +428,7 @@ Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""
                 fn = fname.replace(
                     root + os.sep, ''
                 )
-                verbose('tar.add(' +
-                        str(fname) + ', ' +
-                        str(fn) + ')'
-                )
+                self.logger.info('tar.add(%s, %s)', fname, fn)
                 file.add(self.join(fname), fn)
             file.close()
 
@@ -452,7 +449,7 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
         self.update_tokenmap()
         import re
         def repltoken(m, map=tokenmap):
-            debug('found', m.group(0))
+            self.logger.debug('found %s', m.group(0))
             result = map.get(m.group(0))
             return result is not None and str(result) or ''
         def quote(s):
@@ -463,7 +460,7 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
             [quote(k) for k in self.get_kwarg('tokenmap', VariableSet)]
         )
         tokens = re.compile(r'(%s)' % patt, re.MULTILINE)
-        debug('patt =', str(tokens.pattern))
+        self.logger.debug('patt = %s', str(tokens.pattern))
         mapper = FileMapper(self.get_args('files'),
                             destdir=self.get_kwarg('dest', str),
                             iteratorclass=StaticIterator)
@@ -485,6 +482,9 @@ import os, sys, imp, unittest
 params = eval(open(sys.argv[1]).read())
 
 verbose = ('verbose' in params and params['verbose']) and 1 or 0
+quiet = ('quiet' in params and params['quiet']) and 1 or 0
+if quiet:
+    verbose = 0
 
 try:
     loader = unittest.loader.TestLoader()
@@ -621,6 +621,8 @@ try:
 except:
     suite = unittest.TestSuite()
 real_args = sys.argv[:]
+import logging
+logging.getLogger('pyerector').setLevel(logging.ERROR)
 try:
     if params['modules']:
         path = [os.path.realpath(p) for p in params['path']]
@@ -651,7 +653,8 @@ finally:
             pfile.write(repr({
                 'modules': tuple(self.get_args('modules')),
                 'path': self.path,
-                'verbose': bool(verbose),
+                'verbose': bool(self.logger.isEnabledFor(logging.INFO)),
+                'quiet': bool(self.logger.isEnabledFor(logging.ERROR)),
             }))
             pfile.close()
             sfile = tempfile.NamedTemporaryFile(mode='wt',
@@ -704,7 +707,7 @@ Untar(*files, name=<tarfilename>, root=None)"""
         return fileset
     def extract_members(self, contfile, fileset, root):
         for fileinfo in fileset:
-            verbose('tar.extract(' + str(fileinfo.name) + ')')
+            self.logger.info('tar.extract(%s)', fileinfo.name)
             contfile.extract(fileinfo, path=(root or ""))
 
 class Unzip(Uncontainer):
@@ -726,7 +729,7 @@ Unzip(*files, name=<tarfilename>, root=None)"""
         for member in fileset:
             dname = os.path.join(root, member)
             Mkdir.mkdir(os.path.dirname(dname))
-            verbose('zip.extract(' + str(member) + ')')
+            self.logger.info('zip.extract(%s)', member)
             dfile = open(dname, 'wb')
             dfile.write(contfile.read(member))
 
@@ -744,7 +747,7 @@ Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
                 fn = fname.replace(
                     root + os.sep, ''
                 )
-                verbose('zip.add(' + str(fname) + ',' + str(fn) + ')' )
+                self.logger.info('zip.add(%s, %s)', fname, fn)
                 file.write(fname, fn)
             file.close()
 
@@ -793,7 +796,7 @@ Platform: UNKNOWN
         open(os.path.join(root, 'EGG-INFO', 'SOURCES.txt'), 'wt').write(
             '\n'.join(sorted([s.replace(root+os.sep, '') for s in toadd]))
         )
-        verbose('toadd =', toadd)
+        self.logger.info('toadd = %s', toadd)
         toadd.extend(
             [os.path.join(root, 'EGG-INFO', 'PKG-INFO'),
              os.path.join(root, 'EGG-INFO', 'dependency_links.txt'),

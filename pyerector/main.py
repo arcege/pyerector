@@ -1,12 +1,13 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
+import logging
 import os
 import sys
 import traceback
 from .exception import Abort, Error, extract_tb
 from .helper import Timer
-from . import display, verbose, debug, noop
+from . import display, noop
 from .register import registry
 from .base import Target, Task
 from .version import Version
@@ -65,13 +66,17 @@ name of target to call or variable assignment, default target is "default"')
             self.progdir = os.curdir
         else:
             self.progdir = os.path.realpath(self.progdir)
+        self.logger = logging.getLogger('pyerector')
         self.basedir = None
         self.targets = []
-        self.arguments(args or sys.argv[1:])
-        self.validate_targets()
-        self.run()
+        try:
+            self.arguments(args or sys.argv[1:])
+            self.validate_targets()
+            self.run()
+        except Abort:
+            raise SystemExit(1)
     def arguments(self, args):
-        global verbose, noop
+        global noop
         args = self.parser.parse_args(args)
         if isinstance(args, tuple):
             args, arglist = args
@@ -81,18 +86,16 @@ name of target to call or variable assignment, default target is "default"')
             import pyerector
             pyerector.noTimer.on()
         if args.verbose:
-            verbose.on()
+            logging.getLogger().setLevel(logging.INFO)
         if args.DEBUG:
-            debug.on()
+            logging.getLogger().setLevel(logging.DEBUG)
         # check --quiet after --verbose
         if args.quiet:
-            display.off()
-            verbose.off()
-            debug.off()
+            logging.getLogger().setLevel(logging.ERROR)
         if args.noop:
             noop.on()
         if args.version:
-            if verbose:
+            if logging.getLogger().isEnabledFor(logging.INFO):
                 display('%s %s\n' % (Version.release, Version.version))
             else:
                 display('%s\n' % Version.release)
@@ -142,25 +145,25 @@ name of target to call or variable assignment, default target is "default"')
             try:
                 target.validate_tree()
             except ValueError:
-                self.handle_error('Error')
+                self.logger.exception('Validation')
     def run(self):
         timer = Timer()
         # run all targets in the tree of each argument
         with timer:
             for target in self.targets:
                 try:
-                    debug('PyErector.basedir =', self.basedir)
+                    self.logger.debug('PyErector.basedir = %s', self.basedir)
                     target(basedir=self.basedir)()
                 except Abort:
                     break  # handled already internally
                 except ValueError:
-                    self.handle_error()
+                    self.logger.exception(self.__class__.__name__)
                 except KeyboardInterrupt:
-                    self.handle_error()
+                    raise Abort
                 except AssertionError:
                     self.handle_error('AssertionError')
                 except Error:
-                    self.handle_error()
+                    self.logger.exception(self.__class__.__name__)
         import pyerector
         if pyerector.noTimer:
             display('Done.')

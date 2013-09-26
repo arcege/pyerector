@@ -16,7 +16,7 @@ from .base import *
 
 PyVersionCheck()
 
-from pyerector import normjoin, verbose, display, debug, noop
+from pyerector import normjoin, display, noop
 from pyerector.helper import normjoin, Verbose
 from pyerector.exception import Error
 from pyerector.base import Initer, Target, Task, Iterator
@@ -140,29 +140,15 @@ class TestE2E_T(Target):
 class TestTarget_basics(TestCase):
     maxDiff = None
     def setUp(self):
-        self.realstream = verbose.stream
-        verbose.stream = StringIO()
-        display.stream = verbose.stream
-        self.realverbose = verbose.state
-        self.realdebug = debug.state
+        self.realstream = display.stream
     def tearDown(self):
         if hasattr(self, 'real_stream'):
             Verbose.stream = getattr(self, 'real_stream')
-        debug.state = self.realdebug
-        verbose.state = self.realverbose
     def test_been_called(self):
         target = TestBeenCalled(basedir=self.dir)
         self.assertFalse(target.been_called)
         target()
         self.assertTrue(target.been_called)
-    def test_verbose(self):
-        debug.off()
-        target = Target()
-        target.verbose('hi there')
-        self.assertEqual(verbose.stream.getvalue(), 'Target: hi there' + os.linesep)
-        display.stream = StringIO()
-        target.verbose('hi', 'there')
-        self.assertEqual(verbose.stream.getvalue(), 'Target: hi there' + os.linesep)
 
 class TestTarget_functionality(TestCase):
     def test_nothing(self):
@@ -236,10 +222,6 @@ class TestTask(TestCase):
         self.assertRaises(TypeError, TypeErrorTask())
         self.assertRaises(ValueError, ValueErrorTask())
     def test_noop(self):
-        try:
-            from io import StringIO
-        except ImportError:
-            from StringIO import StringIO
         old_noop = noop.state
         try:
             noop.on()

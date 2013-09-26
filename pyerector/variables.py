@@ -41,7 +41,8 @@ Usage:
 
 """
 
-from . import display, debug
+import logging
+
 from .exception import Error
 
 __all__ = [
@@ -78,7 +79,8 @@ minimalistic.  And some functionality, like copy(), we don't want."""
     def __setitem__(self, name, value):
         if not isinstance(name, Variable):
             name = Variable(name)
-        debug('name = %s; name.value = %s; value= %s' % (repr(name), repr(name.value), repr(value)))
+        logger = logging.getLogger('pyerector.execute')
+        logger.debug('name = %s; name.value = %s; value= %s' % (repr(name), repr(name.value), repr(value)))
         self.cache[name] = value
     def __delitem__(self, name):
         if not isinstance(name, Variable):
@@ -142,7 +144,7 @@ as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
     def add(self, var):
         if not isinstance(var, Variable):
             var = Variable(var)
-        #display('%s.add(%s)' % (self.__class__.__name__, repr(var)))
+        logging.debug('%s.add(%s)' % (self.__class__.__name__, repr(var)))
         super(VariableSet, self).__setitem__(var, var)
     def __getitem__(self, item):
         if not isinstance(item, Variable):
@@ -153,7 +155,7 @@ as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
             item = Variable(item)
         if item not in self:
             self.add(item)
-        #display('setitem(%s, %s)' % (repr(item), repr(value)))
+        logging.debug('setitem(%s, %s)' % (repr(item), repr(value)))
         if item is not value: # didn't pass in the same object
             self[item].value = value
     def __delitem__(self, item):

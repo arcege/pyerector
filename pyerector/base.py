@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
+import logging
 import os
 from sys import version
 try:
@@ -11,7 +12,7 @@ if version[0] > '2': # python 3+
     from .py3.base import Base
 else:
     from .py2.base import Base
-from . import debug, display, warn, noop
+from . import display, noop
 from .helper import normjoin, u, Timer, extract_stack
 from .register import registry
 from .exception import Abort, Error
@@ -57,7 +58,8 @@ stack = ExecStack()
 class Initer(Base):
     config = Config()  # for backward compatibility only
     def __init__(self, *args, **kwargs):
-        debug('%s.__init__(*%s, **%s)' % (self.__class__.__name__, args, kwargs))
+        self.logger = logging.getLogger('pyerector.execute')
+        self.logger.debug('%s.__init__(*%s, **%s)', self.__class__.__name__, args, kwargs)
         try:
             basedir = kwargs['basedir']
         except KeyError:
@@ -107,7 +109,7 @@ class Initer(Base):
                 fs.append(i)
             return fs
     def join(self, *path):
-        debug('%s.join(%s, *%s)' % (self.__class__.__name__, V['basedir'], path))
+        self.logger.debug('%s.join(%s, *%s)', self.__class__.__name__, V['basedir'], path)
         return normjoin(V['basedir'], *path)
     def asserttype(self, value, typeval, valname):
         if isinstance(typeval, type):
@@ -198,10 +200,7 @@ class Target(Initer):
                 assert issubclass(kobj, klass), \
                     "%s is not a %s" % (kobj, klass)
             except (KeyError, AssertionError):
-                if not debug:
-                    raise Error('%s no such %s: %s' % (self, ktype, name))
-                else:
-                    raise
+                logging.getLogger('pyerector').exception('Cannot find %s', name)
             else:
                 obj = kobj()
         from .iterators import Uptodate
@@ -213,7 +212,7 @@ class Target(Initer):
             return obj(*args)
     def __call__(self, *args):
         global stack
-        debug('%s.__call__(*%s)' % (self.__class__.__name__, args))
+        self.logger.debug('%s.__call__(*%s)', self.__class__.__name__, args)
         timer = Timer()
         if self.been_called:
             return
@@ -233,10 +232,7 @@ class Target(Initer):
                     try:
                         self.call(task, Task, 'task', args)
                     except Error:
-                        if not debug:
-                            self.rewrap_exception()
-                        else:
-                            raise
+                        self.logger.exception('tasks')
                 try:
                     self.run()
                 except (KeyError, ValueError, TypeError,
@@ -245,10 +241,10 @@ class Target(Initer):
                 except Abort:
                     raise # reraise
                 except Error:
-                    warn(extract_stack(stack).rstrip())
+                    self.logger.exception('run')
                     raise Abort
                 except Exception:
-                    warn(extract_stack(stack).rstrip())
+                    self.logger.exception('run')
                     raise Abort
             import pyerector
             if pyerector.noTimer:
@@ -262,7 +258,7 @@ class Target(Initer):
         pass
     def verbose(self, *args):
         msg = u('%s: %s' % (str(self), ' '.join(str(s) for s in args)))
-        display(msg)
+        self.logger.warning(msg)
 
 # Tasks
 class Task(Initer):
@@ -271,12 +267,12 @@ class Task(Initer):
         return self.__class__.__name__
     def __call__(self, *args, **kwargs):
         global stack
-        debug('%s.__call__(*%s, **%s)' % (self.__class__.__name__, args, kwargs))
+        self.logger.debug('%s.__call__(*%s, **%s)', self.__class__.__name__, args, kwargs)
         stack.push(self) # push me onto the execution stack
         try:
             self.handle_args(args, kwargs)
             if noop:
-                display('Calling %s(*%s, **%s)' % (self, args, kwargs))
+                self.logger.warning('Calling %s(*%s, **%s)' % (self, args, kwargs))
                 return
             try:
                 rc = self.run()
@@ -286,10 +282,10 @@ class Task(Initer):
             except Abort:
                 raise # reraise
             except Error:
-                warn(extract_stack(stack))
+                self.logger.exception('run')
                 raise Abort
             except Exception:
-                warn(extract_stack(stack))
+                self.logger.exception('run')
                 raise Abort
         finally:
             stack.pop()

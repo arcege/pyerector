@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from . import display, verbose
+from . import display
 from .register import registry
 from .base import Target
 from .tasks import Mkdir, Remove, Unittest
@@ -48,10 +48,7 @@ Methods: None
                 '%-20s  %s' % (obj.__name__.lower(), obj.__doc__ or "")
             )
         for var in V:
-            if hasformat:
-                verbose('var {} = "{}"'.format(var.name, var.value))
-            else:
-                verbose('var %s = "%s"' % (var.name, var.value))
+            self.logger.info('var %s = "%s"' % (var.name, var.value))
 class Clean(Target):
     """Clean directories and files used by the build.
 Tasks: internal [Remove(files)]
@@ -72,17 +69,15 @@ Members: None
 Methods: None
 """
     def run(self):
-        from . import verbose, VCS, Variable
-        from .helper import Verbose
-        lclverbose = Verbose(verbose, prefix='InitVCS')
+        from . import VCS, Variable
         try:
             v = VCS()
         except RuntimeError:
-            lclverbose('No VCS found')
+            self.logger.info('No VCS found')
         else:
             v.current_info()
             Variable('pyerector.vcs', v)
-            lclverbose('Found', v)
+            self.logger.info('Found %s', v)
 class InitDirs(Target):
     """Create initial directories.
 Tasks: internal [Mkdir(files)]

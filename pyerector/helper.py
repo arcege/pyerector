@@ -139,7 +139,7 @@ class Subcommand(object):
             self.wait()
 
     def __del__(self):
-        debug('starting %s.__del__()' % self.__class__.__name__)
+        logging.debug('starting %s.__del__()', self.__class__.__name__)
         self.close()
         if self.returncode is None and self.proc is not None:
             self.proc.terminate()
@@ -225,8 +225,7 @@ class Subcommand(object):
             ef = None
         (self.stdin, self.stdout, self.stderr) = (ifl, of, ef)
         shellval = not isinstance(self.cmd, tuple)
-        from . import verbose, debug
-        debug("Popen(%s, shell=%s, cwd=%s, stdin=%s, stdout=%s, stderr=%s, bufsize=0, env=%s)" % (self.cmd, shellval, self.wdir, ifl, of, ef, self.env))
+        logging.debug('Popen(%s, shell=%s, cwd=%s, stdin=%s, stdout=%s, stderr=%s, bufsize=0, env=%s)', self.cmd, shellval, self.wdir, ifl, of, ef, self.env)
         try:
             proc = Popen(self.cmd, shell=shellval, cwd=self.wdir,
                          stdin=ifl, stdout=of, stderr=ef,
@@ -318,12 +317,13 @@ def init_logging(deflevel=logging.WARNING, message='%(message)s'):
     def setup(name, handlerklass, formatterklass,
               deflevel=deflevel, message=message):
         f = formatterklass(message)
-        h = handlerklass(deflevel)
+        h = handlerklass()
         h.setFormatter(f)
         l = logging.getLogger(name)
         l.addHandler(h)
-        l.setLevel(deflevel)
+        l.propagate = False
         return l
+    logging.basicConfig(level=deflevel, message=message)
     setup('pyerector', logging.StreamHandler, LogFormatter)
     setup('pyerector.execute', logging.StreamHandler, LogExecFormatter)
 

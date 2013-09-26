@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
+import logging
 import unittest
 import sys
 
@@ -13,7 +14,7 @@ from .base import *
 
 PyVersionCheck()
 
-from pyerector import normjoin, verbose, debug, noop
+from pyerector import normjoin, noop
 from pyerector.helper import Verbose, u
 from pyerector.exception import Error
 from pyerector.base import Initer, Target, Task
@@ -45,13 +46,9 @@ Test: done.
 All: done.
 """
     def setUp(self):
-        self.stream = StringIO()
-        self.real_stream = verbose.stream
-        verbose.stream = self.stream
         self.noop_state = noop.state
         noop.on()
     def tearDown(self):
-        verbose.stream = self.real_stream
         noop.state = self.noop_state
     #@unittest.skip("not working on reillym-lt")
     def _test_all(self):
@@ -113,17 +110,17 @@ With three very lovely girls.
             Clean.files = ('build', 'dist')
             InitDirs.files = ('build', 'dist')
             tmpdiropt = '--directory=' + str(tmpdir)
-            debug('PyErector("-v", "' + tmpdiropt + '", "clean")')
+            self.logger.debug('PyErector("-v", "' + tmpdiropt + '", "clean")')
             PyErector('-v', tmpdiropt, 'clean')
-            if debug:
+            if self.logger.isEnabledFor(logging.DEBUG):
                 os.system('ls -lAtr ' + str(tmpdir))
-            debug('PyErector("-v", "' + tmpdiropt + '")')
+            self.logger.debug('PyErector("-v", "' + tmpdiropt + '")')
             PyErector('-v', tmpdiropt) # default
-            if debug:
+            if self.logger.isEnabledFor(logging.DEBUG):
                 os.system('ls -lAtr ' + str(tmpdir))
-            debug('PyErector("-v", "' + tmpdiropt + '")')
+            self.logger.debug('PyErector("-v", "' + tmpdiropt + '")')
             PyErector('-v', tmpdiropt) # default with uptodate
-            if debug:
+            if self.logger.isEnabledFor(logging.DEBUG):
                 os.system('ls -lAtr ' + str(tmpdir))
         finally:
             Remove()(tmpdir)

@@ -9,8 +9,7 @@ from .base import *
 
 PyVersionCheck()
 
-from pyerector.helper import Verbose, normjoin, u, Exclusions, Subcommand
-from pyerector import debug
+from pyerector.helper import normjoin, u, Exclusions, Subcommand
 
 try:
     from io import StringIO
@@ -42,85 +41,6 @@ except IOError:
     raise SystemExit('unable to create file')'''
     wc = '''import sys
 print len(sys.stdin.read())'''
-
-class StringIOVerbose(Verbose):
-    def __init__(self, state=False):
-        super(StringIOVerbose, self).__init__(state)
-        self.stream = StringIO()
-
-class TestVerbose(TestCase):
-    def test_init(self):
-        v = Verbose()
-        self.assertIs(v.stream, sys.stdout)
-        self.assertEqual(v.eoln, os.linesep)
-        self.assertEqual(v.prefix, '')
-    def test_init_False(self):
-        v = Verbose(False)
-        self.assertFalse(v.state)
-    def test_init_True(self):
-        v = Verbose(True)
-        self.assertTrue(v.state)
-    def test_init_nonboolean(self):
-        v = Verbose(1)
-        self.assertTrue(v.state)
-        v = Verbose('')
-        self.assertFalse(v.state)
-        v = Verbose(None)
-        self.assertFalse(v.state)
-    def test_on(self):
-        v = Verbose()
-        self.assertFalse(v.state)
-        v.on()
-        self.assertTrue(v.state)
-    def test_off(self):
-        v = Verbose(True)
-        self.assertTrue(v.state)
-        v.off()
-        self.assertFalse(v.state)
-    def test_bool_(self):
-        v = Verbose()
-        self.assertFalse(bool(v))
-        v = Verbose(True)
-        self.assertTrue(bool(v))
-    def test_write(self):
-        v = StringIOVerbose()
-        self.assertIsInstance(v.stream, StringIO)
-        v.write('foobar')
-        self.assertEqual(v.stream.getvalue(), u('foobar' + v.eoln))
-    def test_call_off(self):
-        v = StringIOVerbose()
-        v.off()
-        self.assertIsInstance(v.stream, StringIO)
-        v('foobar')
-        self.assertEqual(v.stream.getvalue(), u(''))
-    def test_call_on(self):
-        v = StringIOVerbose()
-        v.on()
-        self.assertIsInstance(v.stream, StringIO)
-        v('foobar')
-        self.assertEqual(v.stream.getvalue(), u('foobar' + v.eoln))
-    def test_call_multiargs(self):
-        v = StringIOVerbose()
-        v.on()
-        v('foo', 'bar')
-        self.assertEqual(v.stream.getvalue(), u('foo bar' + v.eoln))
-    def test_prefix(self):
-        if 'PYERECTOR_PREFIX' in os.environ:
-            backup_prefix = os.environ['PYERECTOR_PREFIX']
-        else:
-            backup_prefix = None
-        os.environ['PYERECTOR_PREFIX'] = 'unittest-prefix'
-        try:
-            v = StringIOVerbose(True)
-            self.assertEqual(v.prefix, 'unittest-prefix')
-            v('foo', 'bar')
-            self.assertEqual(v.stream.getvalue(),
-                             u('unittest-prefix: foo bar' + v.eoln))
-        finally:
-            if backup_prefix:
-                os.environ['PYERECTOR_PREFIX'] = backup_prefix
-            else:
-                del os.environ['PYERECTOR_PREFIX']
 
 class Testnormjoin(TestCase):
     def test_singlearg(self):
@@ -363,11 +283,9 @@ class TestSubcommand(TestCase):
         try:
             pid = proc.proc.pid
             self.assertIsNone(os.kill(pid, 0))
-            debug.on()
         finally:
             proc.close()
         del proc
-        debug.off()
         try:
             self.assertRaises(OSError, os.kill, pid, 0)
         except AssertionError:

@@ -17,17 +17,7 @@ class Test_all_(TestCase):
 # testhelpers.py
 class TestVerbose(TestCase):
     def testdefaults(self):
-        self.assertTrue(pyerector.warn)
-        self.assertFalse(pyerector.verbose)
-        self.assertEqual(bool(pyerector.debug),
-                'DEBUG' in os.environ and os.environ['DEBUG'] != ''
-        )
         self.assertFalse(pyerector.noop)
-    def teststreams(self):
-        self.assertIs(pyerector.warn.stream, sys.stdout)
-        # we've change the stream in TestCase
-        #self.assertIs(pyerector.verbose.stream, sys.stdout)
-        self.assertIs(pyerector.debug.stream, sys.stdout)
 
 class TestSettings(TestCase):
     def test_V(self):

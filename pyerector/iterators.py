@@ -6,7 +6,6 @@ import glob
 import itertools
 import os
 from .helper import normjoin
-from . import debug
 from .base import Initer, Iterator, Mapper
 from .variables import V
 
@@ -76,12 +75,12 @@ class StaticIterator(Iterator):
                 return item
     def getnextset(self):
         while True:
-            debug('poolpos =', self.poolpos, 'pool =', self.pool)
+            self.logger.debug('poolpos = %s; pool = %s', self.poolpos, self.pool)
             if self.poolpos >= len(self.pool):
                 raise StopIteration
             self.curpoolitem = self.pool[self.poolpos]
             self.poolpos += 1
-            debug('calling %s.glob(%s)' % (self, self.curpoolitem))
+            self.logger.debug('calling %s.glob(%s)', self, self.curpoolitem)
             self.curpoolset = self.glob(self.curpoolitem)
             self.setpos = 0
             if self.curpoolset:
@@ -95,11 +94,11 @@ class FileIterator(StaticIterator):
         # separator
         # XXX should we be returning an iter() object?
         if isinstance(pattern, Iterator): # an iterator, so convert to a list
-            debug('%s.pattern is iterator', pattern)
+            self.logger.debug('%s.pattern is iterator', pattern)
             return list(pattern)
         base = os.path.join(V['basedir'], '')
         files = glob.glob(self.join(pattern))
-        debug('%s.glob(%s) = %s' % (self.__class__.__name__, self.join(pattern), files))
+        self.logger.debug('%s.glob(%s) = %s', self.__class__.__name__, self.join(pattern), files)
         return [name.replace(base, '') for name in files]
 
 class FileList(FileIterator):
@@ -228,7 +227,7 @@ class FileMapper(Mapper):
         if destdir is None:
             destdir = ''
         result = normjoin(destdir, self.map(mapped))
-        debug('mapper yields (%s, %s)' % (name, result))
+        self.logger.debug('mapper yields (%s, %s)', name, result)
         return (name, result)
     def map(self, fname):
         return fname
@@ -241,10 +240,10 @@ class FileMapper(Mapper):
             else:
                 result = self.checkpair(sf, df)
             if not result:
-                debug('%s.uptodate() => False' % self.__class__.__name__)
+                self.logger.debug('%s.uptodate() => False', self.__class__.__name__)
                 return False
         else:
-            debug('%s.uptodate() => True' % self.__class__.__name__)
+            self.logger.debug('%s.uptodate() => True', self.__class__.__name__)
             return True
     def checkpair(self, src, dst):
         """Return True if destination is newer than source."""
@@ -257,9 +256,9 @@ class FileMapper(Mapper):
         try:
             d = round(os.path.getmtime(dst), 4)
         except OSError:
-            debug('%s not found' % dst)
+            self.logger.debug('%s not found', dst)
             return False
-        debug('%s(%0.4f) %s %s(%0.4f)' % (src, s, (s > d and '>' or '<='), dst, d))
+        self.logger.debug('%s(%0.4f) %s %s(%0.4f)', src, s, (s > d and '>' or '<='), dst, d)
         return s <= d
     def checktree(self, src, dst):
         dirs = [os.curdir]
@@ -272,10 +271,10 @@ class FileMapper(Mapper):
                 if self.exclusion.match(fname):
                     continue
                 if os.path.isdir(sname):
-                    debug('adding %s to fifo' % normjoin(dir, fname))
+                    self.logger.debug('adding %s to fifo', normjoin(dir, fname))
                     dirs.append(normjoin(dir, fname))
                 else:
-                    debug('checking %s with %s' % (sname, dname))
+                    self.logger.debug('checking %s with %s', sname, dname)
                     result = self.checkpair(sname, dname)
                     if not result:
                         return result
@@ -297,13 +296,13 @@ class Uptodate(FileMapper):
     destinations = ()
     def __call__(self, *args):
         klsname = self.__class__.__name__
-        debug('%s.__call__(*%s)' % (klsname, args))
+        self.logger.debug('%s.__call__(*%s)', klsname, args)
         srcs = FileIterator(self.get_kwarg('sources', (list, tuple, Iterator)))
         dsts = FileIterator(self.get_kwarg('destinations', (list, tuple, Iterator)))
         files = self.get_args('files')
-        #debug('srcs =', srcs, 'dsts =', dsts, 'files =', files)
+        #self.logger.debug('srcs = %s; dsts = %s files = %s', srcs, dsts, files)
         if not files and (not srcs or not dsts):
-            debug(klsname, '*>', False)
+            self.logger.debug('%s *>', klsname)
             return False
         elif srcs and dsts:
             def get_times(lst, s=self):
@@ -312,10 +311,10 @@ class Uptodate(FileMapper):
             latest_src = reduce(max, get_times(srcs), 0)
             earliest_dst = reduce(min, get_times(dsts), maxval)
             if earliest_dst == maxval: # empty list case
-                debug(klsname, '/> False')
+                self.logger.debug('%s /> False', klsname)
                 return False
             result = round(earliest_dst, 4) >= round(latest_src, 4)
-            debug(klsname, '=>', result and 'False' or 'True')
+            self.logger.debug('%s => %s', klsname, result and 'False' or 'True')
             return result
         else:
             raise RuntimeError('call uptodate()')
