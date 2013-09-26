@@ -295,7 +295,7 @@ class Task(Initer):
             except Abort:
                 raise # reraise
             except Error:
-                self.logger.exception('Exception in %s.run', myname))
+                self.logger.exception('Exception in %s.run', myname)
                 raise Abort
             except Exception:
                 self.logger.exception('Exception')
