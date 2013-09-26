@@ -1,0 +1,103 @@
+#!/usr/bin/python
+# Copyright @ 2012 Michael P. Reilly. All rights reserved.
+
+import os
+from pyerector import *
+import release
+
+distfile = '%s-%s' % (release.product, release.number)
+
+class PyCopy(Target):
+    dependencies = (InitVCS,)
+    tasks = (
+        CopyTree(srcdir='pyerector',
+                 dstdir=normjoin('build', distfile, 'pyerector'),
+                 exclude=['test*'],
+        ),
+        Copy('release.py', 'setup.py',
+             'README.txt', 'LICENSE.txt', 'CHANGES.txt',
+             dest=normjoin('build', distfile)
+        ),
+        Tokenize(
+            normjoin('build', distfile, 'pyerector', 'version.py'),
+            tokenmap=VariableSet(
+                Variable('%release.product%', release.product),
+                Variable('%release.number%', release.number),
+                Variable('%hg.version%', Variable('hg.version')),
+                Variable('%hg.branch%', Variable('hg.branch')),
+                Variable('%hg.tags%', Variable('hg.tags')),
+            )
+        )
+    )
+
+class PreCompile(Target):
+    dependencies = (PyCopy,)
+    tasks = (
+        PyCompile(
+            FileList(
+                normjoin('build', distfile, 'pyerector'),
+                normjoin('build', distfile, 'pyerector', 'py2'),
+                normjoin('build', distfile, 'pyerector', 'vcs'),
+                pattern='*.py'),
+            version='2'
+        ),
+        PyCompile(
+            FileList(
+                normjoin('build', distfile, 'pyerector'),
+                normjoin('build', distfile, 'pyerector', 'py3'),
+                normjoin('build', distfile, 'pyerector', 'vcs'),
+                pattern='*.py'),
+            version='3'
+        ),
+    )
+
+class Cleantest(Target):
+    """Clean the test directory."""
+    tasks = (
+        Remove(files=('testdir',)),
+    )
+class Realclean(Target):
+    """Clean up the cruft (including pyc) files."""
+    directories = (
+            os.curdir, 'pyerector', 'pyerector/test',
+            'pyerector/py2', 'pyerector/py3', 'pyerector/vcs',
+    )
+    dontexclude = Exclusions(usedefaults=False)
+    tasks = (
+        Remove(
+            FileIterator(directories, pattern='*.pyc', exclude=dontexclude),
+            FileIterator(directories, pattern='__pycache__', exclude=dontexclude),
+        ),
+    )
+    dependencies = (Clean,)
+class Localtest(Target):
+    """Ensure the packaging looks correct."""
+    tasks = (
+        Untar(root='testdir/tar', name='dist/%s.tgz' % distfile),
+        Unzip(root='testdir/zip', name='dist/%s.zip' % distfile),
+        Unzip(root='testdir/egg', name='dist/%s.egg' % distfile)
+    )
+    dependencies = (InitDirs, Packaging,)
+
+Test.dependencies = Test.dependencies + (Localtest,)
+Clean.files = ('build', 'dist', 'MANIFEST')
+Clean.dependencies = (Cleantest,)
+InitDirs.files = (
+    normjoin('build', distfile), 'dist',
+    'testdir/egg', 'testdir/zip', 'testdir/tar',
+)
+Compile.dependencies = (PreCompile,)
+Distlist = StaticIterator([distfile])
+Packaging.tasks = (
+    Zip(name='dist/%s.zip' % distfile, files=Distlist, root='build'),
+    Tar(name='dist/%s.tgz' % distfile, files=Distlist, root='build'),
+    Egg(name='dist/%s.egg' % distfile, files=('*',),
+        root=normjoin('build', distfile)),
+    HashGen(
+        'dist/%s.egg' % distfile,
+        'dist/%s.zip' % distfile,
+        'dist/%s.tgz' % distfile,
+    ),
+)
+
+PyErector()
