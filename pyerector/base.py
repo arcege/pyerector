@@ -4,6 +4,7 @@
 import logging
 import os
 from sys import version
+import threading
 try:
     reduce
 except NameError:
@@ -24,32 +25,42 @@ __all__ = [
 ]
 
 class ExecStack(object):
-    def __init__(self):
+    def __init__(self, parent=None):
         self.stack = []
         self.pos = None
+        self.parent = parent
+        self.lock = threading.RLock()
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.stack)
     def push(self, frame):
-        self.stack.append(frame)
+        with self.lock:
+            self.stack.append(frame)
     def pop(self):
-        return self.stack.pop()
+        with self.lock:
+            return self.stack.pop()
     def __len__(self):
-        return len(self.stack)
+        with self.lock:
+            if isinstance(self.parent, ExecStack):
+                parlen = len(self.parent)
+            else:
+                parlen = 0
+            return parlen + len(self.stack)
     def __iter__(self):
-        self.pos = 0
-        return self
-    def next(self):
-        if self.pos >= len(self):
-            raise StopIteration
-        item = self.stack[self.pos]
-        self.pos += 1
-        return item
+        from itertools import chain
+        with self.lock:
+            if self.parent is not None:
+                return chain(self.parent, self.stack)
+            else:
+                return iter(self.stack)
     def extract(self):
         lines = []
         indent = 0
-        for item in self:
-            lines.append('%s%s\n' % ('  ' * indent, item.__class__.__name__))
-            indent += 1
+        with self.lock:
+            for item in self:
+                lines.append(
+                    '%s%s\n' % ('  ' * indent, item.__class__.__name__)
+                )
+                indent += 1
         return lines
 
 stack = ExecStack()
@@ -159,10 +170,13 @@ class Target(Initer):
     # if True, then 'been_called' returns True, preventing
     # reexecution
     _been_called = False
+    _been_called_lock = threading.RLock()
     def get_been_called(self):
-        return not self.allow_reexec and self.__class__._been_called
+        with self._been_called_lock: # class member
+            return not self.allow_reexec and self.__class__._been_called
     def set_been_called(self, value):
-        self.__class__._been_called = value
+        with self._been_called_lock: # class member
+            self.__class__._been_called = value
     been_called = property(get_been_called, set_been_called)
     def __str__(self):
         return self.__class__.__name__
@@ -190,6 +204,7 @@ class Target(Initer):
         validate_class(klass.__name__, klass.uptodates, 'Mapper', 'uptodate')
         validate_class(klass.__name__, klass.tasks, 'Task', 'task')
     def call(self, name, klass, ktype, args=None):
+        # find the object
         if (isinstance(name, type) and issubclass(name, klass)):
             obj = name()
         elif isinstance(name, klass):
@@ -204,6 +219,7 @@ class Target(Initer):
                 logging.getLogger('pyerector').exception('Cannot find %s', name)
             else:
                 obj = kobj()
+        # now perform the operation
         from .iterators import Uptodate
         if not isinstance(obj, Uptodate) and isinstance(obj, Mapper):
             return obj.uptodate()
