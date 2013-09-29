@@ -1,0 +1,25 @@
+v1.1.1, 2013-03-31 -- Create proper Iterator classes.
+
+v1.1.2  2013-04-04 -- Add version control modules as 'VCS'.
+
+v1.1.3  2013-05-06
+  -- Issue 4 - Uptodate unit tests are skipped
+  -- Issue 6 - Build propert stack of Target/Task calls...
+  -- Issue 7 - Unittests fail on Python 2.6
+  -- Issue 8 - Spawn keyword argument processor error and...
+  -- Issue 10 - Shebang task does not follow docs
+  -- Issue 14 - Basedir is set for current directory, not...
+  New tasks
+  -- HashGen to create md5/sha1 hash files
+  -- Egg to create python archive files
+  Other fixes/enhancements:
+  -- Add --quiet and --DEBUG options and handling output processing better;
+  -- Add timing information after targets and the program finish.
+  -- Add new display object, a Verbose object that should (almost) always be on.
+  -- Replaced multiple exclusion predicates with a class to handle it.
+  -- Use mappers instead of Uptodate instances.
+  -- Remove 'noglob' keyword from Initer.get_files() method.
+  -- Ignore cases where python3 is not installed.
+  -- Add a LOT more unit tests (from 15 tests to 91).
+  -- Prevent setup.py running if pyerect is present.
+  -- Use setuptools instead of distutils.
