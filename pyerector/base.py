@@ -200,6 +200,12 @@ class Target(Initer):
                         '%s: invalid %s: %s' % (kobj, ktname, name)
                     )
                 obj.validate_tree()
+        if not isinstance(klass.dependencies, (Sequential, Parallel)):
+            klass.dependencies = Sequential(*klass.dependencies)
+        if not isinstance(klass.uptodates, (Sequential, Parallel)):
+            klass.uptodates = Sequential(*klass.uptodates)
+        if not isinstance(klass.tasks, (Sequential, Parallel)):
+            klass.tasks = Sequential(*klass.tasks)
         validate_class(klass.__name__, klass.dependencies, 'Target', 'dependency')
         validate_class(klass.__name__, klass.uptodates, 'Mapper', 'uptodate')
         validate_class(klass.__name__, klass.tasks, 'Task', 'task')
@@ -342,5 +348,16 @@ class Iterator(Initer):
         raise StopIteration
 
 class Mapper(Iterator):
+    pass
+
+class Sequential(Initer):
+    items = ()
+    def __iter__(self):
+        return iter(self.get_args('items'))
+    def __bool__(self):
+        return len(self.get_args('items')) > 0
+    __nonzero__ = __bool__
+
+class Parallel(Sequential):
     pass
 
