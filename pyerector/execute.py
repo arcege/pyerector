@@ -55,10 +55,10 @@ class PyThread(threading.Thread):
     def __init__(self, *args, **kwargs):
         from .base import Target, Task
         super(PyThread, self).__init__(*args, **kwargs)
-        if 'parent' in kwargs:
-            self.stack = ExecStack(kwargs['parent'])
-        else:
-            self.stack = ExecStack()
+        # this works because at _this_ time, the new thread has not been
+        # created, so currentThread will still have the parent stack
+        parentstack = get_current_stack()
+        self.stack = ExecStack(parentstack)
 
 def initialize_threading():
     curthread = threading.currentThread()
