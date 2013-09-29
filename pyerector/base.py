@@ -4,6 +4,7 @@
 import logging
 import os
 from sys import version
+import threading
 try:
     reduce
 except NameError:
@@ -14,45 +15,15 @@ else:
     from .py2.base import Base
 from . import noop
 from .helper import normjoin, u, Timer, extract_stack
+from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
 from .config import Config
 from .variables import V
 
 __all__ = [
-    'Target', 'Task',
+    'Target', 'Task', 'Sequential', 'Parallel',
 ]
-
-class ExecStack(object):
-    def __init__(self):
-        self.stack = []
-        self.pos = None
-    def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, self.stack)
-    def push(self, frame):
-        self.stack.append(frame)
-    def pop(self):
-        return self.stack.pop()
-    def __len__(self):
-        return len(self.stack)
-    def __iter__(self):
-        self.pos = 0
-        return self
-    def next(self):
-        if self.pos >= len(self):
-            raise StopIteration
-        item = self.stack[self.pos]
-        self.pos += 1
-        return item
-    def extract(self):
-        lines = []
-        indent = 0
-        for item in self:
-            lines.append('%s%s\n' % ('  ' * indent, item.__class__.__name__))
-            indent += 1
-        return lines
-
-stack = ExecStack()
 
 # the base class to set up the others
 class Initer(Base):
@@ -155,10 +126,13 @@ class Target(Initer):
     # if True, then 'been_called' returns True, preventing
     # reexecution
     _been_called = False
+    _been_called_lock = threading.RLock()
     def get_been_called(self):
-        return not self.allow_reexec and self.__class__._been_called
+        with self._been_called_lock: # class member
+            return not self.allow_reexec and self.__class__._been_called
     def set_been_called(self, value):
-        self.__class__._been_called = value
+        with self._been_called_lock: # class member
+            self.__class__._been_called = value
     been_called = property(get_been_called, set_been_called)
     def __str__(self):
         return self.__class__.__name__
@@ -182,10 +156,19 @@ class Target(Initer):
                         '%s: invalid %s: %s' % (kobj, ktname, name)
                     )
                 obj.validate_tree()
+        if not isinstance(klass.dependencies, Sequential):
+            klass.dependencies = Sequential(*klass.dependencies)
+        if not isinstance(klass.uptodates, Sequential):
+            klass.uptodates = Sequential(*klass.uptodates)
+        elif isinstance(klass.uptodates, Parallel):
+            raise ValueError('uptodates cannot be Parallel')
+        if not isinstance(klass.tasks, Sequential):
+            klass.tasks = Sequential(*klass.tasks)
         validate_class(klass.__name__, klass.dependencies, 'Target', 'dependency')
         validate_class(klass.__name__, klass.uptodates, 'Mapper', 'uptodate')
         validate_class(klass.__name__, klass.tasks, 'Task', 'task')
     def call(self, name, klass, ktype, args=None):
+        # find the object
         if (isinstance(name, type) and issubclass(name, klass)):
             obj = name()
         elif isinstance(name, klass):
@@ -199,6 +182,7 @@ class Target(Initer):
                 raise Error('%s no such %s: %s' % (self, ktype, name))
             else:
                 obj = kobj()
+        # now perform the operation
         from .iterators import Uptodate
         if not isinstance(obj, Uptodate) and isinstance(obj, Mapper):
             return obj.uptodate()
@@ -208,11 +192,11 @@ class Target(Initer):
             return obj(*args)
     def __call__(self, *args):
         myname = self.__class__.__name__
-        global stack
         self.logger.debug('%s.__call__(*%s)', myname, args)
         timer = Timer()
         if self.been_called:
             return
+        stack = get_current_stack()
         stack.push(self) # push me onto the execution stack
         try:
             if self.uptodates:
@@ -273,8 +257,8 @@ class Task(Initer):
         return self.__class__.__name__
     def __call__(self, *args, **kwargs):
         myname = self.__class__.__name__
-        global stack
         self.logger.debug('%s.__call__(*%s, **%s)', myname, args, kwargs)
+        stack = get_current_stack()
         stack.push(self) # push me onto the execution stack
         try:
             self.handle_args(args, kwargs)
@@ -320,5 +304,16 @@ class Iterator(Initer):
         raise StopIteration
 
 class Mapper(Iterator):
+    pass
+
+class Sequential(Initer):
+    items = ()
+    def __iter__(self):
+        return iter(self.get_args('items'))
+    def __bool__(self):
+        return len(self.get_args('items')) > 0
+    __nonzero__ = __bool__
+
+class Parallel(Sequential):
     pass
 
