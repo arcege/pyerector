@@ -21,7 +21,7 @@ logger = logging.getLogger('pyerector.test')
 logger.propagate = False
 logger.addHandler(logging.StreamHandler())
 
-from pyerector import init_logging
+# this will initialize by virtue of importing pyerector implicitly
 from pyerector.variables import V
 
 Platform = sys.platform[:3]
@@ -57,6 +57,4 @@ class TestCase(unittest.TestCase):
             os.chmod(path, writable)
             func(path)
         shutil.rmtree(cls.dir, onerror=handle_perms)
-
-init_logging()
 

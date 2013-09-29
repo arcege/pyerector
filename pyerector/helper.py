@@ -8,6 +8,7 @@ from sys import version, exc_info
 import traceback
 
 from .exception import Error
+from .execute import get_current_stack
 
 __all__ = [
     'Exclusions',
@@ -275,7 +276,7 @@ class LogFormatter(logging.Formatter):
         return ''.join(st + exc)
 class LogExecFormatter(LogFormatter):
     def formatException(self, exc_info):
-        from .base import stack  # do not move outside of this method
+        stack = get_current_stack()
         t, e, tb = exc_info
         lines = stack.extract() + traceback.format_exception_only(t, e)
         return ''.join(lines).rstrip()

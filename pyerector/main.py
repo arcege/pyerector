@@ -7,6 +7,7 @@ import sys
 import traceback
 from .exception import Abort, Error, extract_tb
 from .helper import display, Timer
+from .execute import PyThread
 from . import noop
 from .register import registry
 from .base import Target, Task
@@ -72,7 +73,11 @@ name of target to call or variable assignment, default target is "default"')
         try:
             self.arguments(args or sys.argv[1:])
             self.validate_targets()
-            self.run()
+            # run through a thread with an initial stack, wait for the thread
+            # to finish
+            newthread = PyThread(name='main', target=self.run)
+            newthread.start()
+            newthread.join()
         except Abort:
             raise SystemExit(1)
     def arguments(self, args):

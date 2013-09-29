@@ -2,6 +2,7 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 from .helper import normjoin, display, Exclusions, init_logging
+from .execute import initialize_threading
 
 # must define 'verbose', 'noop' and 'debug' before importing other submodules
 
@@ -23,7 +24,7 @@ noTimer = State()
 
 from .version import *
 from .main import PyErector, pymain
-from .base import Target, Task
+from .base import *
 from .tasks import  *
 from .targets import *
 from .iterators import *
@@ -38,6 +39,8 @@ __all__ = [
     'pymain',
     'Target',
     'Task',
+    'Sequential',
+    'Parallel',
     'V',  # alias for Variable
     'Variable',
     'VariableSet',
@@ -90,4 +93,7 @@ __all__ = [
     'Uptodate',
 ]
 
+# initialize, but remove the references afterward
 init_logging()
+initialize_threading()
+del init_logging, initialize_threading

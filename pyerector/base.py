@@ -15,55 +15,15 @@ else:
     from .py2.base import Base
 from . import noop
 from .helper import normjoin, u, Timer, extract_stack
+from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
 from .config import Config
 from .variables import V
 
 __all__ = [
-    'Target', 'Task',
+    'Target', 'Task', 'Sequential', 'Parallel',
 ]
-
-class ExecStack(object):
-    def __init__(self, parent=None):
-        self.stack = []
-        self.pos = None
-        self.parent = parent
-        self.lock = threading.RLock()
-    def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, self.stack)
-    def push(self, frame):
-        with self.lock:
-            self.stack.append(frame)
-    def pop(self):
-        with self.lock:
-            return self.stack.pop()
-    def __len__(self):
-        with self.lock:
-            if isinstance(self.parent, ExecStack):
-                parlen = len(self.parent)
-            else:
-                parlen = 0
-            return parlen + len(self.stack)
-    def __iter__(self):
-        from itertools import chain
-        with self.lock:
-            if self.parent is not None:
-                return chain(self.parent, self.stack)
-            else:
-                return iter(self.stack)
-    def extract(self):
-        lines = []
-        indent = 0
-        with self.lock:
-            for item in self:
-                lines.append(
-                    '%s%s\n' % ('  ' * indent, item.__class__.__name__)
-                )
-                indent += 1
-        return lines
-
-stack = ExecStack()
 
 # the base class to set up the others
 class Initer(Base):
@@ -200,11 +160,13 @@ class Target(Initer):
                         '%s: invalid %s: %s' % (kobj, ktname, name)
                     )
                 obj.validate_tree()
-        if not isinstance(klass.dependencies, (Sequential, Parallel)):
+        if not isinstance(klass.dependencies, Sequential):
             klass.dependencies = Sequential(*klass.dependencies)
-        if not isinstance(klass.uptodates, (Sequential, Parallel)):
+        if not isinstance(klass.uptodates, Sequential):
             klass.uptodates = Sequential(*klass.uptodates)
-        if not isinstance(klass.tasks, (Sequential, Parallel)):
+        elif isinstance(klass.uptodates, Parallel):
+            raise ValueError('uptodates cannot be Parallel')
+        if not isinstance(klass.tasks, Sequential):
             klass.tasks = Sequential(*klass.tasks)
         validate_class(klass.__name__, klass.dependencies, 'Target', 'dependency')
         validate_class(klass.__name__, klass.uptodates, 'Mapper', 'uptodate')
@@ -235,11 +197,11 @@ class Target(Initer):
             return obj(*args)
     def __call__(self, *args):
         myname = self.__class__.__name__
-        global stack
         self.logger.debug('%s.__call__(*%s)', myname, args)
         timer = Timer()
         if self.been_called:
             return
+        stack = get_current_stack()
         stack.push(self) # push me onto the execution stack
         try:
             if self.uptodates:
@@ -301,8 +263,8 @@ class Task(Initer):
         return self.__class__.__name__
     def __call__(self, *args, **kwargs):
         myname = self.__class__.__name__
-        global stack
         self.logger.debug('%s.__call__(*%s, **%s)', myname, args, kwargs)
+        stack = get_current_stack()
         stack.push(self) # push me onto the execution stack
         try:
             self.handle_args(args, kwargs)
