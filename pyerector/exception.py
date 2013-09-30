@@ -8,7 +8,7 @@ class Abort(Exception):
 
 class Error(Exception):
     def __str__(self):
-        return str(self.args[0]) + ': ' + str(self.args[1])
+        return ': '.join([str(a) for a in self.args])
     def __format__(self, format_spec):
         value = format(str(self), format_spec)
         if isinstance(format_spec, unicode):

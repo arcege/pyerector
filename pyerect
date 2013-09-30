@@ -32,7 +32,7 @@ class PyCopy(Target):
 
 class PreCompile(Target):
     dependencies = (PyCopy,)
-    tasks = (
+    tasks = Parallel(
         PyCompile(
             FileList(
                 normjoin('build', distfile, 'pyerector'),
