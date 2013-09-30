@@ -2,6 +2,7 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 import threading
+from .exception import Abort, Error
 
 __all__  = [
     'get_current_stack',
@@ -59,6 +60,17 @@ class PyThread(threading.Thread):
         # created, so currentThread will still have the parent stack
         parentstack = get_current_stack()
         self.stack = ExecStack(parentstack)
+        self.exception = None
+    def run(self):
+        import logging, sys
+        logger = logging.getLogger('pyerector.execute')
+        try:
+            super(PyThread, self).run()
+        except Error:
+            t, e, tb = sys.exc_info()
+            logger.exception('Exception in %s', self.name)
+            self.exception = e
+            raise Abort
 
 def initialize_threading():
     curthread = threading.currentThread()

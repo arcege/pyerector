@@ -267,9 +267,12 @@ class LogFormatter(logging.Formatter):
             message = newrecord.message
         else:
             message = newrecord
+        from threading import currentThread
+        if currentThread().name not in ('MainThread', 'PyErector'):
+            message = '(%s) %s' % (currentThread().name, message)
         return message
     def formatException(self, exc_info):
-        from .exceptions import extract_tb
+        from .exception import extract_tb
         t, e, tb = exc_info
         exc = traceback.format_exception_only(t, e)
         st = traceback.format_list(extract_tb(tb))
