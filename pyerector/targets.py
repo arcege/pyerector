@@ -47,7 +47,7 @@ Methods: None
                 '%-20s  %s' % (obj.__name__.lower(),
                     firstline(obj.__doc__) or "")
             )
-        for var in V:
+        for var in sorted(V):
             self.logger.info('var %s = "%s"' % (var.name, var.value))
 class Clean(Target):
     """Clean directories and files used by the build.
