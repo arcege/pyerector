@@ -23,7 +23,7 @@ noop = State()
 noTimer = State()
 
 from .version import *
-from .main import PyErector, pymain
+from .main import PyErector, pymain, init_main
 from .base import *
 from .tasks import  *
 from .targets import *
@@ -96,4 +96,5 @@ __all__ = [
 # initialize, but remove the references afterward
 init_logging()
 initialize_threading()
-del init_logging, initialize_threading
+init_main()
+del init_logging, initialize_threading, init_main
