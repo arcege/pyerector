@@ -290,6 +290,9 @@ class MergeMapper(FileMapper):
     def map(self, fname):
         return self.join(self.destdir)
 
+sequencetypes = (list, tuple, Iterator,
+                 type(iter([])), type((None for i in ())))
+
 class Uptodate(FileMapper):
     # backward compatible interface
     sources = ()
@@ -297,8 +300,8 @@ class Uptodate(FileMapper):
     def __call__(self, *args):
         klsname = self.__class__.__name__
         self.logger.debug('%s.__call__(*%s)', klsname, args)
-        srcs = FileIterator(self.get_kwarg('sources', (list, tuple, Iterator)))
-        dsts = FileIterator(self.get_kwarg('destinations', (list, tuple, Iterator)))
+        srcs = FileIterator(self.get_kwarg('sources', sequencetypes))
+        dsts = FileIterator(self.get_kwarg('destinations', sequencetypes))
         files = self.get_args('files')
         #self.logger.debug('srcs = %s; dsts = %s files = %s', srcs, dsts, files)
         if not files and (not srcs or not dsts):
