@@ -19,7 +19,7 @@ PyVersionCheck()
 from pyerector import normjoin, display, noop
 from pyerector.helper import normjoin
 from pyerector.exception import Error
-from pyerector.base import Initer, Target, Task, Iterator
+from pyerector.base import Initer, Target, Task, Iterator, Sequential
 from pyerector.targets import *
 from pyerector.tasks import *
 from pyerector.iterators import Uptodate
@@ -230,4 +230,9 @@ class TestTask(TestCase):
             self.assertFalse(obj.foobar)
         finally:
             noop.state = old_noop
+
+class TestSequential(TestCase):
+    def test_iter(self):
+        s = Sequential(1, 2, 3, 4)
+        self.assertSequenceEqual(tuple(s), (1, 2, 3, 4))
 

@@ -75,7 +75,7 @@ name of target to call or variable assignment, default target is "default"')
             self.validate_targets()
             # run through a thread with an initial stack, wait for the thread
             # to finish
-            newthread = PyThread(name='main', target=self.run)
+            newthread = PyThread(name='PyErector', target=self.run)
             newthread.start()
             newthread.join()
         except Abort:
@@ -176,4 +176,7 @@ name of target to call or variable assignment, default target is "default"')
             self.logger.warning('Done. (%0.3f)', timer)
 
 pymain = PyErector
+
+def init_main(basedir=os.curdir):
+    V['basedir'] = os.path.realpath(basedir)
 

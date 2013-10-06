@@ -37,7 +37,7 @@ class Subversion(VCS_Base):
                     pt = p[1].find('/tags/')
                     if pb != -1:
                         pbe = p[1].find('/', pb+1) + 1
-                        pbn = p[1].find('/', bpe+1)
+                        pbn = p[1].find('/', pbe+1)
                         if pbn == -1:
                             Variable('svn.branch', p[1][pbe:])
                         else:

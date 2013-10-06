@@ -145,6 +145,9 @@ class Target(Initer):
                 if ktype == 'Mapper' and isinstance(name, klass):
                     # special case, allow direct instance of Uptodate
                     obj = name
+                elif isinstance(name, Sequential):
+                    validate_class(klass.__name, name, ktype, ktname)
+                    continue
                 elif isinstance(name, str) and name in klasses:
                     obj = klasses[name]
                 elif isinstance(name, type) and issubclass(name, klass):
@@ -180,6 +183,7 @@ class Target(Initer):
                     "%s is not a %s" % (kobj, klass)
             except (KeyError, AssertionError):
                 raise Error('%s no such %s: %s' % (self, ktype, name))
+                logging.getLogger('pyerector').exception('Cannot find %s', name)
             else:
                 obj = kobj()
         # now perform the operation
@@ -205,37 +209,71 @@ class Target(Initer):
                         if not self.call(utd, Mapper, 'uptodate'):
                             break
                     except Error:
-                        self.logger.exception('Exception in %s.uptodate', myname)
+                        self.logger.exception('Exception in %s.uptodates', myname)
                         raise Abort
                 else:
                     self.verbose('uptodate.')
                     return
-            for dep in self.dependencies:
-                try:
-                    self.call(dep, Target, 'dependencies')
-                except Error:
-                    self.logger.exception('Exception in %s.dependencies', myname)
-                    raise Abort
+            if isinstance(self.dependencies, Parallel):
+                threads = []
+                basename='%s.dependencies.' % myname
+                for dep in self.dependencies:
+                    t = PyThread(name=basename + dep.__class__.__name__,
+                                 target=self.call,
+                                 args=(dep, Target, 'dependencies'))
+                    threads.append(t)
+                for t in threads:
+                    t.start()
+                for t in threads:
+                    t.join()
+                for t in threads:
+                    if t.exception:
+                        raise Abort
+                del threads
+            else:
+                for dep in self.dependencies:
+                    try:
+                        self.call(dep, Target, 'dependencies')
+                    except Error:
+                        self.logger.exception('Exception in %s.dependencies', myname)
+                        raise Abort
             with timer:
-                try:
+                if isinstance(self.tasks, Parallel):
+                    threads = []
+                    basename='%s.tasks.' % myname
+                    for task in self.tasks:
+                        t = PyThread(name=basename + task.__class__.__name__,
+                                     target=self.call,
+                                     args=(task, Task, 'task', args))
+                        threads.append(t)
+                    for t in threads:
+                        t.start()
+                    for t in threads:
+                        t.join()
+                    for t in threads:
+                        if t.exception:
+                            raise Abort
+                else:
                     for task in self.tasks:
                         try:
                             self.call(task, Task, 'task', args)
                         except Error:
-                            self.logger.exception('tasks')
-                    self.logger.debug('starting %s.run', myname)
-                    self.run()
-                except (KeyError, ValueError, TypeError,
-                        RuntimeError, AttributeError):
-                    raise # reraise
-                except Abort:
-                    raise # reraise
-                except Error:
-                    self.logger.exception('Exception in %s.tasks', myname)
-                    raise Abort
-                except Exception:
-                    logging.getLogger('pyerector').exception('Exception')
-                    raise Abort
+                            self.logger.exception('Exception in %s.tasks', myname)
+                            raise Abort
+                    try:
+                        self.logger.debug('starting %s.run', myname)
+                        self.run()
+                    except (KeyError, ValueError, TypeError,
+                            RuntimeError, AttributeError):
+                        raise # reraise
+                    except Abort:
+                        raise # reraise
+                    except Error:
+                        self.logger.exception('Exception in %s.run', myname)
+                        raise Abort
+                    except Exception:
+                        logging.getLogger('pyerector').exception('Exception')
+                        raise Abort
             import pyerector
             if pyerector.noTimer:
                 self.verbose('done.')

@@ -29,3 +29,15 @@ class TestPyErectorArguments(TestCase):
     def _test_passed_args(self):
         PyErector('--dry-run')
 
+from pyerector import Target, Variable
+class Thread(Target):
+    def run(self):
+        import threading
+        Variable('thread.name', threading.currentThread().name)
+
+class TestPyErectorThread(TestCase):
+    def test_thread_name(self):
+        pye = PyErector('thread')
+        # it is sufficient to check that the thread is not 'MainThread'
+        self.assertEqual(Variable('thread.name').value, 'PyErector')
+
