@@ -38,7 +38,6 @@ class Thread(Target):
 class TestPyErectorThread(TestCase):
     def test_thread_name(self):
         self.assertRaises(SystemExit, PyErector, 'thread')
-        #pye = PyErector('thread')
         # it is sufficient to check that the thread is not 'MainThread'
         self.assertEqual(Variable('thread.name').value, 'PyErector')
 
