@@ -308,7 +308,13 @@ class Uptodate(FileMapper):
             return False
         elif srcs and dsts:
             def get_times(lst, s=self):
-                return [os.path.getmtime(s.join(f)) for f in lst]
+                times = []
+                for f in lst:
+                    try:
+                        times.append( os.path.getmtime(s.join(f)) )
+                    except OSError:
+                        pass
+                return times
             maxval = float('inf')
             latest_src = reduce(max, get_times(srcs), 0)
             earliest_dst = reduce(min, get_times(dsts), maxval)
