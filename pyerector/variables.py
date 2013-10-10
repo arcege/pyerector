@@ -128,7 +128,7 @@ class Variable(str):
     def value(self):
         try:
             return self.cache[self]
-        except KeyError:
+        except Error:
             return ''
     @value.setter
     def value(self, value):
