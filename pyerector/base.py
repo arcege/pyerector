@@ -89,7 +89,7 @@ class Initer(Base):
         if isinstance(typeval, (tuple, list)) and callable in typeval:
             l = list(typeval)[:]
             l.remove(callable)
-            assert callable(value) or isinstance(value, l), text
+            assert callable(value) or isinstance(value, tuple(l)), text
         else:
             assert isinstance(value, typeval), text
     def get_kwarg(self, name, typeval, noNone=False):
@@ -182,8 +182,9 @@ class Target(Initer):
                 assert issubclass(kobj, klass), \
                     "%s is not a %s" % (kobj, klass)
             except (KeyError, AssertionError):
-                raise Error('%s no such %s: %s' % (self, ktype, name))
+                #raise Error('%s no such %s: %s' % (self, ktype, name))
                 logging.getLogger('pyerector').exception('Cannot find %s', name)
+                raise Abort
             else:
                 obj = kobj()
         # now perform the operation
@@ -314,7 +315,7 @@ class Task(Initer):
                 self.logger.exception('Exception in %s.run', myname)
                 raise Abort
             except Exception:
-                self.logger.exception('Exception')
+                logging.getLogger('pyerector').exception('Exception')
                 raise Abort
         finally:
             stack.pop()
