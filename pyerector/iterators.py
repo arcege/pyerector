@@ -5,6 +5,7 @@ import fnmatch
 import glob
 import itertools
 import os
+import re
 import sys
 from .helper import normjoin
 from .base import Initer, Iterator, Mapper
@@ -36,6 +37,15 @@ __all__ = [
     'FileMapper', 'BasenameMapper', 'MergeMapper', 'Uptodate',
 ]
 
+def checkglobpatt(string):
+    '''Check if the string has any glob characters.'''
+    try:
+        from glob import match_check
+    except ImportError:
+        return re.search('[[*?]', string) is not None
+    else:
+        return glob.match_check.search(string) is not None
+
 class BaseIterator(Iterator):
     """Examples:
  i = Iterator('src', 'test', pattern='*.py')
@@ -64,11 +74,18 @@ class BaseIterator(Iterator):
         return self.next()
     def getnextset(self):
         basedir = V['basedir']
-        def adjustglob(path, basedir=basedir):
-            from glob import glob
-            items = glob(os.path.join(basedir, path))
-            return [n.replace(os.path.join(basedir, ''), '') for n in items]
         noglob = self.get_kwarg('noglob', bool)
+        def adjustglob(path, noglob=noglob, basedir=basedir):
+            if noglob or not checkglobpatt(path):
+                try:
+                    items = os.listdir(os.path.join(basedir, path))
+                except OSError:
+                    return [path]
+                return [os.path.join(path, f) for f in items]
+            else:
+                from glob import glob
+                items = glob(os.path.join(basedir, path))
+                return [n.replace(os.path.join(basedir, ''), '') for n in items]
         if not self.pool:
             self.logger.debug('nothing left')
             raise StopIteration
@@ -82,7 +99,6 @@ class BaseIterator(Iterator):
                 self.curset = iter(item)
             else:
                 items = [adjustglob(i) for i in item]
-                self.logger.debug('glob seq:', items)
                 self.curset = iter(reduce(lambda a,b: a+b, items))
         elif isinstance(item, str):
             if noglob:
