@@ -5,6 +5,7 @@ import fnmatch
 import glob
 import itertools
 import os
+import sys
 from .helper import normjoin
 from .base import Initer, Iterator, Mapper
 from .variables import V
@@ -46,10 +47,10 @@ class BaseIterator(Iterator):
  j = Iterator(i, pattern='test*')
  tuple(j) == ('src/test/testfoo.py',)
 """
-    noglob = False
     pattern = None
-    recurse = True
-    fileonly = False
+    noglob = False
+    recurse = False
+    fileonly = True
     exclude = ()
     def __init__(self, *path, **kwargs):
         super(BaseIterator, self).__init__(*path, **kwargs)
@@ -103,7 +104,8 @@ class BaseIterator(Iterator):
                 self.getnextset()  # can raise StopIteration
                 try:
                     item = next(self.curset)  # can raise StopIteration
-                except TypeError, e:
+                except TypeError:
+                    t, e, tb = sys.exc_info()
                     raise TypeError(self.curset, e)
             name = os.path.basename(item)
             # if is not excluded
@@ -119,23 +121,30 @@ class BaseIterator(Iterator):
         fname = os.path.join(basedir, item)
         if os.path.isdir(fname) and recurse:
             subdir = [os.path.join(item, fn) for fn in os.listdir(fname)]
-            self.pool[:0] = subdir  # insert at the beginning, depth-first
-            self.logger.debug('adding to pool: %s', repr(subdir))
+            self._prepend(subdir)  # at beginning, depth-first
             if fileonly:
-                item = next(self)
+                # do not use super() as it will cause a problem in FileMapper
+                # similarly with just next(self)
+                item = BaseIterator.next(self)
         return item
+    def _prepend(self, item):
+        if isinstance(item, str):
+            item = [item]
+        self.pool[:0] = list(item)
+        self.logger.debug('adding to pool: %s' % repr(item))
 
 # a helper class to handle file/directory lists better
 class StaticIterator(BaseIterator):
     noglob = True
 
 class FileIterator(BaseIterator):
-    noglob = True
+    pass
 
 FileList = FileIterator
 
 class DirList(FileIterator):
-    filesonly = True
+    recurse = True
+    filesonly = False
 
 class FileSet(Iterator):
     klass = StaticIterator
@@ -170,7 +179,89 @@ class FileSet(Iterator):
             else:
                 return item
 
-class FileMapper(Mapper):
+class FileMapper(Mapper, BaseIterator):
+    destdir = None
+    mapper = None
+    def __init__(self, *files, **kwargs):
+        super(FileMapper, self).__init__(*files, **kwargs)
+        mapper = self.get_kwarg('mapper', (callable, str))
+        if mapper is None:  # identity mapper
+            self.mapper_func = lambda x: x
+        elif callable(mapper):
+            self.mapper_func = mapper
+        elif isinstance(mapper, str):
+            self.mapper_func = \
+                    lambda name, mapstr=mapper: mapstr % {'name': name}
+        else:
+            raise TypeError('map must be string or callable', mapper)
+    def next(self):
+        destdir = self.get_kwarg('destdir', str)
+        if destdir is None:
+            destdir = ''
+        # do _not_ catch StopIterator
+        item = super(FileMapper, self).next()
+        self.logger.debug('super.next() = %s', item)
+        mapped = self.mapper_func(item)
+        assert isinstance(mapped, str), "mapper must return a str"
+        self.logger.debug('self.map(%s) = %s', mapped, self.map(mapped))
+        mapped = self.map(mapped)
+        assert isinstance(mapped, str), "map() must return a str"
+        result = normjoin(destdir, mapped)
+        self.logger.debug('mapper yields (%s, %s)', item, result)
+        return (item, result)
+    def map(self, item):
+        return item
+    def uptodate(self):
+        for (s, d) in self:
+            sf = self.join(s)
+            df = self.join(d)
+            if os.path.isdir(sf):
+                result = self.checktree(sf, df)
+            else:
+                result = self.checkpair(sf, df)
+            if not result:
+                self.logger.debug('%s.uptodate() => False', self.__class__.__name__)
+                return False
+        else:
+            self.logger.debug('%s.uptodate() => True', self.__class__.__name__)
+            return True
+    def checkpair(self, src, dst):
+        """Return True if destination is newer than source."""
+        if self.exclusion.match(os.path.basename(src)):
+            return True
+        try:
+            s = round(os.path.getmtime(src), 4)
+        except OSError:
+            raise ValueError('no source:', src)
+        try:
+            d = round(os.path.getmtime(dst), 4)
+        except OSError:
+            self.logger.debug('%s not found', dst)
+            return False
+        self.logger.debug('%s(%0.4f) %s %s(%0.4f)', src, s, (s > d and '>' or '<='), dst, d)
+        return s <= d
+    def checktree(self, src, dst):
+        dirs = [os.curdir]
+        while dirs:
+            dir = dirs.pop(0)
+            ndir = normjoin(src, dir)
+            for fname in os.listdir(normjoin(src, dir)):
+                sname = normjoin(src, dir, fname)
+                dname = normjoin(dst, dir, fname)
+                if self.exclusion.match(fname):
+                    continue
+                if os.path.isdir(sname):
+                    self.logger.debug('adding %s to fifo', normjoin(dir, fname))
+                    dirs.append(normjoin(dir, fname))
+                else:
+                    self.logger.debug('checking %s with %s', sname, dname)
+                    result = self.checkpair(sname, dname)
+                    if not result:
+                        return result
+        else:
+            return True
+
+class _FileMapper(Mapper):
     files = ()
     destdir = None
     map = None
@@ -180,6 +271,7 @@ class FileMapper(Mapper):
     def __init__(self, *files, **kwargs):
         if 'iteratorclass' in kwargs:
             self.iteratorclass = kwargs['iteratorclass']
+            del kwargs['iteratorclass']
         if len(files) == 1 and isinstance(files[0], Iterator):
             files = files[0]
         elif len(files) == 1 and isinstance(files[0], (tuple, list)):
@@ -189,7 +281,7 @@ class FileMapper(Mapper):
         else:
             files = FileSet(files, klass=self.iteratorclass)
         # we should end up with 'files' being a single Iterator instance
-        super(FileMapper, self).__init__(*files, **kwargs)
+        super(FileMapper, self).__init__(*(files,), **kwargs)
         mapper = self.get_kwarg('mapper', (callable, str))
         if mapper is None:  # identity mapper
             self.mapper_func = lambda x: x
@@ -294,7 +386,10 @@ class BasenameMapper(FileMapper):
 
 class MergeMapper(FileMapper):
     def map(self, fname):
-        return self.join(self.destdir)
+        return os.path.basename(fname)
+class IdentityMapper(FileMapper):
+    def map(self, fname):
+        return ''  # just use destdir
 
 sequencetypes = (list, tuple, Iterator,
                  type(iter([])), type((None for i in ())))
