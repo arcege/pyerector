@@ -79,13 +79,16 @@ minimalistic.  And some functionality, like copy(), we don't want."""
             if name in self.cache:
                 return self.cache[name]
             else:
-                raise KeyError(name)
+                raise Error('no such variable: %s' % name.name)
     def __setitem__(self, name, value):
         if not isinstance(name, Variable):
             name = Variable(name)
         with self.lock:
             logger = logging.getLogger('pyerector.execute')
-            logger.debug('name = %s; name.value = %s; value= %s' % (repr(name), repr(name.value), repr(value)))
+            try:
+                logger.debug('name = %s; name.value = %s; value= %s', repr(name), repr(name.value), repr(value))
+            except Error:
+                logger.debug('name = %s; value = %s', repr(name), repr(value))
             self.cache[name] = value
     def __delitem__(self, name):
         if not isinstance(name, Variable):
@@ -94,7 +97,7 @@ minimalistic.  And some functionality, like copy(), we don't want."""
             if name in self.cache:
                 del self.cache[name]
             else:
-                raise KeyError(name)
+                raise Error('no such variable: %s', name)
     def __call__(self, name):
         return Variable(name)
 
@@ -127,7 +130,6 @@ class Variable(str):
             return self.cache[self]
         except KeyError:
             return ''
-            #raise Error(self.toString())
     @value.setter
     def value(self, value):
         self.cache[self] = value
