@@ -73,7 +73,7 @@ name of target to call or variable assignment, default target is "default"')
         # returnstatus should not need mutex since it is only set by the
         # PyErector thread and only read after the thread completes,
         # adding a Condition object seems to cause issues with unittesting
-        self.returnstatus = None  # successfully completed
+        self.returnstatus = 0  # successfully completed
         try:
             self.arguments(args or sys.argv[1:])
             self.validate_targets()
@@ -85,7 +85,6 @@ name of target to call or variable assignment, default target is "default"')
         except Abort:
             raise SystemExit(1)
         else:
-            returnstatus = self.returnstatus
             raise SystemExit(self.returnstatus)
     def arguments(self, args):
         global noop
