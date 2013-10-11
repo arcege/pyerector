@@ -98,10 +98,11 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
         elif len(files) == 1 and dest is not None and not os.path.isdir(dest):
-            fmap = MergeMapper(files[0], destdir=dest)
+            from .iterators import IdentityMapper
+            fmap = IdentityMapper(files[0], destdir=dest, exclude=excludes)
         elif dest is not None:
             fmap = FileMapper(self.get_files(files),
-                              destdir=dest)
+                              destdir=dest, exclude=excludes)
         else:
             raise Error('must supply dest to %s' % self.__class__.__name__)
         self.logger.debug('Copy.fmap = %s', vars(fmap))
@@ -161,23 +162,26 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
     hashs = ('md5', 'sha1')
     def run(self):
         from hashlib import md5, sha1
-        files = self.get_args('files')
+        files = self.get_files(self.get_args('files'))
         hashs = self.get_kwarg('hashs', tuple)
         self.logger.debug('files = %s; hashs = %s', files, hashs)
-        def mapping(s):
-            return ('%s.md5' % s, '%s.sha1' % s)
-        fmap = FileMapper(self.get_files(files), mapper=mapping)
-        for sname, dname in fmap:
-            h = None
-            if dname.endswith('.md5') and 'md5' in hashs:
-                h = md5()
-            elif dname.endswith('.sha1') and 'sha1' in hashs:
-                h = sha1()
-            if (h and os.path.isfile(sname) and
-                not fmap.checkpair(self.join(sname), self.join(dname))):
-                h.update(open(self.join(sname), 'rb').read())
-                self.logger.info('writing %s', dname)
-                open(self.join(dname), 'wt').write(h.hexdigest() + '\n')
+        fmaps = []
+        if 'md5' in hashs:
+            fmaps.append(
+                (md5, FileMapper(files, mapper='%(name)s.md5'))
+            )
+        if 'sha1' in hashs:
+            fmaps.append(
+                (sha1, FileMapper(files, mapper='%(name)s.sha1'))
+            )
+        for hashfunc, fmap in fmaps:
+            for sname, dname in fmap:
+                h = hashfunc()
+                if (os.path.isfile(sname) and
+                    not fmap.checkpair(self.join(sname), self.join(dname))):
+                    h.update(open(self.join(sname), 'rb').read())
+                    self.logger.info('writing %s', dname)
+                    open(self.join(dname), 'wt').write(h.hexdigest() + '\n')
 
 class Java(Task):
     """Call a Java routine.

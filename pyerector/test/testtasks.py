@@ -36,11 +36,11 @@ class TestChmod(TestCase):
             'testmultiple1', 'testmultiple2', 'testmultiple3',
         )
         for fname in files:
-            open(fname, 'w')
-            os.chmod(fname, 0)
-        Chmod('testmultiple1', 'testmultiple2', 'testmultipl3')()
+            open(normjoin(self.dir, fname), 'w')
+            os.chmod(normjoin(self.dir, fname), 0)
+        Chmod('testmultiple1', 'testmultiple2', 'testmultiple3')()
         for fname in files:
-            self.assertEqual(self.getmode(normpath(self.dir, fname)), int('666', 8))
+            self.assertEqual(self.getmode(normjoin(self.dir, fname)), int('666', 8))
 
 class TestCopy(TestCase):
     pass

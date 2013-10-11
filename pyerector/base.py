@@ -28,6 +28,8 @@ __all__ = [
 # the base class to set up the others
 class Initer(Base):
     config = Config()  # for backward compatibility only
+    noglob = False
+    iterator = None
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('pyerector.execute')
         self.logger.debug('%s.__init__(*%s, **%s)', self.__class__.__name__, args, kwargs)
@@ -50,11 +52,9 @@ class Initer(Base):
                 setattr(self, key, kwargs[key])
         if basedir is not None:
             V['basedir'] = basedir or curdir
-    def wantnoglob(self):
-        return ((hasattr(self, 'kwargs') and 'noglob' in  self.kwargs and
-                    self.kwargs['noglob']) or
-                (hasattr(self, 'noglob') and self.noglob))
     def get_files(self, files=None):
+        # propagate 'noglob' keyword to the interator
+        noglob = self.get_kwarg('noglob', bool)
         if files is None:
             try:
                 files = self.files
@@ -64,19 +64,15 @@ class Initer(Base):
             return files
         else:
             # import here to avoid recursive references
-            from .iterators import StaticIterator, FileIterator, FileSet
-            if self.wantnoglob():
-                iterator = StaticIterator
-            else:
-                iterator = FileIterator
+            from .iterators import FileIterator, FileSet
             fs = FileSet()
             for entry in files:
                 if isinstance(entry, Iterator):
                     i = entry
                 elif isinstance(entry, (tuple, list)):
-                    i = iterator(entry)
+                    i = FileIterator(entry, noglob=noglob)
                 else:
-                    i = iterator((entry,),)
+                    i = FileIterator((entry,), noglob=noglob)
                 fs.append(i)
             return fs
     def join(self, *path):
@@ -93,7 +89,7 @@ class Initer(Base):
         if isinstance(typeval, (tuple, list)) and callable in typeval:
             l = list(typeval)[:]
             l.remove(callable)
-            assert callable(value) or isinstance(value, l), text
+            assert callable(value) or isinstance(value, tuple(l)), text
         else:
             assert isinstance(value, typeval), text
     def get_kwarg(self, name, typeval, noNone=False):
@@ -189,8 +185,9 @@ class Target(Initer):
                 assert issubclass(kobj, klass), \
                     "%s is not a %s" % (kobj, klass)
             except (KeyError, AssertionError):
-                raise Error('%s no such %s: %s' % (self, ktype, name))
+                #raise Error('%s no such %s: %s' % (self, ktype, name))
                 logging.getLogger('pyerector').exception('Cannot find %s', name)
+                raise Abort
             else:
                 obj = kobj()
         # now perform the operation
@@ -321,7 +318,7 @@ class Task(Initer):
                 self.logger.exception('Exception in %s.run', myname)
                 raise Abort
             except Exception:
-                self.logger.exception('Exception')
+                logging.getLogger('pyerector').exception('Exception')
                 raise Abort
         finally:
             stack.pop()

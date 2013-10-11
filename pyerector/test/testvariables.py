@@ -2,6 +2,7 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 from .base import *
+from ..exception import Error
 
 PyVersionCheck()
 
@@ -52,16 +53,16 @@ class TestVariableCache(TestCase):
         self.vc.cache[Variable('a')] = 'bye'
         self.assertNotIn(Variable('b'), self.vc)
     def test_getitem_empty(self):
-        with self.assertRaises(KeyError):
+        with self.assertRaises(Error):
             self.vc['notpresent']
             self.vc[Variable('nosuchvariable')]
     def test_getitem_wrong_string(self):
         self.vc.cache[Variable('a')] = 'hi'
-        with self.assertRaises(KeyError):
+        with self.assertRaises(Error):
             self.vc['c']
     def test_getitem_wrong_variable(self):
         self.vc.cache[Variable('a')] = 'hi'
-        with self.assertRaises(KeyError):
+        with self.assertRaises(Error):
             self.vc[Variable('c')]
     def test_getitem_string(self):
         self.vc.cache[Variable('a')] = 'hi'

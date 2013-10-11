@@ -5,6 +5,8 @@ import fnmatch
 import glob
 import itertools
 import os
+import re
+import sys
 from .helper import normjoin
 from .base import Initer, Iterator, Mapper
 from .variables import V
@@ -35,101 +37,130 @@ __all__ = [
     'FileMapper', 'BasenameMapper', 'MergeMapper', 'Uptodate',
 ]
 
-# a helper class to handle file/directory lists better
-class StaticIterator(Iterator):
+def checkglobpatt(string):
+    '''Check if the string has any glob characters.'''
+    try:
+        from glob import match_check
+    except ImportError:
+        return re.search('[[*?]', string) is not None
+    else:
+        return glob.match_check.search(string) is not None
+
+class BaseIterator(Iterator):
+    """Examples:
+ i = Iterator('src', 'test', pattern='*.py')
+ j = Iterator('build', pattern='*.py', recurse=True)
+ k = Iterator('conf', ['etc/build.properties', 'tmp/dummy'], i, j)
+ tuple(k) == ('conf/foo.cfg', 'etc/build.properties', 'tmp/dummy', 'src/foo.py', 'test/testfoo.py', 'build/foo.py', 'build/test/testfoo.py')
+
+ i = Iterator('src', pattern='*.py', recurse=True)
+ j = Iterator(i, pattern='test*')
+ tuple(j) == ('src/test/testfoo.py',)
+"""
     pattern = None
+    noglob = False
+    recurse = False
+    fileonly = True
     exclude = ()
-    def __init__(self, path, **kwargs):
-        super(StaticIterator, self).__init__(*path, **kwargs)
-        pool = self.get_args('path')
-        if isinstance(pool, (tuple, list)):
-            self.pool = list(pool)
-        else:
-            self.pool = [pool]
-        self.poolpos = 0
-        self.setpos = 0
-        pattern = self.get_kwarg('pattern', str)
-        if pattern:
-            # should may defer to next() method
-            for i, v in enumerate(self.pool):
-                self.pool[i] = os.path.join(v, self.pattern)
-        self.curpoolitem = None
-        self.curpoolset = None
+    def __init__(self, *path, **kwargs):
+        super(BaseIterator, self).__init__(*path, **kwargs)
+        self.pool = None
+        self.curset = None
     def __iter__(self):
-        self.poolpos = 0
-        self.setpos = 0
-        self.curpoolitem = None
-        self.curpoolset = None
-        return super(StaticIterator, self).__iter__()
+        self.pool = list(self.get_args('path'))
+        self.curset = iter([])
+        return super(BaseIterator, self).__iter__()
     def __next__(self):
         return self.next()
-    def next(self):
-        if self.curpoolitem is None:
-            self.getnextset()
-        while True:
-            if self.setpos >= len(self.curpoolset):
-                self.getnextset()
-            item = self.curpoolset[self.setpos]
-            self.setpos += 1
-            if not self.exclusion.match(item):
-                return item
     def getnextset(self):
+        basedir = V['basedir']
+        noglob = self.get_kwarg('noglob', bool)
+        def adjustglob(path, noglob=noglob, basedir=basedir):
+            if noglob or not checkglobpatt(path):
+                try:
+                    items = os.listdir(os.path.join(basedir, path))
+                except OSError:
+                    return [path]
+                return [os.path.join(path, f) for f in items]
+            else:
+                from glob import glob
+                items = glob(os.path.join(basedir, path))
+                return [n.replace(os.path.join(basedir, ''), '') for n in items]
+        if not self.pool:
+            self.logger.debug('nothing left')
+            raise StopIteration
+        item = self.pool[0]
+        del self.pool[0]
+        self.logger.debug('next item from pool is %s', repr(item))
+        if isinstance(item, Iterator):
+            self.curset = iter(item)
+        elif isinstance(item, (tuple, list)):
+            if noglob:
+                self.curset = iter(item)
+            else:
+                items = [adjustglob(i) for i in item]
+                self.curset = iter(reduce(lambda a,b: a+b, items))
+        elif isinstance(item, str):
+            if noglob:
+                self.curset = iter([item])
+            else:
+                self.curset = iter(adjustglob(item))
+        self.logger.debug('curset = %s', repr(self.curset))
+    def next(self):
+        noglob = self.get_kwarg('noglob', bool)
+        recurse = self.get_kwarg('recurse', bool)
+        pattern = self.get_kwarg('pattern', str)
+        fileonly = self.get_kwarg('fileonly', bool)
+        basedir = V['basedir']
         while True:
-            self.logger.debug('poolpos = %s; pool = %s', self.poolpos, self.pool)
-            if self.poolpos >= len(self.pool):
-                raise StopIteration
-            self.curpoolitem = self.pool[self.poolpos]
-            self.poolpos += 1
-            self.logger.debug('calling %s.glob(%s)', self, self.curpoolitem)
-            self.curpoolset = self.glob(self.curpoolitem)
-            self.setpos = 0
-            if self.curpoolset:
+            try:
+                item = next(self.curset)
+            except StopIteration:
+                self.logger.debug('caught StopIteration on next()')
+                self.getnextset()  # can raise StopIteration
+                try:
+                    item = next(self.curset)  # can raise StopIteration
+                except TypeError:
+                    t, e, tb = sys.exc_info()
+                    raise TypeError(self.curset, e)
+            name = os.path.basename(item)
+            # if is not excluded
+            # and either:
+            #    recursive and directory
+            #    no pattern or matches pattern
+            if (not self.exclusion.match(item) and
+                ((recurse and os.path.isdir(os.path.join(basedir, item))) or
+                 not pattern or fnmatch.fnmatchcase(name, pattern))):
+                self.logger.debug('item = %s' % repr(item))
                 break
-    def glob(self, pattern):
-        return [pattern]
+        assert isinstance(item, str), 'Expecting a string'
+        fname = os.path.join(basedir, item)
+        if os.path.isdir(fname) and recurse:
+            subdir = [os.path.join(item, fn) for fn in os.listdir(fname)]
+            self._prepend(subdir)  # at beginning, depth-first
+            if fileonly:
+                # do not use super() as it will cause a problem in FileMapper
+                # similarly with just next(self)
+                item = BaseIterator.next(self)
+        return item
+    def _prepend(self, item):
+        if isinstance(item, str):
+            item = [item]
+        self.pool[:0] = list(item)
+        self.logger.debug('adding to pool: %s' % repr(item))
 
-class FileIterator(StaticIterator):
-    def glob(self, pattern):
-        # do not use the join() method since it will remove the trailing
-        # separator
-        # XXX should we be returning an iter() object?
-        if isinstance(pattern, Iterator): # an iterator, so convert to a list
-            self.logger.debug('%s.pattern is iterator', pattern)
-            return list(pattern)
-        base = os.path.join(V['basedir'], '')
-        files = glob.glob(self.join(pattern))
-        self.logger.debug('%s.glob(%s) = %s', self.__class__.__name__, self.join(pattern), files)
-        return [name.replace(base, '') for name in files]
+# a helper class to handle file/directory lists better
+class StaticIterator(BaseIterator):
+    noglob = True
 
-class FileList(FileIterator):
-    def __init__(self, *args, **kwargs):
-        super(FileList, self).__init__(path=args, **kwargs)
+class FileIterator(BaseIterator):
+    pass
+
+FileList = FileIterator
 
 class DirList(FileIterator):
-    def __init__(self, path, recurse=False, filesonly=True, **kwargs):
-        super(DirList, self).__init__(path, **kwargs)
-        self.recurse = bool(recurse)
-        self.filesonly = bool(filesonly)
-        self.update_dirpath()
-    def update_dirpath(self):
-        dirs = self.pool[:]
-        paths = []
-        while dirs:
-            thisdir = dirs[0]
-            del dirs[0]
-            if not self.filesonly:
-                paths.append(thisdir)
-            if not self.exclusion.match(os.path.basename(thisdir)):
-                for name in os.listdir(os.path.join(V['basedir'], thisdir)):
-                    spath = os.path.join(thisdir, name)
-                    dpath = os.path.join(V['basedir'], thisdir, name)
-                    if self.exclusion.match(name):
-                        pass
-                    elif os.path.islink(dpath) or os.path.isfile(dpath):
-                        paths.append(spath)
-                    elif self.recurse:
-                        dirs.append(spath)
-        self.pool[:] = paths # replace the pool with the gathered set
+    recurse = True
+    filesonly = False
 
 class FileSet(Iterator):
     klass = StaticIterator
@@ -164,25 +195,10 @@ class FileSet(Iterator):
             else:
                 return item
 
-class FileMapper(Mapper):
-    files = ()
+class FileMapper(Mapper, BaseIterator):
     destdir = None
-    map = None
     mapper = None
-    exclude = None
-    iteratorclass = FileIterator
     def __init__(self, *files, **kwargs):
-        if 'iteratorclass' in kwargs:
-            self.iteratorclass = kwargs['iteratorclass']
-        if len(files) == 1 and isinstance(files[0], Iterator):
-            files = files[0]
-        elif len(files) == 1 and isinstance(files[0], (tuple, list)):
-            files = self.iteratorclass(files[0])
-        elif len(files) == 1:
-            files = self.iteratorclass((files[0],))
-        else:
-            files = FileSet(files, klass=self.iteratorclass)
-        # we should end up with 'files' being a single Iterator instance
         super(FileMapper, self).__init__(*files, **kwargs)
         mapper = self.get_kwarg('mapper', (callable, str))
         if mapper is None:  # identity mapper
@@ -191,46 +207,26 @@ class FileMapper(Mapper):
             self.mapper_func = mapper
         elif isinstance(mapper, str):
             self.mapper_func = \
-                lambda name, mapstr=mapper: mapstr % {'name': name}
+                    lambda name, mapstr=mapper: mapstr % {'name': name}
         else:
             raise TypeError('map must be string or callable', mapper)
-        self.pos = 0
-        self.queue = []
-        self.ifiles = None
-    def __iter__(self):
-        self.ifiles = iter(self.get_args('files'))
-        self.pos = 0
-        self.queue = []
-        return super(FileMapper, self).__iter__()
-    def __next__(self):
-        return self.next()
     def next(self):
-        if self.queue:
-            name, mapped = self.queue[0]
-            del self.queue[0]
-        else:
-            try:
-                name = next(self.ifiles)
-            except (StopIteration, IndexError):
-                self.ifiles = None
-                raise StopIteration
-            except TypeError:
-                raise RuntimeError('not called as an iter object')
-            self.pos += 1
-            assert callable(self.mapper_func), 'mapper is not callable'
-            mapped = self.mapper_func(name)
-            if isinstance(mapped, (list, tuple)):
-                first = mapped[0]
-                self.queue.extend( [(name, m) for m in mapped[1:]] )
-                mapped = first
         destdir = self.get_kwarg('destdir', str)
         if destdir is None:
             destdir = ''
-        result = normjoin(destdir, self.map(mapped))
-        self.logger.debug('mapper yields (%s, %s)', name, result)
-        return (name, result)
-    def map(self, fname):
-        return fname
+        # do _not_ catch StopIterator
+        item = super(FileMapper, self).next()
+        self.logger.debug('super.next() = %s', item)
+        mapped = self.mapper_func(item)
+        assert isinstance(mapped, str), "mapper must return a str"
+        self.logger.debug('self.map(%s) = %s', mapped, self.map(mapped))
+        mapped = self.map(mapped)
+        assert isinstance(mapped, str), "map() must return a str"
+        result = normjoin(destdir, mapped)
+        self.logger.debug('mapper yields (%s, %s)', item, result)
+        return (item, result)
+    def map(self, item):
+        return item
     def uptodate(self):
         for (s, d) in self:
             sf = self.join(s)
@@ -288,7 +284,10 @@ class BasenameMapper(FileMapper):
 
 class MergeMapper(FileMapper):
     def map(self, fname):
-        return self.join(self.destdir)
+        return os.path.basename(fname)
+class IdentityMapper(FileMapper):
+    def map(self, fname):
+        return ''  # just use destdir
 
 sequencetypes = (list, tuple, Iterator,
                  type(iter([])), type((None for i in ())))
@@ -303,18 +302,24 @@ class Uptodate(FileMapper):
         srcs = FileIterator(self.get_kwarg('sources', sequencetypes))
         dsts = FileIterator(self.get_kwarg('destinations', sequencetypes))
         files = self.get_args('files')
-        #self.logger.debug('srcs = %s; dsts = %s files = %s', srcs, dsts, files)
+        #self.logger.debug('srcs = %s; dsts = %s; files = %s', srcs, dsts, files)
         if not files and (not srcs or not dsts):
-            self.logger.debug('%s *>', klsname)
+            self.logger.debug('%s *> %s', klsname, False)
             return False
         elif srcs and dsts:
             def get_times(lst, s=self):
-                return [os.path.getmtime(s.join(f)) for f in lst]
+                times = []
+                for f in lst:
+                    try:
+                        times.append( os.path.getmtime(s.join(f)) )
+                    except OSError:
+                        pass
+                return times
             maxval = float('inf')
             latest_src = reduce(max, get_times(srcs), 0)
             earliest_dst = reduce(min, get_times(dsts), maxval)
             if earliest_dst == maxval: # empty list case
-                self.logger.debug('%s /> False', klsname)
+                self.logger.debug('%s /> %s', klsname, False)
                 return False
             result = round(earliest_dst, 4) >= round(latest_src, 4)
             self.logger.debug('%s => %s', klsname, result and 'False' or 'True')
