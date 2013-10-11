@@ -60,3 +60,17 @@ v1.2.0  2013-10-02
   -- Remove extraneous "hasformat" functionality.
   -- Fixes to unit tests.
   -- Better help strings.
+
+v1.2.1  2013-10-11
+  -- Issue 12 - Add ability to specify variables on the command-line (update)
+  -- Issue 15 - Redesign iterators/mappers
+  -- Issue 19 - Dirlist does not work as might be expected
+  -- Issue 20 - Thread-safe operations (update)
+  -- Issue 21 - Backward compatibility for Verbose
+  Other fixes/enhancements:
+  -- Update pyerect to better use iterators.
+  -- Handle that PyErector always returns an exception, mainly SystemExit
+  -- Mark as "Failed." instead of "Done." if an error occurs; have
+     PyErector handle a proper exit status on failure.
+  -- Update inheritance for LogFormatter - on py2.6, super() throws a TypeError
+
