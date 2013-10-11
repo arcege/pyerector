@@ -98,8 +98,10 @@ minimalistic.  And some functionality, like copy(), we don't want."""
                 del self.cache[name]
             else:
                 raise Error('no such variable: %s', name)
-    def __call__(self, name):
-        return Variable(name)
+    def __call__(self, name, value=None):
+        v = Variable(name)
+        if value is not None:
+            self[v] = value
 
 V = VariableCache()
 
