@@ -119,6 +119,9 @@ class Initer(Base):
     @classmethod
     def validate_tree(self):
         pass # do nothing, Target will do something with this
+    def display(self, msg, *args, **kwargs):
+        from logging import getLevelName
+        self.logger.log(getLevelName('DISPLAY'), msg, *args, **kwargs)
 
 class Target(Initer):
     dependencies = ()

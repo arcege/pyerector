@@ -1,7 +1,8 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from .helper import normjoin, display, Exclusions, init_logging
+from .helper import normjoin, Exclusions, init_logging
+from .helper import display, warn, verbose, debug # being deprecated
 from .execute import initialize_threading
 
 # must define 'verbose', 'noop' and 'debug' before importing other submodules

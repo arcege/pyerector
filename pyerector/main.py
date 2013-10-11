@@ -6,7 +6,7 @@ import os
 import sys
 import traceback
 from .exception import Abort, Error, extract_tb
-from .helper import display, Timer
+from .helper import Timer
 from .execute import PyThread
 from . import noop
 from .register import registry
@@ -101,9 +101,11 @@ name of target to call or variable assignment, default target is "default"')
             noop.on()
         if args.version:
             if logging.getLogger().isEnabledFor(logging.INFO):
-                display('%s %s', Version.release, Version.version)
+                self.logger.log(logging.getLevelName('DISPLAY'),
+                                ('%s %s' % (Version.release, Version.version)))
             else:
-                display('%s', Version.release)
+                self.logger.log(logging.getLevelName('DISPLAY'),
+                                Version.release)
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
@@ -136,7 +138,8 @@ name of target to call or variable assignment, default target is "default"')
                 traceback.print_list(exclist)
             lines = traceback.format_exception_only(t, e)
             for line in lines:
-                display(line.rstrip())
+                self.logger.log(logging.getLevelName('DISPLAY'),
+                                line.rstrip())
         else:
             e = sys.exc_info()[1]
             if text:

@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from .helper import display
 from .register import registry
 from .base import Target
 from .tasks import Mkdir, Remove, Unittest
@@ -43,9 +42,9 @@ Methods: None
         for name, obj in sorted(registry.get('Target').items()):
             if name[1:].lower() != name[1:]:
                 continue  # ignore non-callable targets
-            display(
+            self.display(
                 '%-20s  %s' % (obj.__name__.lower(),
-                    firstline(obj.__doc__) or "")
+                               firstline(obj.__doc__) or "")
             )
         for var in sorted(V):
             self.logger.info('var %s = "%s"' % (var.name, var.value))
