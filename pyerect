@@ -34,7 +34,7 @@ class PreCompile(Target):
     dependencies = (PyCopy,)
     tasks = Parallel(
         PyCompile(
-            FileList(
+            FileIterator(
                 normjoin('build', distfile, 'pyerector'),
                 normjoin('build', distfile, 'pyerector', 'py2'),
                 normjoin('build', distfile, 'pyerector', 'vcs'),
@@ -42,7 +42,7 @@ class PreCompile(Target):
             version='2'
         ),
         PyCompile(
-            FileList(
+            FileIterator(
                 normjoin('build', distfile, 'pyerector'),
                 normjoin('build', distfile, 'pyerector', 'py3'),
                 normjoin('build', distfile, 'pyerector', 'vcs'),
@@ -87,12 +87,10 @@ InitDirs.files = (
     'testdir/egg', 'testdir/zip', 'testdir/tar',
 )
 Compile.dependencies = (PreCompile,)
-Distlist = StaticIterator([distfile])
 Packaging.tasks = (
-    Zip(name='dist/%s.zip' % distfile, files=Distlist, root='build'),
-    Tar(name='dist/%s.tgz' % distfile, files=Distlist, root='build'),
-    Egg(name='dist/%s.egg' % distfile, files=('*',),
-        root=normjoin('build', distfile)),
+    Zip(distfile, name='dist/%s.zip' % distfile, root='build'),
+    Tar(distfile, name='dist/%s.tgz' % distfile, root='build'),
+    Egg('*', name='dist/%s.egg' % distfile, root=normjoin('build', distfile)),
     HashGen(
         'dist/%s.egg' % distfile,
         'dist/%s.zip' % distfile,
