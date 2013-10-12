@@ -3,7 +3,6 @@
 
 import fnmatch
 import glob
-import itertools
 import os
 import re
 import sys
@@ -44,7 +43,7 @@ def checkglobpatt(string):
     except ImportError:
         return re.search('[[*?]', string) is not None
     else:
-        return glob.match_check.search(string) is not None
+        return match_check.search(string) is not None
 
 class BaseIterator(Iterator):
     """Examples:
@@ -83,8 +82,7 @@ class BaseIterator(Iterator):
                     return [path]
                 return [os.path.join(path, f) for f in items]
             else:
-                from glob import glob
-                items = glob(os.path.join(basedir, path))
+                items = glob.glob(os.path.join(basedir, path))
                 return [n.replace(os.path.join(basedir, ''), '') for n in items]
         if not self.pool:
             self.logger.debug('nothing left')

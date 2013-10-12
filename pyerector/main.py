@@ -190,6 +190,9 @@ name of target to call or variable assignment, default target is "default"')
 
 pymain = PyErector
 
-def init_main(basedir=os.curdir):
+def init_main(basedir=os.curdir, called=[False]):
+    if called[0]:
+        return
     V['basedir'] = os.path.realpath(basedir)
+    called[0] = True
 

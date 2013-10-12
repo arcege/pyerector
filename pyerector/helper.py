@@ -303,7 +303,10 @@ class LogExecFormatter(LogFormatter):
         t, e, tb = exc_info
         lines = stack.extract() + traceback.format_exception_only(t, e)
         return ''.join(lines).rstrip()
-def init_logging(deflevel=logging.WARNING, message='%(message)s'):
+def init_logging(deflevel=logging.WARNING, message='%(message)s',
+                 called=[False]):
+    if called[0]:
+        return
     def setup(name, handlerklass, formatterklass,
               deflevel=deflevel, message=message):
         f = formatterklass(message)
@@ -319,6 +322,7 @@ def init_logging(deflevel=logging.WARNING, message='%(message)s'):
     setup('pyerector.execute', logging.StreamHandler, LogExecFormatter)
     warnings.simplefilter("default", DeprecationWarning)
     logging.captureWarnings(True)
+    called[0] = True
 display = Verbose(None, 'DISPLAY')
 warn = Verbose(None, 'ERROR')
 verbose = Verbose(None, 'INFO')

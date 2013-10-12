@@ -6,6 +6,7 @@ from .base import Target
 from .tasks import Mkdir, Remove, Unittest
 from .iterators import StaticIterator
 from .variables import V
+from .vcs import VCS
 
 __all__ =  [
     'All',
@@ -68,14 +69,13 @@ Members: None
 Methods: None
 """
     def run(self):
-        from . import VCS, Variable
         try:
             v = VCS()
         except RuntimeError:
             self.logger.info('No VCS found')
         else:
             v.current_info()
-            Variable('pyerector.vcs', v)
+            V['pyerector.vcs'] = v
             self.logger.info('Found %s', v)
 class InitDirs(Target):
     """Create initial directories.

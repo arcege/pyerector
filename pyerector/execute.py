@@ -3,10 +3,10 @@
 
 import threading
 from .exception import Abort, Error
+from .variables import V
 
 __all__  = [
     'get_current_stack',
-    'ExecStack',
     'PyThread',
 ]
 
@@ -56,7 +56,6 @@ class PyThread(threading.Thread):
     limiter = None
     def __init__(self, *args, **kwargs):
         if self.__class__.limiter is None:
-            from .variables import V
             import logging
             logging.getLogger('pyerector.execute')\
                 .debug('BoundedSemaphore(%s)', V['pyerector.pool.size'])
@@ -84,12 +83,14 @@ class PyThread(threading.Thread):
         finally:
             logger.debug('PyThread.limiter.released')
 
-def initialize_threading():
+def init_threading(called=[False]):
+    if called[0]:
+        return
     from .variables import V
     V['pyerector.pool.size'] = '10'
     curthread = threading.currentThread()
     assert curthread.name == 'MainThread'
     if not hasattr(curthread, 'stack'):
         curthread.stack = ExecStack()
-
+    called[0] = True
 

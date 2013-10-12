@@ -9,7 +9,7 @@ import sys
 from .exception import Error
 from .helper import Exclusions, Subcommand
 from .base import Task
-from .iterators import FileMapper, MergeMapper, StaticIterator
+from .iterators import IdentityMapper, FileMapper, StaticIterator
 from .variables import VariableSet
 
 # Python 3.x removed the execfile function
@@ -98,7 +98,6 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
         elif len(files) == 1 and dest is not None and not os.path.isdir(dest):
-            from .iterators import IdentityMapper
             fmap = IdentityMapper(files[0], destdir=dest, exclude=excludes)
         elif dest is not None:
             fmap = FileMapper(self.get_files(files),

@@ -14,7 +14,7 @@ if version[0] > '2': # python 3+
 else:
     from .py2.base import Base
 from . import noop
-from .helper import normjoin, u, Timer, extract_stack
+from .helper import Exclusions, extract_stack, normjoin, Timer, u
 from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
@@ -335,7 +335,6 @@ class Task(Initer):
 class Iterator(Initer):
     def __init__(self, *path, **kwargs):
         super(Iterator, self).__init__(*path, **kwargs)
-        from .helper import Exclusions
         exclude = self.get_kwarg('exclude',
                     (Exclusions, set, str, tuple, list, type(None))
         )

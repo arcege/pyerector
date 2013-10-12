@@ -1,0 +1,121 @@
+This describes the heirarchy of modules being called, so import loops can
+be avoided later.
+
+__init__
+  - helper (preload, for normjoin, Exclusions, init_logging)
+  - execute (preload, for init_threading)
+  - version
+  - main
+  - base
+  - tasks
+  - targets
+  - iterators
+  - variables
+  - vcs
+
+targets
+  - register
+  - base
+  - tasks
+  - iterators
+  - variables
+  - vcs.__init__
+
+tasks
+  - exception
+  - helper
+  - base
+  - iterators
+  - variables
+  - py3.execfile
+  - __init__ (post-import, for noTimer)
+
+iterators
+  - helper
+  - base
+  - variables
+
+base
+  - __init__ (from preload, for noop)
+  - py2.base
+  - py3.base
+  - helper
+  - execute
+  - register
+  - exception
+  - config
+  - variables
+  - iterators (post-import)
+
+main
+  - exception
+  - helper
+  - execute
+  - register
+  - base
+  - version
+  - variables
+
+vcs.__init__
+  - variables (post-import)
+  - vcs.git
+  - vcs.mercurial
+  - vcs.subversion
+
+vcs.git
+  - helper
+  - variables
+  - vcs.base
+
+vcs.mercurial
+  - helper
+  - variables
+  - vcs.base
+
+vcs.subversion
+  - helper
+  - variables
+  - vcs.base
+
+vcs.base
+  - helper
+  - exception
+
+helper
+  - exception
+  - execute
+
+execute
+  - exception
+  - variables
+
+config
+  - variables
+
+version
+  - variables
+
+variables
+  - exception
+
+py2.base
+  - exception
+  - metaclass
+
+py3.base
+  - exception
+  - metaclass
+
+metaclass
+  - register
+
+register
+
+py2.__init__
+
+py3.__init__
+
+py3.execfile
+
+exception
+

@@ -3,7 +3,7 @@
 
 from .helper import normjoin, Exclusions, init_logging
 from .helper import display, warn, verbose, debug # being deprecated
-from .execute import initialize_threading
+from .execute import init_threading
 
 # must define 'verbose', 'noop' and 'debug' before importing other submodules
 
@@ -96,6 +96,6 @@ __all__ = [
 
 # initialize, but remove the references afterward
 init_logging()
-initialize_threading()
+init_threading()
 init_main()
-del init_logging, initialize_threading, init_main
+del init_logging, init_threading, init_main
