@@ -204,80 +204,39 @@ class Target(Initer):
         timer = Timer()
         if self.been_called:
             return
+        assert isinstance(self.uptodates, Sequential) and \
+               not isinstance(self.uptodates, Parallel)
+        assert isinstance(self.dependencies, Sequential)
+        assert isinstance(self.tasks, Sequential)
         stack = get_current_stack()
         stack.push(self) # push me onto the execution stack
         try:
-            if self.uptodates:
-                for utd in self.uptodates:
-                    try:
-                        if not self.call(utd, Mapper, 'uptodate'):
-                            break
-                    except Error:
-                        self.logger.exception('Exception in %s.uptodates', myname)
-                        raise Abort
-                else:
-                    self.verbose('uptodate.')
-                    return
-            if isinstance(self.dependencies, Parallel):
-                threads = []
-                basename='%s.dependencies.' % myname
-                for dep in self.dependencies:
-                    t = PyThread(name=basename + dep.__class__.__name__,
-                                 target=self.call,
-                                 args=(dep, Target, 'dependencies'))
-                    threads.append(t)
-                for t in threads:
-                    t.start()
-                for t in threads:
-                    t.join()
-                for t in threads:
-                    if t.exception:
-                        raise Abort
-                del threads
-            else:
-                for dep in self.dependencies:
-                    try:
-                        self.call(dep, Target, 'dependencies')
-                    except Error:
-                        self.logger.exception('Exception in %s.dependencies', myname)
-                        raise Abort
+            basename = '%s.uptodates.' % myname
+            if self.uptodates.check(self, basename, Mapper, 'uptodate',
+                    'Exception in %s.uptodates' % myname):
+                self.verbose('uptodate.')
+                return
+            basename='%s.dependencies.' % myname
+            self.dependencies.run(self, basename, Target, 'dependencies',
+                                  'Exception in %s.dependencies' % myname)
             with timer:
-                if isinstance(self.tasks, Parallel):
-                    threads = []
-                    basename='%s.tasks.' % myname
-                    for task in self.tasks:
-                        t = PyThread(name=basename + task.__class__.__name__,
-                                     target=self.call,
-                                     args=(task, Task, 'task', args))
-                        threads.append(t)
-                    for t in threads:
-                        t.start()
-                    for t in threads:
-                        t.join()
-                    for t in threads:
-                        if t.exception:
-                            raise Abort
-                else:
-                    for task in self.tasks:
-                        try:
-                            self.call(task, Task, 'task', args)
-                        except Error:
-                            self.logger.exception('Exception in %s.tasks', myname)
-                            raise Abort
-                    try:
-                        self.logger.debug('starting %s.run', myname)
-                        self.run()
-                    except (KeyError, ValueError, TypeError,
-                            RuntimeError, AttributeError):
-                        raise # reraise
-                    except Abort:
-                        raise # reraise
-                    except Error:
-                        self.logger.exception('Exception in %s.run', myname)
-                        raise Abort
-                    except Exception:
-                        logging.getLogger('pyerector').exception('Exception')
-                        raise Abort
+                basename='%s.tasks.' % myname
+                self.tasks.run(self, basename, Task, 'tasks',
+                               'Exception in %s.tasks' % myname)
+                try:
+                    self.logger.debug('starting %s.run', myname)
+                    self.run()
+                except (KeyError, ValueError, TypeError,
+                        RuntimeError, AttributeError):
+                    raise # reraise
+                except Abort:
+                    raise # reraise
+                except Error:
+                    self.logger.exception('Exception in %s.run', myname)
+                    raise Abort
+                except Exception:
+                    logging.getLogger('pyerector').exception('Exception')
+                    raise Abort
             import pyerector
             if pyerector.noTimer:
                 self.verbose('done.')
@@ -354,7 +313,42 @@ class Sequential(Initer):
     def __bool__(self):
         return len(self.get_args('items')) > 0
     __nonzero__ = __bool__
+    def run(self, caller, bname, itype, iname, excmsg):
+        for item in self:
+            try:
+                caller.call(item, itype, iname)
+            except Error:
+                caller.logger.exception(excmsg)
+                raise Abort
+    def check(self, caller, bname, itype, iname, excmsg):
+        """Used for uptodates which care about the return value."""
+        if self:
+            for item in self:
+                try:
+                    if not caller.call(item, itype, iname):
+                        break
+                except Error:
+                    caller.logger.exception(excmsg)
+                    raise Abort
+            else:
+                return True
+        return False
 
 class Parallel(Sequential):
-    pass
+    def run(self, caller, bname, itype, iname, excmsg):
+        threads = []
+        for item in self:
+            t = PyThread(
+                    name=bname + item.__class__.__name__,
+                    target=caller.call,
+                    args=(item, itype, iname))
+            threads.append(t)
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        for t in threads:
+            if t.exception:
+                raise Abort
+        del threads
 
