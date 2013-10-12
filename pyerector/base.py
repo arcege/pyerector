@@ -162,14 +162,6 @@ class Target(Initer):
                         '%s: invalid %s: %s' % (kobj, ktname, name)
                     )
                 obj.validate_tree()
-        if not isinstance(klass.dependencies, Sequential):
-            klass.dependencies = Sequential(*klass.dependencies)
-        if not isinstance(klass.uptodates, Sequential):
-            klass.uptodates = Sequential(*klass.uptodates)
-        elif isinstance(klass.uptodates, Parallel):
-            raise ValueError('uptodates cannot be Parallel')
-        if not isinstance(klass.tasks, Sequential):
-            klass.tasks = Sequential(*klass.tasks)
         validate_class(klass.__name__, klass.dependencies, 'Target', 'dependency')
         validate_class(klass.__name__, klass.uptodates, 'Mapper', 'uptodate')
         validate_class(klass.__name__, klass.tasks, 'Task', 'task')
@@ -204,6 +196,14 @@ class Target(Initer):
         timer = Timer()
         if self.been_called:
             return
+        if not isinstance(self.dependencies, Sequential):
+            self.dependencies = Sequential(*self.dependencies)
+        if not isinstance(self.uptodates, Sequential):
+            self.uptodates = Sequential(*self.uptodates)
+        elif isinstance(self.uptodates, Parallel):
+            raise ValueError('uptodates cannot be Parallel')
+        if not isinstance(self.tasks, Sequential):
+            self.tasks = Sequential(*self.tasks)
         assert isinstance(self.uptodates, Sequential) and \
                not isinstance(self.uptodates, Parallel)
         assert isinstance(self.dependencies, Sequential)
@@ -316,6 +316,9 @@ class Mapper(Iterator):
 
 class Sequential(Initer):
     items = ()
+    def __repr__(self):
+        name = self.__class__.__name__[:1]
+        return '%s%s' % (name, self.get_args('items'))
     def __iter__(self):
         return iter(self.get_args('items'))
     def __bool__(self):
