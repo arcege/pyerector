@@ -1,7 +1,8 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from .helper import normjoin, display, Exclusions, init_logging
+from .helper import normjoin, Exclusions, init_logging
+from .helper import display, warn, verbose, debug # being deprecated
 from .execute import initialize_threading
 
 # must define 'verbose', 'noop' and 'debug' before importing other submodules
@@ -23,7 +24,7 @@ noop = State()
 noTimer = State()
 
 from .version import *
-from .main import PyErector, pymain
+from .main import PyErector, pymain, init_main
 from .base import *
 from .tasks import  *
 from .targets import *
@@ -96,4 +97,5 @@ __all__ = [
 # initialize, but remove the references afterward
 init_logging()
 initialize_threading()
-del init_logging, initialize_threading
+init_main()
+del init_logging, initialize_threading, init_main

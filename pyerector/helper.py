@@ -6,6 +6,7 @@ import logging
 import os
 from sys import version, exc_info
 import traceback
+import warnings
 
 from .exception import Error
 from .execute import get_current_stack
@@ -241,12 +242,26 @@ class Timer(object):
     def __int__(self):
         return int(float(self))
 
+class Verbose(object):
+    # deprecated
+    def __init__(self, state, level=logging.INFO):
+        self.level = level
+    def _getlogger(self):
+        return logging.getLogger('pyerector.execute')
+    def _getlevelnum(self, level):
+        return logging.getLevelName(level)
+    def __bool__(self):
+        return self._getlogger().isEnabledFor(self.level)
+    def __call__(self, *args):
+        warnings.warn("Use of Verbose is deprecated", DeprecationWarning)
+        msg = ' '.join( [str(s) for s in args] )
+        self._getlogger().log(self._getlevelnum(self.level), msg)
 def extract_stack(stack):
     #from .base import stack  # do not move outside of this routine
     t, e, tb = exc_info()
     lines = stack.extract() + traceback.format_exception_only(t, e)
     return ''.join(lines)
-class LogFormatter(logging.Formatter):
+class LogFormatter(logging.Formatter,object):
     logPrefix = None
     def format(self, record):
         newrecord = super(LogFormatter, self).format(record)
@@ -289,7 +304,6 @@ class LogExecFormatter(LogFormatter):
         lines = stack.extract() + traceback.format_exception_only(t, e)
         return ''.join(lines).rstrip()
 def init_logging(deflevel=logging.WARNING, message='%(message)s'):
-    global DISPLAY
     def setup(name, handlerklass, formatterklass,
               deflevel=deflevel, message=message):
         f = formatterklass(message)
@@ -300,10 +314,13 @@ def init_logging(deflevel=logging.WARNING, message='%(message)s'):
         l.propagate = False
         return l
     logging.basicConfig(level=deflevel, message=message)
-    DISPLAY = logging.ERROR + 5
-    logging.addLevelName(level=DISPLAY, levelName='DISPLAY')
+    logging.addLevelName(level=logging.ERROR + 5, levelName='DISPLAY')
     setup('pyerector', logging.StreamHandler, LogFormatter)
     setup('pyerector.execute', logging.StreamHandler, LogExecFormatter)
-def display(msg, *args, **kwargs):
-    logging.getLogger('pyerector.execute').log(DISPLAY, msg, *args, **kwargs)
+    warnings.simplefilter("default", DeprecationWarning)
+    logging.captureWarnings(True)
+display = Verbose(None, 'DISPLAY')
+warn = Verbose(None, 'ERROR')
+verbose = Verbose(None, 'INFO')
+debug = Verbose(None, 'DEBUG')
 

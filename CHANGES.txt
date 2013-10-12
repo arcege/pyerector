@@ -23,3 +23,54 @@ v1.1.3  2013-05-06
   -- Add a LOT more unit tests (from 15 tests to 91).
   -- Prevent setup.py running if pyerect is present.
   -- Use setuptools instead of distutils.
+
+v1.2.0  2013-10-02
+  -- Issue 11 - Better use of variables; including showing variables on
+     verbose output of "help" target.
+  -- Issue 12 - Add ability to specify variables on the command-line:
+     If a target has an equal sign ("="), then it is taken as a variable
+     assignment.
+  -- Issue 13 - Update Version model.
+  -- Issue 16 - Convert from Config to Variable; Initer.config is kept for
+     backward compatibility, but just references Variable
+  -- Issue 18 - Replace Verbose instances with Python's logging module.
+     -- Add a "DISPLAY" log level above ERROR; keep the display() routine
+     -- Use new State class instead for noop and noTimer.
+  -- Issue 20 - Make the product thread-safe
+  New targets
+  -- InitVCS, initializes the version control support
+  New tasks
+  -- SubPyErector, call other PyErector projects
+  Other fixes/enhancements:
+  -- Two new constructs: Sequential and Parallel; Parallel is a subclass of
+     Sequential; "uptodates", "dependencies" and "tasks" members of implicitly
+     instances of Sequential; "uptodates" cannot be Parallel, but the other
+     two can be.  Parallel targets/tasks are executed in separate threads but
+     may access Variables without concern (see Issue 20).
+  -- Add execution stacks for Target and Task instances; this stack is
+     displayed instead of Python's on errors.
+  -- Add default variables on startup:
+     -- basedir (set by PyErector and Initer instantiation)
+     -- pyerector.vcs.version
+     -- pyerector.vcs.branch
+     -- pyerector.vcs.tags
+     -- pyerector.release.product
+     -- pyerector.release.number
+  -- Handle PYERECTOR_PREFIX envvar better.
+  -- Remove extraneous "hasformat" functionality.
+  -- Fixes to unit tests.
+  -- Better help strings.
+
+v1.2.1  2013-10-11
+  -- Issue 12 - Add ability to specify variables on the command-line (update)
+  -- Issue 15 - Redesign iterators/mappers
+  -- Issue 19 - Dirlist does not work as might be expected
+  -- Issue 20 - Thread-safe operations (update)
+  -- Issue 21 - Backward compatibility for Verbose
+  Other fixes/enhancements:
+  -- Update pyerect to better use iterators.
+  -- Handle that PyErector always returns an exception, mainly SystemExit
+  -- Mark as "Failed." instead of "Done." if an error occurs; have
+     PyErector handle a proper exit status on failure.
+  -- Update inheritance for LogFormatter - on py2.6, super() throws a TypeError
+

@@ -5,8 +5,8 @@ import logging
 import os
 import sys
 import traceback
-from .exception import Abort, Error, extract_tb
-from .helper import display, Timer
+from .exception import Abort, Error
+from .helper import Timer
 from .execute import PyThread
 from . import noop
 from .register import registry
@@ -70,6 +70,10 @@ name of target to call or variable assignment, default target is "default"')
         self.logger = logging.getLogger('pyerector')
         self.basedir = None
         self.targets = []
+        # returnstatus should not need mutex since it is only set by the
+        # PyErector thread and only read after the thread completes,
+        # adding a Condition object seems to cause issues with unittesting
+        self.returnstatus = 0  # successfully completed
         try:
             self.arguments(args or sys.argv[1:])
             try:
@@ -86,6 +90,8 @@ name of target to call or variable assignment, default target is "default"')
             newthread.join()
         except Abort:
             raise SystemExit(1)
+        else:
+            raise SystemExit(self.returnstatus)
     def arguments(self, args):
         global noop
         args = self.parser.parse_args(args)
@@ -107,9 +113,11 @@ name of target to call or variable assignment, default target is "default"')
             noop.on()
         if args.version:
             if logging.getLogger().isEnabledFor(logging.INFO):
-                display('%s %s', Version.release, Version.version)
+                self.logger.log(logging.getLevelName('DISPLAY'),
+                                ('%s %s' % (Version.release, Version.version)))
             else:
-                display('%s', Version.release)
+                self.logger.log(logging.getLevelName('DISPLAY'),
+                                Version.release)
             raise SystemExit
         if args.directory:
             self.basedir = args.directory
@@ -134,21 +142,6 @@ name of target to call or variable assignment, default target is "default"')
                         self.targets.append(obj)
         if len(self.targets) == 0:
             self.targets.append(registry['Default'])
-    def handle_error(self, text=''):
-        if True: #debug:
-            t, e, tb = sys.exc_info()
-            if tb:
-                exclist = extract_tb(tb, valid_classes=(Target, Task))
-                traceback.print_list(exclist)
-            lines = traceback.format_exception_only(t, e)
-            for line in lines:
-                display(line.rstrip())
-        else:
-            e = sys.exc_info()[1]
-            if text:
-                raise SystemExit('%s: %s' % (text, e))
-            else:
-                raise SystemExit(str(e))
     def validate_targets(self):
         # validate the dependency tree, make sure that all are subclasses of
         # Target, validate all Uptodate values and all Task values
@@ -157,29 +150,46 @@ name of target to call or variable assignment, default target is "default"')
                 target.validate_tree()
             except ValueError:
                 self.logger.exception('Validation')
+
     def run(self):
         timer = Timer()
         # run all targets in the tree of each argument
+        failed = False
         with timer:
             for target in self.targets:
                 try:
                     self.logger.debug('PyErector.basedir = %s', self.basedir)
                     target(basedir=self.basedir)()
                 except Abort:
+                    failed = True
                     break  # handled already internally
                 except ValueError:
                     self.logger.exception(self.__class__.__name__)
+                    failed = True
                 except KeyboardInterrupt:
                     raise Abort
                 except AssertionError:
-                    self.handle_error('AssertionError')
+                    failed = True
+                    self.logger.exception('AssertionError')
                 except Error:
+                    failed = True
                     self.logger.exception(self.__class__.__name__)
         import pyerector
         if pyerector.noTimer:
-            self.logger.warning('Done.')
+            time = ''
         else:
-            self.logger.warning('Done. (%0.3f)', timer)
+            time = ' (%0.3f)' % timer
+        if failed:
+            msg = 'Failed.'
+        else:
+            msg = 'Done.'
+        self.logger.warning('%s%s', msg, time)
+        if failed:
+            # passed to the root thread from (this) PyErector thread
+            self.returnstatus = 1
 
 pymain = PyErector
+
+def init_main(basedir=os.curdir):
+    V['basedir'] = os.path.realpath(basedir)
 
