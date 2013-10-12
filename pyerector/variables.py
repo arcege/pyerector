@@ -102,6 +102,7 @@ minimalistic.  And some functionality, like copy(), we don't want."""
         v = Variable(name)
         if value is not None:
             self[v] = value
+        return v
 
 V = VariableCache()
 

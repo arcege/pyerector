@@ -53,8 +53,15 @@ def get_current_stack():
     return threading.currentThread().stack
 
 class PyThread(threading.Thread):
+    limiter = None
     def __init__(self, *args, **kwargs):
-        from .base import Target, Task
+        if self.__class__.limiter is None:
+            from .variables import V
+            import logging
+            logging.getLogger('pyerector.execute')\
+                .debug('BoundedSemaphore(%s)', V['pyerector.pool.size'])
+            self.__class__.limiter = \
+                    threading.BoundedSemaphore(int(V['pyerector.pool.size'])+1)
         super(PyThread, self).__init__(*args, **kwargs)
         # this works because at _this_ time, the new thread has not been
         # created, so currentThread will still have the parent stack
@@ -65,16 +72,24 @@ class PyThread(threading.Thread):
         import logging, sys
         logger = logging.getLogger('pyerector.execute')
         try:
-            super(PyThread, self).run()
-        except Error:
-            t, e, tb = sys.exc_info()
-            logger.exception('Exception in %s', self.name)
-            self.exception = e
-            raise Abort
+            with self.limiter:
+                logger.debug('PyThread.limiter.acquired')
+                try:
+                    super(PyThread, self).run()
+                except Error:
+                    t, e, tb = sys.exc_info()
+                    logger.exception('Exception in %s', self.name)
+                    self.exception = e
+                    raise Abort
+        finally:
+            logger.debug('PyThread.limiter.released')
 
 def initialize_threading():
+    from .variables import V
+    V['pyerector.pool.size'] = '10'
     curthread = threading.currentThread()
     assert curthread.name == 'MainThread'
     if not hasattr(curthread, 'stack'):
         curthread.stack = ExecStack()
+
 

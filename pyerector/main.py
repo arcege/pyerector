@@ -76,6 +76,12 @@ name of target to call or variable assignment, default target is "default"')
         self.returnstatus = 0  # successfully completed
         try:
             self.arguments(args or sys.argv[1:])
+            try:
+                assert int(V['pyerector.pool.size']) > 0
+            except ValueError:
+                raise SystemExit('pyerector.pool.size value is invalid')
+            except AssertionError:
+                raise SystemExit('pyerector.pool.size must be positive integer')
             self.validate_targets()
             # run through a thread with an initial stack, wait for the thread
             # to finish
