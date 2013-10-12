@@ -211,18 +211,24 @@ class Target(Initer):
         stack = get_current_stack()
         stack.push(self) # push me onto the execution stack
         try:
+            # call uptodates
             basename = '%s.uptodates.' % myname
             if self.uptodates.check(self, basename, Mapper, 'uptodate',
                     'Exception in %s.uptodates' % myname):
                 self.verbose('uptodate.')
                 return
+
+            # call dependencies
             basename='%s.dependencies.' % myname
             self.dependencies.run(self, basename, Target, 'dependencies',
                                   'Exception in %s.dependencies' % myname)
+
+            # call tasks, and run()
             with timer:
                 basename='%s.tasks.' % myname
                 self.tasks.run(self, basename, Task, 'tasks',
                                'Exception in %s.tasks' % myname)
+
                 try:
                     self.logger.debug('starting %s.run', myname)
                     self.run()
@@ -283,6 +289,8 @@ class Task(Initer):
             stack.pop()
         if rc:
             raise Error(str(self), 'return error = ' + str(rc))
+        else:
+            self.logger.info('%s: done.', myname)
     def run(self):
         pass
     def handle_args(self, args, kwargs):

@@ -179,7 +179,7 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
                 if (os.path.isfile(sname) and
                     not fmap.checkpair(self.join(sname), self.join(dname))):
                     h.update(open(self.join(sname), 'rb').read())
-                    self.logger.info('writing %s', dname)
+                    self.logger.debug('writing %s', dname)
                     open(self.join(dname), 'wt').write(h.hexdigest() + '\n')
 
 class Java(Task):
@@ -431,7 +431,7 @@ Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""
                 fn = fname.replace(
                     root + os.sep, ''
                 )
-                self.logger.info('tar.add(%s, %s)', fname, fn)
+                self.logger.debug('tar.add(%s, %s)', fname, fn)
                 file.add(self.join(fname), fn)
             file.close()
 
@@ -710,7 +710,7 @@ Untar(*files, name=<tarfilename>, root=None)"""
         return fileset
     def extract_members(self, contfile, fileset, root):
         for fileinfo in fileset:
-            self.logger.info('tar.extract(%s)', fileinfo.name)
+            self.logger.debug('tar.extract(%s)', fileinfo.name)
             contfile.extract(fileinfo, path=(root or ""))
 
 class Unzip(Uncontainer):
@@ -732,7 +732,7 @@ Unzip(*files, name=<tarfilename>, root=None)"""
         for member in fileset:
             dname = os.path.join(root, member)
             Mkdir.mkdir(os.path.dirname(dname))
-            self.logger.info('zip.extract(%s)', member)
+            self.logger.debug('zip.extract(%s)', member)
             dfile = open(dname, 'wb')
             dfile.write(contfile.read(member))
 
@@ -750,7 +750,7 @@ Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
                 fn = fname.replace(
                     root + os.sep, ''
                 )
-                self.logger.info('zip.add(%s, %s)', fname, fn)
+                self.logger.debug('zip.add(%s, %s)', fname, fn)
                 file.write(fname, fn)
             file.close()
 
@@ -799,7 +799,6 @@ Platform: UNKNOWN
         open(os.path.join(root, 'EGG-INFO', 'SOURCES.txt'), 'wt').write(
             '\n'.join(sorted([s.replace(root+os.sep, '') for s in toadd]))
         )
-        self.logger.info('toadd = %s', toadd)
         toadd.extend(
             [os.path.join(root, 'EGG-INFO', 'PKG-INFO'),
              os.path.join(root, 'EGG-INFO', 'dependency_links.txt'),
