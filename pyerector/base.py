@@ -329,7 +329,7 @@ class Sequential(Initer):
             try:
                 caller.call(item, itype, iname)
             except Error:
-                caller.logger.exception(excmsg)
+                self.logger.exception(excmsg)
                 raise Abort
     def check(self, caller, bname, itype, iname, excmsg):
         """Used for uptodates which care about the return value."""
@@ -339,7 +339,7 @@ class Sequential(Initer):
                     if not caller.call(item, itype, iname):
                         break
                 except Error:
-                    caller.logger.exception(excmsg)
+                    self.logger.exception(excmsg)
                     raise Abort
             else:
                 return True
@@ -349,8 +349,14 @@ class Parallel(Sequential):
     def run(self, caller, bname, itype, iname, excmsg):
         threads = []
         for item in self:
+            if isinstance(item, Initer):
+                name = item.__class__.__name__
+            elif issubclass(item, Initer):
+                name = item.__name__
+            else:
+                name = str(item)
             t = PyThread(
-                    name=bname + item.__class__.__name__,
+                    name=bname + name,
                     target=caller.call,
                     args=(item, itype, iname))
             threads.append(t)
