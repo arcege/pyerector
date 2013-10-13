@@ -24,7 +24,7 @@ v1.1.3  2013-05-06
   -- Prevent setup.py running if pyerect is present.
   -- Use setuptools instead of distutils.
 
-v1.2.0  2013-10-02
+v1.2.0  2013-10-13
   -- Issue 11 - Better use of variables; including showing variables on
      verbose output of "help" target.
   -- Issue 12 - Add ability to specify variables on the command-line:
@@ -78,4 +78,5 @@ v1.2.1  2013-10-11
      PyErector handle a proper exit status on failure.
   -- Update inheritance for LogFormatter - on py2.6, super() throws a TypeError
   -- Use of Verbose and Config classes now raise DeprecationWarnings
+  -- Move noop and noTimer to config module.
 
