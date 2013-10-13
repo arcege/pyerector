@@ -18,6 +18,7 @@ class PyCopy(Target):
              'README.txt', 'LICENSE.txt', 'CHANGES.txt',
              dest=normjoin('build', distfile)
         ),
+        Echo('release %s-%s', release.product, release.number),
         Tokenize(
             normjoin('build', distfile, 'pyerector', 'version.py'),
             tokenmap=VariableSet(

@@ -51,6 +51,7 @@ __all__ = [
     'Chmod',
     'Copy',
     'CopyTree',
+    'Echo',
     'Egg',
     'HashGen',
     'Java',
