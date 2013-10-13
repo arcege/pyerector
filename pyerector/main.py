@@ -68,7 +68,6 @@ name of target to call or variable assignment, default target is "default"')
         else:
             self.progdir = os.path.realpath(self.progdir)
         self.logger = logging.getLogger('pyerector')
-        self.basedir = None
         self.targets = []
         # returnstatus should not need mutex since it is only set by the
         # PyErector thread and only read after the thread completes,
@@ -119,17 +118,17 @@ name of target to call or variable assignment, default target is "default"')
                                 Version.release)
             raise SystemExit
         if args.directory:
-            self.basedir = args.directory
-        elif self.basedir is None:
-            self.basedir = self.progdir
-        V['basedir'] = self.basedir
+            V['basedir'] = args.directory
+        else:
+            V['basedir'] = self.progdir
+        # process the arguments
         if args.targets:
             self.targets = []
             all_targets = registry.get('Target')
             for name in args.targets:
                 if '=' in name:  # variable assignment?
                     var, val = name.split('=', 1)
-                    Variable(var.strip(), val.strip())
+                    V[var.strip()] = val.strip()
                 else:
                     try:
                         obj = all_targets[name.capitalize()]
@@ -151,28 +150,26 @@ name of target to call or variable assignment, default target is "default"')
                 self.logger.exception('Validation')
 
     def run(self):
+        global noTimer
         timer = Timer()
         # run all targets in the tree of each argument
-        failed = False
+        failed = True
         with timer:
-            for target in self.targets:
-                try:
-                    self.logger.debug('PyErector.basedir = %s', self.basedir)
-                    target(basedir=self.basedir)()
-                except Abort:
-                    failed = True
-                    break  # handled already internally
-                except ValueError:
-                    self.logger.exception(self.__class__.__name__)
-                    failed = True
-                except KeyboardInterrupt:
-                    raise Abort
-                except AssertionError:
-                    failed = True
-                    self.logger.exception('AssertionError')
-                except Error:
-                    failed = True
-                    self.logger.exception(self.__class__.__name__)
+            try:
+                for target in self.targets:
+                    target()()
+            except Abort:
+                pass
+            except ValueError:
+                self.logger.exception(self.__class__.__name__)
+            except KeyboardInterrupt:
+                raise Abort
+            except AssertionError:
+                self.logger.exception('AssertionError')
+            except Error:
+                self.logger.exception(self.__class__.__name__)
+            else:
+                failed = False
         if noTimer:
             time = ''
         else:
