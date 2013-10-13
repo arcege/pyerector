@@ -67,10 +67,15 @@ v1.2.1  2013-10-11
   -- Issue 19 - Dirlist does not work as might be expected
   -- Issue 20 - Thread-safe operations (update)
   -- Issue 21 - Backward compatibility for Verbose
+  New tasks
+  -- Echo, displays message
   Other fixes/enhancements:
+  -- Add pyerector.pool.size variable, default to 10, to limit how many
+     PyThread instances can be created (not including the PyErector instance).
   -- Update pyerect to better use iterators.
   -- Handle that PyErector always returns an exception, mainly SystemExit
   -- Mark as "Failed." instead of "Done." if an error occurs; have
      PyErector handle a proper exit status on failure.
   -- Update inheritance for LogFormatter - on py2.6, super() throws a TypeError
+  -- Use of Verbose and Config classes now raise DeprecationWarnings
 
