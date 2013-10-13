@@ -5,7 +5,6 @@ from .base import *
 
 PyVersionCheck()
 
-from pyerector import normjoin, noop
 from pyerector.iterators import *
 
 class TestStaticIterator(TestCase):

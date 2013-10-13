@@ -8,7 +8,7 @@ import traceback
 from .exception import Abort, Error
 from .helper import Timer
 from .execute import PyThread
-from . import noop
+from .config import noop, noTimer
 from .register import registry
 from .base import Target, Task
 from .version import Version
@@ -93,15 +93,14 @@ name of target to call or variable assignment, default target is "default"')
         else:
             raise SystemExit(self.returnstatus)
     def arguments(self, args):
-        global noop
+        global noop, noTimer
         args = self.parser.parse_args(args)
         if isinstance(args, tuple):
             args, arglist = args
             args.targets = arglist
         # check --verbose before --version
         if args.notimer:
-            import pyerector
-            pyerector.noTimer.on()
+            noTimer.on()
         if args.verbose:
             logging.getLogger().setLevel(logging.INFO)
         if args.DEBUG:
@@ -174,8 +173,7 @@ name of target to call or variable assignment, default target is "default"')
                 except Error:
                     failed = True
                     self.logger.exception(self.__class__.__name__)
-        import pyerector
-        if pyerector.noTimer:
+        if noTimer:
             time = ''
         else:
             time = ' (%0.3f)' % timer

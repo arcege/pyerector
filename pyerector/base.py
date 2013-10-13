@@ -13,12 +13,11 @@ if version[0] > '2': # python 3+
     from .py3.base import Base
 else:
     from .py2.base import Base
-from . import noop
 from .helper import Exclusions, extract_stack, normjoin, Timer, u
 from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
-from .config import Config
+from .config import Config, noop, noTimer
 from .variables import V
 
 __all__ = [
@@ -243,8 +242,7 @@ class Target(Initer):
                 except Exception:
                     logging.getLogger('pyerector').exception('Exception')
                     raise Abort
-            import pyerector
-            if pyerector.noTimer:
+            if noTimer:
                 self.verbose('done.')
             else:
                 self.verbose('done. (%0.3f)' % timer)

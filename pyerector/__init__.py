@@ -5,24 +5,6 @@ from .helper import normjoin, Exclusions, init_logging
 from .helper import display, warn, verbose, debug # being deprecated
 from .execute import init_threading
 
-# must define 'verbose', 'noop' and 'debug' before importing other submodules
-
-class State(object):
-    def __init__(self, initial=False):
-        self.state = initial
-    def __bool__(self):
-        return self.state
-    __nonzero__ = __bool__
-    def on(self):
-        self.state = True
-    def off(self):
-        self.state = False
-
-noop = State()
-
-# display timing information, changed in pyerector.main.PyErector
-noTimer = State()
-
 from .version import *
 from .main import PyErector, pymain, init_main
 from .base import *

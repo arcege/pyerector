@@ -8,6 +8,7 @@ import sys
 
 from .exception import Error
 from .helper import Exclusions, Subcommand
+from .config import noTimer
 from .base import Task
 from .iterators import IdentityMapper, FileMapper, StaticIterator
 from .variables import VariableSet
@@ -402,7 +403,6 @@ Adds PYERECTOR_PREFIX environment variable."""
     wdir = None
     env = {}
     def run(self):
-        from . import noTimer
         targets = self.get_args('targets')
         prog = self.get_kwarg('prog', str)
         # we explicitly add './' to prevent searching PATH

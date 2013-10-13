@@ -5,9 +5,6 @@ from .base import *
 
 PyVersionCheck()
 
-from pyerector import normjoin, noop
-from pyerector.exception import Error, extract_tb
-
 class TestError(TestCase):
     pass
 

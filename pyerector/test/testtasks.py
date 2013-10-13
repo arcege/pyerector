@@ -7,7 +7,7 @@ from .base import *
 
 PyVersionCheck()
 
-from pyerector import normjoin, noop
+from pyerector.helper import normjoin
 from pyerector.iterators import FileList
 from pyerector.tasks import *
 

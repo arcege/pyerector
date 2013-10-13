@@ -16,7 +16,7 @@ from .base import *
 
 PyVersionCheck()
 
-from pyerector import normjoin, display, noop
+from pyerector.config import noop
 from pyerector.helper import normjoin
 from pyerector.exception import Error
 from pyerector.base import Initer, Target, Task, Iterator, Sequential
