@@ -349,7 +349,7 @@ class Parallel(Sequential):
         for item in self:
             if isinstance(item, Initer):
                 name = item.__class__.__name__
-            elif issubclass(item, Initer):
+            elif isinstance(item, type(Initer)) and issubclass(item, Initer):
                 name = item.__name__
             else:
                 name = str(item)
