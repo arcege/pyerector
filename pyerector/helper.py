@@ -36,7 +36,7 @@ else:
 
 class Exclusions(set):
     """A list of exclusion patterns."""
-    defaults = {'*.pyc', '*~', '.*.swp', '.git', '.hg', '.svn', 'CVS', '__pycache__'}
+    defaults = set(('*.pyc', '*~', '.*.swp', '.git', '.hg', '.svn', 'CVS', '__pycache__'))
 
     def __init__(self, items=(), usedefaults=True):
         if isinstance(items, Exclusions):
@@ -359,7 +359,8 @@ def init_logging(deflevel=logging.WARNING, message='%(message)s',
     setup('pyerector', logging.StreamHandler, LogFormatter)
     setup('pyerector.execute', logging.StreamHandler, LogExecFormatter)
     warnings.simplefilter("default", DeprecationWarning)
-    logging.captureWarnings(True)
+    if hasattr(logging, 'captureWarnings'):
+        logging.captureWarnings(True)
     called[0] = True
 display = Verbose(None, 'DISPLAY')
 warn = Verbose(None, 'ERROR')

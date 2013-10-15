@@ -82,11 +82,11 @@ class TestExclusions(TestCase):
 
     def test_items(self):
         e = Exclusions((1, 2, 3))
-        self.assertSetEqual(e, self.defaults | {1, 2, 3})
+        self.assertSetEqual(e, self.defaults | set((1, 2, 3)))
 
     def test_items_nodefaults(self):
         e = Exclusions((1, 2, 3), usedefaults=False)
-        self.assertSetEqual(e, {1, 2, 3})
+        self.assertSetEqual(e, set((1, 2, 3)))
 
     def test_match(self):
         e = Exclusions()
@@ -100,7 +100,7 @@ class TestExclusions(TestCase):
         self.assertTrue(hasattr(Exclusions, 'real_defaults'))
         self.assertSetEqual(e, self.defaults)
         f = Exclusions()
-        self.assertSetEqual(f, {1, 2, 3})
+        self.assertSetEqual(f, set(1, 2, 3)))
         f.set_defaults(reset=True)
         self.assertSetEqual(e, self.defaults)
         self.assertFalse(hasattr(Exclusions, 'real_defaults'))
