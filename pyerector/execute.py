@@ -31,6 +31,10 @@ class ExecStack(object):
             else:
                 parlen = 0
             return parlen + len(self.stack)
+    def __getitem__(self, index):
+        with self.lock:
+            # this includes the parent stack
+            return tuple(self)[index]
     def __iter__(self):
         from itertools import chain
         with self.lock:
