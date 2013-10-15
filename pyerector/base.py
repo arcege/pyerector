@@ -382,11 +382,13 @@ class Sequential(Initer):
 
 class Parallel(Sequential):
     def run(self, caller, bname, itype, iname, excmsg):
+        last_stack_item = get_current_stack()[-1]
+        bname = last_stack_item.__class__.__name__
         threads = []
         for item in self:
             if isinstance(item, Initer):
                 name = item.__class__.__name__
-            elif issubclass(item, Initer):
+            elif isinstance(item, type(Initer)) and issubclass(item, Initer):
                 name = item.__name__
             else:
                 name = str(item)
