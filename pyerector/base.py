@@ -180,19 +180,16 @@ class Target(Initer):
         validate_class(cls.__name__, cls.uptodates, 'Mapper', 'uptodate')
         validate_class(cls.__name__, cls.tasks, 'Task', 'task')
 
-    def call(self, name, klass, ktype, args=None):
+    def call(self, name, args=()):
         # find the object
-        if isinstance(name, type) and issubclass(name, klass):
+        if isinstance(name, type) and issubclass(name, Initer):
             obj = name()
-        elif isinstance(name, klass):
+        elif isinstance(name, Initer):
             obj = name
         else:
             try:
                 kobj = registry[name]
-                assert issubclass(kobj, klass), \
-                    "%s is not a %s" % (kobj, klass)
             except (KeyError, AssertionError):
-                #raise Error('%s no such %s: %s' % (self, ktype, name))
                 logging.getLogger('pyerector').exception('Cannot find %s', name)
                 raise Abort
             else:
@@ -201,8 +198,6 @@ class Target(Initer):
         from .iterators import Uptodate
         if not isinstance(obj, Uptodate) and isinstance(obj, Mapper):
             return obj.uptodate()
-        elif args is None:
-            return obj()
         else:
             return obj(*args)
 
@@ -228,21 +223,18 @@ class Target(Initer):
         stack.push(self)  # push me onto the execution stack
         try:
             # call uptodates
-            basename = '%s.uptodates.' % myname
-            if self.uptodates.check(self, basename, Mapper, 'uptodate',
+            if self.uptodates.check(self, Mapper, 'uptodate',
                                     'Exception in %s.uptodates' % myname):
                 self.verbose('uptodate.')
                 return
 
             # call dependencies
-            basename = '%s.dependencies.' % myname
-            self.dependencies.run(self, basename, Target, 'dependencies',
+            self.dependencies.run(self, Target, 'dependencies',
                                   'Exception in %s.dependencies' % myname)
 
             # call tasks, and run()
             with timer:
-                basename = '%s.tasks.' % myname
-                self.tasks.run(self, basename, Task, 'tasks',
+                self.tasks.run(self, Task, 'tasks',
                                'Exception in %s.tasks' % myname)
 
                 try:
@@ -274,9 +266,8 @@ class Target(Initer):
         msg = u('%s: %s' % (str(self), ' '.join(str(s) for s in args)))
         self.logger.warning(msg)
 
+
 # Tasks
-
-
 class Task(Initer):
     args = []
 
@@ -357,20 +348,21 @@ class Sequential(Initer):
         return len(self.get_args('items')) > 0
     __nonzero__ = __bool__
 
-    def run(self, caller, bname, itype, iname, excmsg):
+    def run(self, caller, itype, iname, excmsg):
+        last_stack_item = get_current_stack()[-1]
         for item in self:
             try:
-                caller.call(item, itype, iname)
+                caller.call(item)
             except Error:
                 self.logger.exception(excmsg)
                 raise Abort
 
-    def check(self, caller, bname, itype, iname, excmsg):
+    def check(self, caller, itype, iname, excmsg):
         """Used for uptodates which care about the return value."""
         if self:
             for item in self:
                 try:
-                    if not caller.call(item, itype, iname):
+                    if not caller.call(item):
                         break
                 except Error:
                     self.logger.exception(excmsg)
@@ -381,9 +373,9 @@ class Sequential(Initer):
 
 
 class Parallel(Sequential):
-    def run(self, caller, bname, itype, iname, excmsg):
+    def run(self, caller, itype, iname, excmsg):
         last_stack_item = get_current_stack()[-1]
-        bname = last_stack_item.__class__.__name__
+        bname = '%s.' % last_stack_item.__class__.__name__
         threads = []
         for item in self:
             if isinstance(item, Initer):
@@ -395,7 +387,7 @@ class Parallel(Sequential):
             t = PyThread(
                 name=bname + name,
                 target=caller.call,
-                args=(item, itype, iname)
+                args=(item,)
             )
             threads.append(t)
         for t in threads:
