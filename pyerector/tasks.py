@@ -407,11 +407,11 @@ Adds PYERECTOR_PREFIX environment variable."""
         prog = self.get_kwarg('prog', str)
         # we explicitly add './' to prevent searching PATH
         options = []
-        if logging.isEnabledFor(logging.DEBUG):
+        if self.logger.isEnabledFor(logging.DEBUG):
             options.append('--DEBUG')
-        elif logging.isEnabledFor(logging.INFO):
+        elif self.logger.isEnabledFor(logging.INFO):
             options.append('--verbose')
-        elif logging.isEnabledFor(logging.ERROR):
+        elif self.logger.isEnabledFor(logging.ERROR):
             options.append('--quiet')
         if noTimer:
             options.append('--timer')
