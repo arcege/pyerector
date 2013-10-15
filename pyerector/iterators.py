@@ -98,7 +98,10 @@ class BaseIterator(Iterator):
             self.curset = iter(item)
         elif isinstance(item, (tuple, list)):
             items = [adjustglob(i) for i in item]
-            self.curset = iter(reduce(lambda a, b: a+b, items))
+            if items:
+                self.curset = iter(reduce(lambda a, b: a+b, items))
+            else:
+                self.curset = iter(())
         elif isinstance(item, str):
             self.curset = iter(adjustglob(item))
         self.logger.debug('curset = %s', repr(self.curset))
