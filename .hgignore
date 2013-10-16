@@ -1,6 +1,9 @@
 build
+.coverage
 dist
+htmlcov
 .*\.pyc
+setuptools.py
 \..*\.swp
 tags
 testdir
