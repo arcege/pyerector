@@ -29,10 +29,12 @@ __all__ = [
 class Help(Target):
     """This information.
 Tasks: internal
-Dependencies: None
+Dependencies: InitVCS
 Members: None
 Methods: None
 """
+    dependencies = ('InitVCS',)
+
     def run(self):
         def firstline(s):
             try:
