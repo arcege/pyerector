@@ -537,6 +537,12 @@ Unittest(*modules, path=())"""
     path = ()
     script = '''\
 import os, sys, imp, unittest
+try:
+    import coverage
+except ImportError:
+    pass
+else:
+    coverage.process_startup()
 
 params = eval(open(sys.argv[1]).read())
 
@@ -723,7 +729,7 @@ finally:
             sfile.write(self.script)
             sfile.close()
             # call python <scriptname> <paramfile>
-            Subcommand((sys.executable, sfile.name, pfile.name))
+            Subcommand((sys.executable, sfile.name, pfile.name), env={'COVERAGE_PROCESS_START': '/dev/null'})
         finally:
             if pfile is not None and os.path.exists(pfile.name):
                 os.remove(pfile.name)
