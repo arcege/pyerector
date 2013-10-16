@@ -41,7 +41,7 @@ try:
 except IOError:
     raise SystemExit('unable to create file')'''
     wc = '''import sys
-print len(sys.stdin.read())'''
+sys.stdout.write('%d\\n' % len(sys.stdin.read()))'''
 
 
 class Testnormjoin(TestCase):
