@@ -1,0 +1,29 @@
+#!/usr/bin/python
+
+from pyerector import *
+
+class Regression(Target):
+    """Regression testing."""
+    def run(self):
+        import os
+        subtasks = []
+        for fname in os.listdir(V['basedir']):
+            sdir = self.join(fname)
+            if os.path.isdir(sdir) and \
+               os.path.isfile(os.path.join(sdir, 'pyerect')):
+                subtasks.append(
+                    Echo('Calling %s/pyerect', sdir)
+                )
+                subtasks.append(
+                    SubPyErector('all', wdir=sdir)
+                )
+        tasks = Parallel(*tuple(subtasks))
+        tasks.run(self,
+                  Task, 'run',
+                  'Exception in %s.run' % self.__class__.__name__
+        )
+
+All.dependencies = (Regression,)
+Default.dependencies = (Regression,)
+
+PyErector()
