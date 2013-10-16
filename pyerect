@@ -87,7 +87,7 @@ class Regression(SubPyErector):
         env = {'PYTHONPATH': os.pathsep.join(paths)}
         del paths
     else:
-        env = {'PYTHONPATH': prodpath }
+        env = {'PYTHONPATH': proddir }
 
 class Localtest(Target):
     """Ensure the packaging looks correct."""
