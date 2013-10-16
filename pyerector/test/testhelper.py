@@ -100,7 +100,7 @@ class TestExclusions(TestCase):
         self.assertTrue(hasattr(Exclusions, 'real_defaults'))
         self.assertSetEqual(e, self.defaults)
         f = Exclusions()
-        self.assertSetEqual(f, set(1, 2, 3)))
+        self.assertSetEqual(f, set((1, 2, 3)))
         f.set_defaults(reset=True)
         self.assertSetEqual(e, self.defaults)
         self.assertFalse(hasattr(Exclusions, 'real_defaults'))

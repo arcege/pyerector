@@ -16,8 +16,8 @@ class Subversion(VCS_Base):
     prog = 'svn'
 
     # used by the package to see which VCS system to use
-    def vcs_check(dir=os.curdir):
-        return os.path.isdir(os.path.join(dir, '.svn'))
+    def vcs_check(srcdir=os.curdir):
+        return os.path.isdir(os.path.join(srcdir, '.svn'))
     vcs_check = staticmethod(vcs_check)
 
     def current_info(self):

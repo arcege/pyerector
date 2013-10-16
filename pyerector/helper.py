@@ -56,8 +56,8 @@ class Exclusions(set):
             initialset |= self.defaults
         super(Exclusions, self).__init__(initialset)
 
-    def match(self, str):
-        values = [v for v in self if fnmatch.fnmatchcase(str, v)]
+    def match(self, string):
+        values = [v for v in self if fnmatch.fnmatchcase(string, v)]
         return len(values) > 0
 
     @classmethod
@@ -82,7 +82,7 @@ class Subcommand(object):
         import subprocess
     except ImportError:
         subprocess = None
-        raise NotImplemented("Earlier than Python 2.6 is unsupported")
+        raise NotImplementedError("Earlier than Python 2.6 is unsupported")
     PIPE = subprocess.PIPE
 
     def __init__(self, cmd, wdir=os.curdir, env=None, wait=True,
@@ -204,7 +204,7 @@ class Subcommand(object):
                          stdin=ifl, stdout=of, stderr=ef,
                          bufsize=0, env=realenv)
         except (IOError, OSError):
-            t, e, tb = exc_info()
+            e = exc_info()[1]
             if e.args[0] == 2:  # ENOENT
                 raise Error('ENOENT', 'Program not found')
             else:
@@ -287,7 +287,7 @@ class Verbose(object):
 
 def extract_stack(stack):
     #from .base import stack  # do not move outside of this routine
-    t, e, tb = exc_info()
+    t, e = exc_info()[:2]
     lines = stack.extract() + traceback.format_exception_only(t, e)
     return ''.join(lines)
 
@@ -326,7 +326,7 @@ class LogFormatter(logging.Formatter, object):
 
     def formatException(self, exc_info):
         from .exception import extract_tb
-        t, e, tb = exc_info
+        t, e = exc_info[:2]
         exc = traceback.format_exception_only(t, e)
         st = traceback.format_list(extract_tb(tb))
         return ''.join(st + exc)
@@ -335,7 +335,7 @@ class LogFormatter(logging.Formatter, object):
 class LogExecFormatter(LogFormatter):
     def formatException(self, exc_info):
         stack = get_current_stack()
-        t, e, tb = exc_info
+        t, e = exc_info[:2]
         lines = stack.extract() + traceback.format_exception_only(t, e)
         return ''.join(lines).rstrip()
 

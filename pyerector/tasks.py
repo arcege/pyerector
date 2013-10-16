@@ -150,16 +150,16 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
         mkdir_t = Mkdir()
         dirs = [os.curdir]
         while dirs:
-            dir = dirs[0]
+            tdir = dirs[0]
             del dirs[0]
-            if not excludes.match(dir):
-                mkdir_t(self.join(dstdir, dir))
-                for fname in os.listdir(self.join(srcdir, dir)):
+            if not excludes.match(tdir):
+                mkdir_t(self.join(dstdir, tdir))
+                for fname in os.listdir(self.join(srcdir, tdir)):
                     if not excludes.match(fname):
-                        spath = self.join(srcdir, dir, fname)
-                        dpath = self.join(dstdir, dir, fname)
+                        spath = self.join(srcdir, tdir, fname)
+                        dpath = self.join(dstdir, tdir, fname)
                         if os.path.isdir(spath):
-                            dirs.append(os.path.join(dir, fname))
+                            dirs.append(os.path.join(tdir, fname))
                         else:
                             copy_t(spath, dest=dpath)
 
@@ -171,7 +171,6 @@ level created in pyerector.helper."""
     msgs = ()
 
     def run(self):
-        import logging
         args = self.get_args('msgs')
         if args:
             msg, rest = args[0], args[1:]
@@ -474,7 +473,7 @@ Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""
     def contain(self, name, root, toadd):
         from tarfile import open
         try:
-            file = open(self.join(name), 'w:gz')
+            tfile = open(self.join(name), 'w:gz')
         except IOError:
             raise ValueError('no such file or directory: %s' % name)
         else:
@@ -483,8 +482,8 @@ Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""
                     root + os.sep, ''
                 )
                 self.logger.debug('tar.add(%s, %s)', fname, fn)
-                file.add(self.join(fname), fn)
-            file.close()
+                tfile.add(self.join(fname), fn)
+            tfile.close()
 
 
 class Tokenize(Task):
@@ -767,8 +766,8 @@ class Untar(Uncontainer):
     """Extract a 'tar' archive file.
 Untar(*files, name=<tarfilename>, root=None)"""
     def get_file(self, fname):
-        from tarfile import open
-        return open(self.join(fname), 'r:gz')
+        import tarfile
+        return tarfile.open(self.join(fname), 'r:gz')
 
     @staticmethod
     def retrieve_members(contfile, files):
@@ -821,7 +820,7 @@ Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
     def contain(self, name, root, toadd):
         from zipfile import ZipFile
         try:
-            file = ZipFile(self.join(name), 'w')
+            zfile = ZipFile(self.join(name), 'w')
         except IOError:
             raise ValueError('no such file or directory: %s' % name)
         else:
@@ -830,8 +829,8 @@ Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
                     root + os.sep, ''
                 )
                 self.logger.debug('zip.add(%s, %s)', fname, fn)
-                file.write(fname, fn)
-            file.close()
+                zfile.write(fname, fn)
+            zfile.close()
 
 
 class Egg(Zip):
@@ -892,7 +891,6 @@ Platform: UNKNOWN
     def get_setup_py(filename):
         # simulate setup() in a fake distutils and setuptools
         import imp
-        import sys
         backups = {}
         script = '''
 def setup(**kwargs):

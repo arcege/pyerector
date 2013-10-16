@@ -15,7 +15,7 @@ class Base(object):
     def __str__(self):
         return self.name
 
-    def vcs_check(dir=os.curdir):
+    def vcs_check(srcdir=os.curdir):
         return False
     vcs_check = staticmethod(vcs_check)
 

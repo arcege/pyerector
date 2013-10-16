@@ -32,7 +32,7 @@ class VersionClass(object):
             return KeyError(itemname)
 
     def __delitem__(self, itemname):
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def version(self):

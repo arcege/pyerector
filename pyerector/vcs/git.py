@@ -16,8 +16,8 @@ class Git(DVCS_Base):
     prog = 'git'
 
     # used by the package to see which VCS system to use
-    def vcs_check(dir=os.curdir):
-        return os.path.isdir(os.path.join(dir, '.git'))
+    def vcs_check(srcdir=os.curdir):
+        return os.path.isdir(os.path.join(srcdir, '.git'))
     vcs_check = staticmethod(vcs_check)
 
     def current_info(self):

@@ -5,10 +5,6 @@ import sys
 from ..exception import Error
 from ..metaclass import IniterMetaClass
 
-__all__ = [
-    'Uptodate', 'Target', 'Task',
-]
-
 class Base(metaclass = IniterMetaClass):
     def rewrap_exception(self):
         e = sys.exc_info()

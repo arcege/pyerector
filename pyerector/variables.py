@@ -182,7 +182,7 @@ as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
     def add(self, var):
         if not isinstance(var, Variable):
             var = Variable(var)
-        logging.debug('%s.add(%s)' % (self.__class__.__name__, repr(var)))
+        logging.debug('%s.add(%s)', self.__class__.__name__, repr(var))
         super(VariableSet, self).__setitem__(var, var)
 
     def __getitem__(self, item):

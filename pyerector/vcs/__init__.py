@@ -24,7 +24,7 @@ def VCS(*args, **kwargs):
     except KeyError:
         basedir = os.curdir
     for vcs in vcs_set:
-        if vcs.vcs_check(dir=basedir):
+        if vcs.vcs_check(srcdir=basedir):
             break
     else:
         raise RuntimeError('no version control found')

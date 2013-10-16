@@ -30,7 +30,7 @@ with the class name if a subclass of one of the valid_class entries."""
     if limit is None:
         if hasattr(sys, 'tracebacklimit'):
             limit = sys.tracebacklimit
-    list = []
+    flist = []
     n = 0
     fself = None
     while tb is not None and (limit is None or n < limit):
@@ -58,9 +58,9 @@ with the class name if a subclass of one of the valid_class entries."""
         del f  # delete the frame reference so there is circular reference
         if fself:
             name = '%s.%s' % (fself.__class__.__name__, name)
-        list.append((filename, lineno, name, line))
+        flist.append((filename, lineno, name, line))
         tb = tb.tb_next
         n += 1
-    del list[:1]  # first should be handle_error, unfortunately
-    return list
+    del flist[:1]  # first should be handle_error, unfortunately
+    return flist
 

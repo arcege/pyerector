@@ -1,11 +1,6 @@
 #!/usr/bin/python
 
 import os
-try:
-    import subprocess
-except ImportError:
-    import popen2
-    subprocess = None
 
 from ..helper import Subcommand
 from .base import DVCS_Base
@@ -21,8 +16,8 @@ class Mercurial(DVCS_Base):
     prog = 'hg'
 
     # used by the package to see which VCS system to use
-    def vcs_check(dir=os.curdir):
-        return os.path.isdir(os.path.join(dir, '.hg'))
+    def vcs_check(srcdir=os.curdir):
+        return os.path.isdir(os.path.join(srcdir, '.hg'))
     vcs_check = staticmethod(vcs_check)
 
     def current_info(self):

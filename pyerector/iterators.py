@@ -181,6 +181,7 @@ class FileSet(Iterator):
         self.set = []
         for item in items:
             self.append(item)
+        self.iset = self.cur = None
 
     def append(self, item):
         klass = self.get_kwarg('klass', type(Iterator))
@@ -281,15 +282,15 @@ class FileMapper(Mapper, BaseIterator):
     def checktree(self, src, dst):
         dirs = [os.curdir]
         while dirs:
-            dir = dirs.pop(0)
-            for fname in os.listdir(normjoin(src, dir)):
-                sname = normjoin(src, dir, fname)
-                dname = normjoin(dst, dir, fname)
+            cdir = dirs.pop(0)
+            for fname in os.listdir(normjoin(src, cdir)):
+                sname = normjoin(src, cdir, fname)
+                dname = normjoin(dst, cdir, fname)
                 if self.exclusion.match(fname):
                     continue
                 if os.path.isdir(sname):
-                    self.logger.debug('adding %s to fifo', normjoin(dir, fname))
-                    dirs.append(normjoin(dir, fname))
+                    self.logger.debug('adding %s to fifo', normjoin(cdir, fname))
+                    dirs.append(normjoin(cdir, fname))
                 else:
                     self.logger.debug('checking %s with %s', sname, dname)
                     result = self.checkpair(sname, dname)

@@ -96,7 +96,6 @@ name of target to call or variable assignment, default target is "default"')
             raise SystemExit(self.returnstatus)
 
     def arguments(self, args):
-        global noop, noTimer
         args = self.parser.parse_args(args)
         if isinstance(args, tuple):
             args, arglist = args
@@ -155,7 +154,6 @@ name of target to call or variable assignment, default target is "default"')
                 self.logger.exception('Validation')
 
     def run(self):
-        global noTimer
         timer = Timer()
         # run all targets in the tree of each argument
         failed = True

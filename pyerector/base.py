@@ -163,7 +163,7 @@ class Target(Initer):
                     # special case, allow direct instance of Uptodate
                     obj = name
                 elif isinstance(name, Sequential):
-                    validate_class(klassobj.__name, name, ktype, ktname)
+                    validate_class(klassobj.__name__, name, ktype, ktname)
                     continue
                 elif isinstance(name, str) and name in klasses:
                     obj = klasses[name]
@@ -349,7 +349,6 @@ class Sequential(Initer):
     __nonzero__ = __bool__
 
     def run(self, caller, itype, iname, excmsg):
-        last_stack_item = get_current_stack()[-1]
         for item in self:
             try:
                 caller.call(item)

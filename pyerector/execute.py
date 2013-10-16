@@ -90,7 +90,6 @@ class PyThread(threading.Thread):
 def init_threading(called=[False]):
     if called[0]:
         return
-    from .variables import V
     V['pyerector.pool.size'] = '10'
     curthread = threading.currentThread()
     assert curthread.name == 'MainThread'
