@@ -80,3 +80,15 @@ v1.2.1  2013-10-11
   -- Use of Verbose and Config classes now raise DeprecationWarnings
   -- Move noop and noTimer to config module.
 
+v1.2.2  2013-10-17
+  Other fixes/enhancements:
+  -- Add (initial) regression tests.
+  -- Fix BaseIterators to properly handle empty directories with
+     noglob=True; have Clean Target use DirList.
+  -- Fix bug when iterator has an empty sequence.
+  -- Have the Help target depend on InitVCS.
+  -- Unittest fix for Python3.
+  -- Fixes found during analysis from PyCharm and pylint.
+  -- Use short-cut class instead of function-with-mutables for initialization.
+  -- Some SCM cleanup.
+
