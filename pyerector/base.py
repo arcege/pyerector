@@ -18,7 +18,7 @@ from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
 from .config import Config, noop, noTimer
-from .variables import V
+from .variables import V, Variable
 
 __all__ = [
     'Target', 'Task', 'Sequential', 'Parallel',
@@ -159,6 +159,9 @@ class Target(Initer):
             klassobj = registry[ktype]
             klasses = registry.get(ktype)
             for name in kset:
+                if isinstance(name, Variable):
+                    # variables are valid, but we don't do anything with them
+                    continue
                 if ktype == 'Mapper' and isinstance(name, klassobj):
                     # special case, allow direct instance of Uptodate
                     obj = name
@@ -182,6 +185,8 @@ class Target(Initer):
 
     def call(self, name, args=()):
         # find the object
+        if isinstance(name, Variable):
+            return
         if isinstance(name, type) and issubclass(name, Initer):
             obj = name()
         elif isinstance(name, Initer):
@@ -377,7 +382,9 @@ class Parallel(Sequential):
         bname = '%s.' % last_stack_item.__class__.__name__
         threads = []
         for item in self:
-            if isinstance(item, Initer):
+            if isinstance(item, Variable):
+                continue  # ignore Variables
+            elif isinstance(item, Initer):
                 name = item.__class__.__name__
             elif isinstance(item, type(Initer)) and issubclass(item, Initer):
                 name = item.__name__
