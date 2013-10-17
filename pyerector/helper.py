@@ -9,7 +9,7 @@ import traceback
 import warnings
 
 from .exception import Error
-from .execute import get_current_stack
+from .execute import get_current_stack, Initialization
 
 __all__ = [
     'Exclusions',
@@ -340,11 +340,11 @@ class LogExecFormatter(LogFormatter):
         return ''.join(lines).rstrip()
 
 
-def init_logging(deflevel=logging.WARNING, message='%(message)s',
-                 called=[False]):
-    if called[0]:
-        return
+class InitLogging(Initialization):
+    deflevel = logging.WARNING
+    message = '%(message)s'
 
+    @staticmethod
     def setup(name, handlerklass, formatterklass,
               message=message):
         f = formatterklass(message)
@@ -354,14 +354,18 @@ def init_logging(deflevel=logging.WARNING, message='%(message)s',
         l.addHandler(h)
         l.propagate = False
         return l
-    logging.basicConfig(level=deflevel, message=message)
-    logging.addLevelName(level=logging.ERROR + 5, levelName='DISPLAY')
-    setup('pyerector', logging.StreamHandler, LogFormatter)
-    setup('pyerector.execute', logging.StreamHandler, LogExecFormatter)
-    warnings.simplefilter("default", DeprecationWarning)
-    if hasattr(logging, 'captureWarnings'):
-        logging.captureWarnings(True)
-    called[0] = True
+
+    def run(self):
+        logging.basicConfig(level=self.deflevel, message=self.message)
+        logging.addLevelName(level=logging.ERROR + 5, levelName='DISPLAY')
+        self.setup('pyerector', logging.StreamHandler, LogFormatter)
+        self.setup('pyerector.execute', logging.StreamHandler, LogExecFormatter)
+        warnings.simplefilter("default", DeprecationWarning)
+        if hasattr(logging, 'captureWarnings'):
+            logging.captureWarnings(True)
+
+InitLogging()
+
 display = Verbose(None, 'DISPLAY')
 warn = Verbose(None, 'ERROR')
 verbose = Verbose(None, 'INFO')

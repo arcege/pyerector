@@ -6,7 +6,7 @@ import os
 import sys
 from .exception import Abort, Error
 from .helper import Timer
-from .execute import PyThread
+from .execute import PyThread, Initialization
 from .config import noop, noTimer
 from .register import registry
 from .base import Target
@@ -189,8 +189,10 @@ name of target to call or variable assignment, default target is "default"')
 pymain = PyErector
 
 
-def init_main(basedir=os.curdir, called=[False]):
-    if called[0]:
-        return
-    V['basedir'] = os.path.realpath(basedir)
-    called[0] = True
+class InitMain(Initialization):
+    basedir = os.curdir
+    def run(self):
+        V['basedir'] = os.path.realpath(self.basedir)
+
+InitMain()
+

@@ -87,13 +87,37 @@ class PyThread(threading.Thread):
         finally:
             logger.debug('PyThread.limiter.released')
 
-def init_threading(called=[False]):
-    if called[0]:
-        return
-    V['pyerector.pool.size'] = '10'
-    curthread = threading.currentThread()
-    assert curthread.name == 'MainThread'
-    if not hasattr(curthread, 'stack'):
-        curthread.stack = ExecStack()
-    called[0] = True
+
+class Initialization(object):
+    registry = []
+
+    def __init__(self):
+        self.been_called = False
+        self.registry.append(self)
+
+    @classmethod
+    def start(cls):
+        for instance in cls.registry:
+            instance()
+
+    def __call__(self):
+        if self.been_called:
+            return
+        try:
+            self.run()
+        finally:
+            self.been_called = True
+
+    def run(self):
+        pass
+
+class InitThreading(Initialization):
+    def run(self):
+        V['pyerector.pool.size'] = 10
+        curthread = threading.currentThread()
+        assert curthread.name == 'MainThread'
+        if not hasattr(curthread, 'stack'):
+            curthread.stack = ExecStack()
+
+InitThreading()
 

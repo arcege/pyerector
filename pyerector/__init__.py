@@ -1,12 +1,12 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
-from .helper import normjoin, Exclusions, init_logging
+from .helper import normjoin, Exclusions
 from .helper import display, warn, verbose, debug  # being deprecated
-from .execute import init_threading
+from .execute import Initialization
 
 from .version import *
-from .main import PyErector, pymain, init_main
+from .main import PyErector, pymain
 from .base import *
 from .tasks import  *
 from .targets import *
@@ -77,8 +77,5 @@ __all__ = [
     'Uptodate',
 ]
 
-# initialize, but remove the references afterward
-init_logging()
-init_threading()
-init_main()
-del init_logging, init_threading, init_main
+Initialization.start()
+
