@@ -326,7 +326,7 @@ class LogFormatter(logging.Formatter, object):
 
     def formatException(self, exc_info):
         from .exception import extract_tb
-        t, e = exc_info[:2]
+        t, e, tb = exc_info
         exc = traceback.format_exception_only(t, e)
         st = traceback.format_list(extract_tb(tb))
         return ''.join(st + exc)
