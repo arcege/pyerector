@@ -97,7 +97,6 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
     files = ()
     dest = None
     noglob = False
-    #exclude = Exclusions()
 
     def run(self):
         from .base import Mapper
