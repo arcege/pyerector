@@ -9,8 +9,8 @@ what you want/need to do.  It is geared more toward Python usage, but
 most tasks are generic enough for any system.
 
 The developer would create a driver file, commonly named 'pyerect',
-that would include the 'pyerector' module generally using.  The smallest
-driver file would be:
+that would import the 'pyerector' module and call the PyErector routine.
+The smallest driver file would be:
     from pyerector import *
     PyErector()
 
@@ -20,8 +20,8 @@ Target references on the command-line are the same as the class, but
 with the first character lowercase.  The command-line argument 'default'
 would refer to the 'Default' Target class.
 
-Command-line arguments must reference targets, not other objects (except
-variable assignments).  Instead of referencing a Target, a command-line
+Command-line arguments must reference targets, not other objects, or
+variable assignments.  Instead of referencing a Target, a command-line
 argument may also assign a string value to a variable, for example:
 "developer.name=Michael".
 
@@ -36,8 +36,25 @@ would be modified in the driver file:
     InitDirs.files = ('build',)
     Compile.tasks = (Copy('foobar.txt', dest='build'),)
 
-As you can see with the Copy task above, the most common usage is to
-create instances within a target's class members, like 'tasks'.
+As can be seen with the standard Copy task above, the most common usage
+is to create instances within a target's class members, like 'tasks'.
+
+The API allows the developer to extend or change what is being performed
+during the build.  For example, in the product's "pyerect" program,
+there is a Registration task, which changes the SubPyErector task:
+    class Regression(SubPyErector):
+        wdir = 'regression'
+        proddir = os.path.realpath(os.path.join('build', distfile))
+        if 'PYTHONPATH' in os.environ:
+            paths = os.environ['PYTHONPATH'].split(os.pathsep)
+            paths.append(proddir)
+            env = {'PYTHONPATH': os.pathsep.join(paths)}
+            del paths
+        else:
+            env = {'PYTHONPATH': proddir }
+
+This does not change the task's flow, but it does set up certain defaults
+which does change the behavior.
 """
 
 from .helper import normjoin, Exclusions
