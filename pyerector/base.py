@@ -29,8 +29,12 @@ __all__ = [
 
 class Initer(Base):
     config = Config()  # for backward compatibility only
+    # values to propagate to an iterator
+    pattern = None
     noglob = False
-    iterator = None
+    recurse = False
+    fileonly = True
+    exclude = None
 
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('pyerector.execute')
@@ -58,6 +62,10 @@ class Initer(Base):
     def get_files(self, files=None):
         # propagate 'noglob' keyword to the interator
         noglob = self.get_kwarg('noglob', bool)
+        recurse = self.get_kwarg('recurse', bool)
+        fileonly = self.get_kwarg('fileonly', bool)
+        pattern = self.get_kwarg('pattern', str)
+        exclude = self.get_kwarg('exclude', (Exclusions, tuple))
         if files is None:
             try:
                 files = self.files
@@ -73,9 +81,13 @@ class Initer(Base):
                 if isinstance(entry, Iterator):
                     i = entry
                 elif isinstance(entry, (tuple, list)):
-                    i = FileIterator(entry, noglob=noglob)
+                    i = FileIterator(entry, noglob=noglob,
+                                     recurse=recurse, fileonly=fileonly,
+                                     pattern=pattern, exclude=exclude)
                 else:
-                    i = FileIterator((entry,), noglob=noglob)
+                    i = FileIterator((entry,), noglob=noglob,
+                                     recurse=recurse, fileonly=fileonly,
+                                     pattern=pattern, exclude=exclude)
                 fs.append(i)
             return fs
 

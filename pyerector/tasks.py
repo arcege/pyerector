@@ -97,7 +97,7 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
     files = ()
     dest = None
     noglob = False
-    exclude = Exclusions()
+    #exclude = Exclusions()
 
     def run(self):
         from .base import Mapper
@@ -109,10 +109,9 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
         elif len(files) == 1 and dest is not None and not os.path.isdir(dest):
-            fmap = IdentityMapper(files[0], destdir=dest, exclude=excludes)
+            fmap = IdentityMapper(self.get_files(files), destdir=dest)
         elif dest is not None:
-            fmap = FileMapper(self.get_files(files),
-                              destdir=dest, exclude=excludes)
+            fmap = FileMapper(self.get_files(files), destdir=dest)
         else:
             raise Error('must supply dest to %s' % self.__class__.__name__)
         self.logger.debug('Copy.fmap = %s', vars(fmap))
@@ -284,6 +283,8 @@ Mkdir(*files)"""
             logger.info('remove(%s)', path)
             os.remove(path)
             cls.mkdir(path)
+        elif not path:
+            pass
         elif not os.path.isdir(path):
             cls.mkdir(os.path.dirname(path))
             logger.info('mkdir(%s)', path)
