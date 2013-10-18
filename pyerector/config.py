@@ -1,5 +1,15 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Handle configuration values.
+
+The Config class managed "variables" before global variables were
+introduced.  This class has now been deprecated and exists only for
+backward compatibility.
+
+The State class is to give the same functionality as the now deprecated
+Verbose class.  The "noop" and "noTimer" instances are initialized here
+and turned on in PyErector.arguments().
+"""
 
 from warnings import warn
 
@@ -24,6 +34,7 @@ class Config(object):
 
 
 class State(object):
+    """Create a mutable boolean object."""
     def __init__(self, initial=False):
         self.state = initial
 
@@ -32,9 +43,11 @@ class State(object):
     __nonzero__ = __bool__
 
     def on(self):
+        """Change state to True."""
         self.state = True
 
     def off(self):
+        """Change state to False."""
         self.state = False
 
 noop = State()
