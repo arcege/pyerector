@@ -61,14 +61,20 @@ from .helper import normjoin, Exclusions
 from .helper import display, warn, verbose, debug  # being deprecated
 from .execute import Initialization
 
-from .version import *
+from .version import Version
 from .main import PyErector, pymain
-from .base import *
-from .tasks import  *
-from .targets import *
-from .iterators import *
-from .variables import *
-from .vcs import *
+from .base import Target, Task, Sequential, Parallel
+from .tasks import Chmod, Copy, CopyTree, Echo, Egg, HashGen, Java, \
+                   Mkdir, PyCompile, Remove, Shebang, Spawn, \
+                   SubPyErector, Tar, Tokenize, Unittest, Untar, Unzip, \
+                   Zip
+from .targets import All, Build, Clean, Compile, Default, Dist, Help, \
+                     Init, InitDirs, InitVCS, Packaging, Test
+from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
+                       DirList, FileMapper, BasenameMapper, MergeMapper, \
+                       Uptodate
+from .variables import Path, V, Variable, VariableSet
+from .vcs import VCS
 
 __all__ = [
     # base routines
