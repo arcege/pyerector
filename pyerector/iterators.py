@@ -159,6 +159,15 @@ then prepend the directory's contents to the pool (not the curset).
                 item = BaseIterator.next(self)
         return item
 
+    def append(self, item):
+        """Add an item to the end of the pool."""
+        path = list(self.get_args('path'))
+        if isinstance(item, (tuple, list)):
+            path.extend(item)
+        else:
+            path.append(item)
+        self.path = tuple(path)
+
     def _prepend(self, item):
         """Add a string or sequence to the beginning of the pool."""
         if isinstance(item, str):
@@ -177,57 +186,13 @@ class FileIterator(BaseIterator):
     """By default, same as BaseIterator."""
 
 FileList = FileIterator
+FileSet = FileIterator
 
 
 class DirList(FileIterator):
     """By default, recurse and return both directory and file pathnames."""
     recurse = True
     fileonly = False
-
-
-class FileSet(Iterator):
-    """Just an iterator, does nothing special, but is able to append
-new items to the current set.  Should be integrated into the Iterator
-class."""
-    klass = StaticIterator
-    exclude = None
-
-    def __init__(self, *items, **kwargs):
-        super(FileSet, self).__init__(*items, **kwargs)
-        self.set = []
-        for item in items:
-            self.append(item)
-        self.iset = self.cur = None
-
-    def append(self, item):
-        """Append a new instance of an iterator to the set."""
-        klass = self.get_kwarg('klass', type(Iterator))
-        if isinstance(item, (tuple, list)):
-            item = klass(item)
-        elif not isinstance(item, Iterator):
-            item = klass((item,))
-        self.set.append(item)
-
-    def __iter__(self):
-        self.iset = iter(self.set)
-        self.cur = None
-        return super(FileSet, self).__iter__()
-
-    def __next__(self):
-        return self.next()
-
-    def next(self):
-        """Get the next item in the set."""
-        while True:
-            if self.cur is None:
-                n = next(self.iset)  # pass StopIteration through
-                self.cur = iter(n)
-            try:
-                item = next(self.cur)
-            except StopIteration:
-                self.cur = None
-            else:
-                return item
 
 
 class FileMapper(Mapper, BaseIterator):

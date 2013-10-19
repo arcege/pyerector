@@ -70,9 +70,9 @@ handling.
             V['basedir'] = basedir or curdir
 
     def get_files(self, files=None):
-        """Return an Iterator (or FileSet) of either a given sequence or
-the "files" member.  Iterator attributes define in the class will be
-propagated to the Iterator instance.
+        """Return an Iterator of either a given sequence or the "files"
+member.  Iterator attributes define in the class will be propagated to
+the Iterator instance.
 """
         # propagate 'noglob' keyword to the interator
         noglob = self.get_kwarg('noglob', bool)
@@ -89,20 +89,12 @@ propagated to the Iterator instance.
             return files
         else:
             # import here to avoid recursive references
-            from .iterators import FileIterator, FileSet
-            fset = FileSet()
+            from .iterators import FileIterator
+            fset = FileIterator(noglob=noglob, recurse=recurse,
+                                fileonly=fileonly, pattern=pattern,
+                                exclude=exclude)
             for entry in files:
-                if isinstance(entry, Iterator):
-                    i = entry
-                elif isinstance(entry, (tuple, list)):
-                    i = FileIterator(entry, noglob=noglob,
-                                     recurse=recurse, fileonly=fileonly,
-                                     pattern=pattern, exclude=exclude)
-                else:
-                    i = FileIterator((entry,), noglob=noglob,
-                                     recurse=recurse, fileonly=fileonly,
-                                     pattern=pattern, exclude=exclude)
-                fset.append(i)
+                fset.append(entry)
             return fset
 
     def join(self, *path):
@@ -144,8 +136,8 @@ If noNone, then raise ValueError if the value is None.
 
     def get_args(self, name):
         """Return the saved argument list or an attribute of the name."""
-        if hasattr(self, 'args') and self.args:
-            value = self.args
+        if hasattr(self, 'args') and getattr(self, 'args'):
+            value = getattr(self, 'args')
         elif hasattr(self, name) and getattr(self, name):
             value = getattr(self, name)
         else:
