@@ -1,5 +1,8 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Define various Iterator subclasses, for use in tasks to iterate over
+files and directories.
+"""
 
 import fnmatch
 import glob
@@ -79,10 +82,13 @@ class BaseIterator(Iterator):
         return self.next()
 
     def getnextset(self):
+        """When curset has been exhausted, find the next one in the pool.
+If the next one is a glob, then evaluated it."""
         basedir = V['basedir']
         noglob = self.get_kwarg('noglob', bool)
 
         def adjustglob(path, noglob=noglob, basedir=basedir):
+            """Return either the path in a list, or the glob of the path."""
             if noglob or not checkglobpatt(path):
                 return [path]
             else:
@@ -107,6 +113,11 @@ class BaseIterator(Iterator):
         self.logger.debug('curset = %s', repr(self.curset))
 
     def next(self):
+        """Cycle through the curset, returning strings that would "match".
+Matching strings are not in the exclusions, if a pattern is set, would
+match the pattern, and if recursive and a directory.  If it is a directory,
+then prepend the directory's contents to the pool (not the curset).
+"""
         recurse = self.get_kwarg('recurse', bool)
         pattern = self.get_kwarg('pattern', str)
         fileonly = self.get_kwarg('fileonly', bool)
@@ -123,8 +134,8 @@ class BaseIterator(Iterator):
                 try:
                     item = next(self.curset)  # can raise StopIteration
                 except TypeError:
-                    t, e, tb = sys.exc_info()
-                    raise TypeError(self.curset, e)
+                    exc = sys.exc_info()[1]
+                    raise TypeError(self.curset, exc)
             name = os.path.basename(item)
             # if is not excluded
             # and either:
@@ -149,30 +160,35 @@ class BaseIterator(Iterator):
         return item
 
     def _prepend(self, item):
+        """Add a string or sequence to the beginning of the pool."""
         if isinstance(item, str):
             item = [item]
         self.pool[:0] = list(item)
         self.logger.debug('adding to pool: %s' % repr(item))
 
-# a helper class to handle file/directory lists better
 
-
+# a helper classes to handle file/directory lists better
 class StaticIterator(BaseIterator):
+    """By default, noglob == True."""
     noglob = True
 
 
 class FileIterator(BaseIterator):
-    pass
+    """By default, same as BaseIterator."""
 
 FileList = FileIterator
 
 
 class DirList(FileIterator):
+    """By default, recurse and return both directory and file pathnames."""
     recurse = True
     fileonly = False
 
 
 class FileSet(Iterator):
+    """Just an iterator, does nothing special, but is able to append
+new items to the current set.  Should be integrated into the Iterator
+class."""
     klass = StaticIterator
     exclude = None
 
@@ -184,6 +200,7 @@ class FileSet(Iterator):
         self.iset = self.cur = None
 
     def append(self, item):
+        """Append a new instance of an iterator to the set."""
         klass = self.get_kwarg('klass', type(Iterator))
         if isinstance(item, (tuple, list)):
             item = klass(item)
@@ -200,6 +217,7 @@ class FileSet(Iterator):
         return self.next()
 
     def next(self):
+        """Get the next item in the set."""
         while True:
             if self.cur is None:
                 n = next(self.iset)  # pass StopIteration through
@@ -213,6 +231,20 @@ class FileSet(Iterator):
 
 
 class FileMapper(Mapper, BaseIterator):
+    """Maps source files to destination files, using a base path, destdir.
+The mapper member is either a string or callable that will adjust the
+basename; if None, then there is no adjustment.
+The map() method can also adjust the basename.
+
+An example of using a mapper would be:
+    FileMapper(
+        FileIterator('src', pattern='*.py'),
+        destdir='build', mapper=lambda n: n+'c'
+    )
+This would map each py file in src to a pyc file in build:
+    src/base.py  ->  build/base.pyc
+    src/main.py  ->  build/main.pyc
+"""
     destdir = None
     mapper = None
 
@@ -225,11 +257,12 @@ class FileMapper(Mapper, BaseIterator):
             self.mapper_func = mapper
         elif isinstance(mapper, str):
             self.mapper_func = \
-                lambda name, mapstr=mapper: mapstr % {'name': name}
+                lambda name, mapstr = mapper: mapstr % {'name': name}
         else:
             raise TypeError('map must be string or callable', mapper)
 
     def next(self):
+        """Return the next item, with its mapped destination."""
         destdir = self.get_kwarg('destdir', str)
         if destdir is None:
             destdir = ''
@@ -246,21 +279,27 @@ class FileMapper(Mapper, BaseIterator):
         return item, result
 
     def map(self, item):
+        """Identity routine, one-to-one mapping."""
         return item
 
     def uptodate(self):
-        for (s, d) in self:
-            sf = self.join(s)
-            df = self.join(d)
-            if os.path.isdir(sf):
-                result = self.checktree(sf, df)
+        """For each src,dst pair, check the modification times.  If the
+dst is newer, then return True.
+"""
+        for (src, dst) in self:
+            sfile = self.join(src)
+            dfile = self.join(dst)
+            if os.path.isdir(sfile):
+                result = self.checktree(sfile, dfile)
             else:
-                result = self.checkpair(sf, df)
+                result = self.checkpair(sfile, dfile)
             if not result:
-                self.logger.debug('%s.uptodate() => False', self.__class__.__name__)
+                self.logger.debug('%s.uptodate() => False',
+                                  self.__class__.__name__)
                 return False
         else:
-            self.logger.debug('%s.uptodate() => True', self.__class__.__name__)
+            self.logger.debug('%s.uptodate() => True',
+                              self.__class__.__name__)
             return True
 
     def checkpair(self, src, dst):
@@ -268,18 +307,24 @@ class FileMapper(Mapper, BaseIterator):
         if self.exclusion.match(os.path.basename(src)):
             return True
         try:
-            s = round(os.path.getmtime(src), 4)
+            srctime = round(os.path.getmtime(src), 4)
         except OSError:
             raise ValueError('no source:', src)
         try:
-            d = round(os.path.getmtime(dst), 4)
+            dsttime = round(os.path.getmtime(dst), 4)
         except OSError:
             self.logger.debug('%s not found', dst)
             return False
-        self.logger.debug('%s(%0.4f) %s %s(%0.4f)', src, s, (s > d and '>' or '<='), dst, d)
-        return s <= d
+        self.logger.debug('%s(%0.4f) %s %s(%0.4f)',
+                          src, srctime,
+                          (srctime > dsttime and '>' or '<='),
+                          dst, dsttime)
+        return srctime <= dsttime
 
     def checktree(self, src, dst):
+        """Recursively check the files in both src and dst for their
+modification times, using checkpair above.
+"""
         dirs = [os.curdir]
         while dirs:
             cdir = dirs.pop(0)
@@ -289,7 +334,8 @@ class FileMapper(Mapper, BaseIterator):
                 if self.exclusion.match(fname):
                     continue
                 if os.path.isdir(sname):
-                    self.logger.debug('adding %s to fifo', normjoin(cdir, fname))
+                    self.logger.debug('adding %s to fifo',
+                                      normjoin(cdir, fname))
                     dirs.append(normjoin(cdir, fname))
                 else:
                     self.logger.debug('checking %s with %s', sname, dname)
@@ -302,17 +348,19 @@ class FileMapper(Mapper, BaseIterator):
 
 class BasenameMapper(FileMapper):
     """Remove the last file extension including the dot."""
-    def map(self, fname):
-        return os.path.splitext(fname)[0]
+    def map(self, item):
+        return os.path.splitext(item)[0]
 
 
 class MergeMapper(FileMapper):
-    def map(self, fname):
-        return os.path.basename(fname)
+    """Take only the base name, not subpaths."""
+    def map(self, item):
+        return os.path.basename(item)
 
 
 class IdentityMapper(FileMapper):
-    def map(self, fname):
+    """Map to just the destdir value."""
+    def map(self, item):
         return ''  # just use destdir
 
 sequencetypes = (list, tuple, Iterator,
@@ -320,6 +368,8 @@ sequencetypes = (list, tuple, Iterator,
 
 
 class Uptodate(FileMapper):
+    """For backward compatibility, should be using FileMapper or its other
+subclasses."""
     # backward compatible interface
     sources = ()
     destinations = ()
@@ -330,16 +380,16 @@ class Uptodate(FileMapper):
         srcs = FileIterator(self.get_kwarg('sources', sequencetypes))
         dsts = FileIterator(self.get_kwarg('destinations', sequencetypes))
         files = self.get_args('files')
-        #self.logger.debug('srcs = %s; dsts = %s; files = %s', srcs, dsts, files)
         if not files and (not srcs or not dsts):
             self.logger.debug('%s *> %s', klsname, False)
             return False
         elif srcs and dsts:
-            def get_times(lst, s=self):
+            def get_times(lst, slf=self):
+                """Return the times as a list."""
                 times = []
-                for f in lst:
+                for fname in lst:
                     try:
-                        times.append(os.path.getmtime(s.join(f)))
+                        times.append(os.path.getmtime(slf.join(fname)))
                     except OSError:
                         pass
                 return times
@@ -355,3 +405,4 @@ class Uptodate(FileMapper):
         else:
             raise RuntimeError('call uptodate()')
             #return self.uptodate()
+

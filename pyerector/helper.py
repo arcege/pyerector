@@ -1,5 +1,20 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Helper routines for the pyerector package.
+
+The Exclusions class can be used by Iterators to prevent matching against
+certain file (like .svn, .hg, .git) or patterns (*.pyc, *~).
+
+normjoin runs os.path.normpath(os.path.join(*args), as a convenience
+routine.
+
+The Subcommand class handles spawning processes through subprocess.Popen,
+but with a bit more backend control (like terminating the process when
+the object is deleted).
+
+Initialize the logging system, including setting up module specific
+formatters.  It does not change the root ('') logger.
+"""
 
 import fnmatch
 import logging
@@ -21,22 +36,28 @@ __all__ = [
 
 
 def normjoin(*args):
+    """Join and normalize the arguments into a pathname."""
     if not args:
         args = ('',)
     return os.path.normpath(os.path.join(*args))
 
 if version < '3':
-    def u(x):
+    def u(string):
+        """Return a decoded unicode string."""
         from codecs import unicode_escape_decode
-        return unicode_escape_decode(x)[0]
+        return unicode_escape_decode(string)[0]
 else:
-    def u(x):
-        return x
+    def u(string):
+        """Return a decoded unicode string."""
+        return string
 
 
 class Exclusions(set):
     """A list of exclusion patterns."""
-    defaults = set(('*.pyc', '*~', '.*.swp', '.git', '.hg', '.svn', 'CVS', '__pycache__'))
+    defaults = set(
+        ('*.pyc', '*~', '.*.swp', '.git', '.hg', '.svn', 'CVS',
+         '__pycache__')
+    )
 
     def __init__(self, items=(), usedefaults=True):
         if isinstance(items, Exclusions):
@@ -57,6 +78,8 @@ class Exclusions(set):
         super(Exclusions, self).__init__(initialset)
 
     def match(self, string):
+        """Return true if the given string matches one of the patterns
+in the set."""
         values = [v for v in self if fnmatch.fnmatchcase(string, v)]
         return len(values) > 0
 
@@ -89,7 +112,6 @@ class Subcommand(object):
                  stdin=None, stdout=None, stderr=None):
         if env is None:
             env = {}
-        self.func = self.call_subprocess
         assert isinstance(cmd, tuple), "must supply tuple as command"
         if (len(cmd) == 1 and
                 (isinstance(cmd[0], tuple) or isinstance(cmd, list))):
@@ -104,14 +126,16 @@ class Subcommand(object):
         self.errfile = stderr
         self.stdin = self.stdout = self.stderr = None
         self.returncode = None
-        self.func()
+        self.call_subprocess()
         if wait:
             self.wait()
 
     def __del__(self):
+        import traceback
         logging.debug('starting %s.__del__()', self.__class__.__name__)
         self.close()
-        if self.returncode is None and self.proc is not None:
+        if hasattr(self, 'returncode') and hasattr(self, 'proc') and \
+                self.returncode is None and self.proc is not None:
             self.proc.terminate()
             try:
                 os.kill(self.proc.pid, 0)  # check if there
@@ -123,102 +147,107 @@ class Subcommand(object):
             self.proc = None
 
     def close(self):
-        if hasattr(self.infile, 'lower'):
+        """Close the open files."""
+        if hasattr(self, 'infile') and \
+                hasattr(getattr(self, 'infile'), 'lower') and \
+                self.stdin is not None:
             self.stdin.close()
         self.stdin = None
-        if hasattr(self.outfile, 'lower'):
+        if hasattr(self, 'outfile') and \
+                hasattr(getattr(self, 'outfile'), 'lower') and \
+                self.stdout is not None:
             self.stdout.close()
         self.stdout = None
-        if hasattr(self.errfile, 'lower'):
+        if hasattr(self, 'errfile') and \
+                hasattr(getattr(self, 'errfile'), 'lower') and \
+                self.stderr is not None:
             self.stderr.close()
         self.stderr = None
 
     def terminate(self):
+        """Send a SIGTERM signal to the process."""
         assert self.proc is not None, 'subprocess not spawned'
         return self.proc.terminate()
 
     def kill(self):
+        """Send a SIGKILL signal to the process."""
         assert self.proc is not None, 'subprocess not spawned'
         return self.proc.kill()
 
     def poll(self):
+        """Return True if the process has finished, setting returncode
+if applicable."""
         assert self.proc is not None, 'subprocess not spawned'
-        rc = self.proc.poll()
-        if rc is not None:
-            self.returncode = rc
+        returncode = self.proc.poll()
+        if returncode is not None:
+            self.returncode = returncode
         return self.returncode is not None
 
     def wait(self):
+        """Wait for the process to complete, and return the exit status."""
         assert self.proc is not None, 'subprocess not spawned'
         if self.stdin:
             self.stdin.close()
         self.returncode = self.proc.wait()
         return self.returncode
 
-    def _process_returncode(self, rc):
-        if self.func is self.call_subprocess:
-            self.returncode = rc
-        elif hasattr(os, 'WIFSIGNALED') and os.WIFSIGNALED(rc):
-            self.returncode = -os.WTERMSIG(rc)
-        elif os.WIFEXITED(rc):
-            self.returncode = os.WEXITSTATUS(rc)
-        else:
-            self.returncode = 0
-
     def call_subprocess(self):
+        """Call subprocess.Popen and handle the I/O."""
         from subprocess import Popen
         realenv = os.environ.copy()
         realenv.update(self.env)
         if hasattr(self.infile, 'write'):
-            ifl = self.infile
+            ifile = self.infile
         elif self.infile == self.PIPE:
-            ifl = self.PIPE
+            ifile = self.PIPE
         elif hasattr(self.infile, 'lower'):
-            ifl = open(self.infile, 'r')
+            ifile = open(self.infile, 'r')
         else:
-            ifl = None
+            ifile = None
         if hasattr(self.outfile, 'read'):
-            of = self.outfile
+            ofile = self.outfile
         elif self.outfile == self.PIPE:
-            of = self.PIPE
+            ofile = self.PIPE
         elif hasattr(self.outfile, 'lower'):
-            of = open(self.outfile, 'w')
+            ofile = open(self.outfile, 'w')
         else:
-            of = None
+            ofile = None
         if self.errfile == self.outfile:
-            ef = of
+            efile = ofile
         elif hasattr(self.errfile, 'read'):
-            ef = self.errfile
+            efile = self.errfile
         elif self.errfile == self.PIPE:
-            ef = self.PIPE
+            efile = self.PIPE
         elif hasattr(self.errfile, 'lower'):
-            ef = open(self.errfile, 'w')
+            efile = open(self.errfile, 'w')
         else:
-            ef = None
-        (self.stdin, self.stdout, self.stderr) = (ifl, of, ef)
+            efile = None
+        (self.stdin, self.stdout, self.stderr) = (ifile, ofile, efile)
         shellval = not isinstance(self.cmd, tuple)
-        logging.debug('Popen(%s, shell=%s, cwd=%s, stdin=%s, stdout=%s, stderr=%s, bufsize=0, env=%s)', self.cmd,
-                      shellval, self.wdir, ifl, of, ef, self.env)
+        logging.debug('Popen(%s, shell=%s, cwd=%s, stdin=%s, stdout=%s,'
+                      'stderr=%s, bufsize=0, env=%s)', self.cmd,
+                      shellval, self.wdir, ifile, ofile, efile, self.env)
         try:
             proc = Popen(self.cmd, shell=shellval, cwd=self.wdir,
-                         stdin=ifl, stdout=of, stderr=ef,
+                         stdin=ifile, stdout=ofile, stderr=efile,
                          bufsize=0, env=realenv)
         except (IOError, OSError):
-            e = exc_info()[1]
-            if e.args[0] == 2:  # ENOENT
+            exc = exc_info()[1]
+            if exc.args[0] == 2:  # ENOENT
                 raise Error('ENOENT', 'Program not found')
             else:
                 raise
         self.proc = proc
-        if ifl == self.PIPE:
+        if ifile == self.PIPE:
             self.stdin = proc.stdin
-        if of == self.PIPE:
+        if ofile == self.PIPE:
             self.stdout = proc.stdout
-        if ef == self.PIPE:
+        if efile == self.PIPE:
             self.stderr = proc.stderr
 
 
 class Timer(object):
+    """Keep track of how long a section of code takes."""
     def __init__(self):
         self.starttime = None
         self.duration = None
@@ -234,15 +263,18 @@ class Timer(object):
 
     @staticmethod
     def now():
+        """Return the current time."""
         from time import time
         return time()
 
     def start(self):
+        """Start the timer."""
         if self.starttime is not None:
             raise RuntimeError('cannot start more than once without stopping')
         self.starttime = self.now()
 
     def stop(self):
+        """Stop the timer and set the duration."""
         if self.starttime is None:
             raise RuntimeError('cannot stop without starting')
         self.duration = self.now() - self.starttime
@@ -265,15 +297,18 @@ class Timer(object):
 
 class Verbose(object):
     # deprecated
-    def __init__(self, state, level=logging.INFO):
+    """Deprecated and should no longer be used."""
+    def __init__(self, state=False, level=logging.INFO):
         self.level = level
 
     @staticmethod
     def _getlogger():
+        """Return the default internal logger."""
         return logging.getLogger('pyerector.execute')
 
     @staticmethod
     def _getlevelnum(level):
+        """Return the logging level based on its name."""
         return logging.getLevelName(level)
 
     def __bool__(self):
@@ -285,14 +320,10 @@ class Verbose(object):
         self._getlogger().log(self._getlevelnum(self.level), msg)
 
 
-def extract_stack(stack):
-    #from .base import stack  # do not move outside of this routine
-    t, e = exc_info()[:2]
-    lines = stack.extract() + traceback.format_exception_only(t, e)
-    return ''.join(lines)
-
-
 class LogFormatter(logging.Formatter, object):
+    """Subclass to handle formatting messages from the library, including
+prepending text in the PYERECTOR_PREFIX envvar and showing thread if not
+the main threads (MainThread, PyErector)."""
     log_prefix = None
 
     def format(self, record):
@@ -300,7 +331,7 @@ class LogFormatter(logging.Formatter, object):
         if self.log_prefix is None:
             try:
                 prefix = os.environ['PYERECTOR_PREFIX']
-            except (AttributeError,KeyError):
+            except (AttributeError, KeyError):
                 prefix = ''
             self.log_prefix = prefix
         else:
@@ -325,37 +356,54 @@ class LogFormatter(logging.Formatter, object):
         return message
 
     def formatException(self, exc_info):
+        """Return similar to the default, but using exception.extract_tb
+instead of traceback.extract_tb; the former adds the class being called.
+"""
         from .exception import extract_tb
-        t, e, tb = exc_info
-        exc = traceback.format_exception_only(t, e)
-        st = traceback.format_list(extract_tb(tb))
-        return ''.join(st + exc)
+        etype, exception, tb = exc_info
+        exc = traceback.format_exception_only(etype, exception)
+        stack = traceback.format_list(extract_tb(tb))
+        return ''.join(stack + exc)
 
 
 class LogExecFormatter(LogFormatter):
+    """Subclass of LogFormatter that shows the pyerector execution stack
+instead of python's.
+"""
     def formatException(self, exc_info):
+        """Extract the pyerector execution stack and return a string with
+that and the formatted exception.
+"""
         stack = get_current_stack()
-        t, e = exc_info[:2]
-        lines = stack.extract() + traceback.format_exception_only(t, e)
+        etype, exception = exc_info[:2]
+        lines = stack.extract() + \
+                traceback.format_exception_only(etype, exception)
         return ''.join(lines).rstrip()
 
 
 class InitLogging(Initialization):
+    """Initialize the logging, creating two loggers, pyerector and
+pyerector.execute."""
     deflevel = logging.WARNING
     message = '%(message)s'
 
     @staticmethod
     def setup(name, handlerklass, formatterklass,
               message=message):
-        f = formatterklass(message)
-        h = handlerklass()
-        h.setFormatter(f)
-        l = logging.getLogger(name)
-        l.addHandler(h)
-        l.propagate = False
-        return l
+        """Set up a new logger with appropriate settings."""
+        fmtr = formatterklass(message)
+        hndr = handlerklass()
+        hndr.setFormatter(fmtr)
+        lgr = logging.getLogger(name)
+        lgr.addHandler(hndr)
+        lgr.propagate = False
+        return lgr
 
     def run(self):
+        """Set the default logging level, create a 'DISPLAY' logging level,
+create two loggers: pyerector and pyerector.execute, and if available,
+set warnings to be captured by the logging module.
+"""
         logging.basicConfig(level=self.deflevel, message=self.message)
         logging.addLevelName(level=logging.ERROR + 5, levelName='DISPLAY')
         self.setup('pyerector', logging.StreamHandler, LogFormatter)

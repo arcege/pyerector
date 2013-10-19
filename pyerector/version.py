@@ -1,10 +1,16 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Hold the version control information about the product.
+The build replaces the %..% tokens with proper values.
+The constants (HG_* and RELEASE_*) at the end are for backward compatibility.
+"""
 
 from .variables import V
 
 
 class VersionClass(object):
+    """Define variables with version/release information and
+retrieve using this interface."""
     def __init__(self):
         V['pyerector.vcs.version'] = '%hg.version%'
         V['pyerector.vcs.branch'] = '%hg.branch%'
@@ -14,10 +20,14 @@ class VersionClass(object):
 
     @staticmethod
     def _validitem(item):
+        """Ensure that the variable name is valid."""
         return (
             item.startswith('pyerector.vcs.') or
             item.startswith('pyerector.release.')
         )
+
+    def __len__(self):
+        return 5
 
     def __getitem__(self, itemname):
         if self._validitem(itemname):
@@ -36,24 +46,26 @@ class VersionClass(object):
 
     @property
     def version(self):
-        v, b, t = (
+        """Retrieve the version control information."""
+        vstr, bstr, tstr = (
             V('pyerector.vcs.version'),
             V('pyerector.vcs.branch'),
             V('pyerector.vcs.tags'),
         )
-        version = v.value.replace('+', '')
-        if b.value == 'default':
+        version = vstr.value.replace('+', '')
+        if bstr.value == 'default':
             branch = ''
         else:
-            branch = ' (%s)' % b
-        if t.value == 'tip':
+            branch = ' (%s)' % bstr
+        if tstr.value == 'tip':
             tags = ''
         else:
-            tags = ' <%s>' % ','.join(t.value.split())
+            tags = ' <%s>' % ','.join(tstr.value.split())
         return 'r%s%s%s' % (version, branch, tags)
 
     @property
     def release(self):
+        """Retrieve the release information."""
         return '%s %s' % (
             V('pyerector.release.product'),
             V('pyerector.release.number')
@@ -70,3 +82,4 @@ __all__ = [
 ]
 
 Version = VersionClass()
+

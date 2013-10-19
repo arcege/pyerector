@@ -1,4 +1,6 @@
 #!/usr/bin/python
+# Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Mercurial(hg) based version control hooks."""
 
 import os
 
@@ -12,25 +14,27 @@ __all__ = [
 
 
 class Mercurial(DVCS_Base):
+    """Version control class for Mercurial."""
     name = 'mercurial'
     prog = 'hg'
 
     # used by the package to see which VCS system to use
     def vcs_check(srcdir=os.curdir):
+        """Check if there is a Mercurial repository present."""
         return os.path.isdir(os.path.join(srcdir, '.hg'))
     vcs_check = staticmethod(vcs_check)
 
     def current_info(self):
-        hg = Subcommand(
+        """Retrieve information from the workarea."""
+        proc = Subcommand(
             (self.prog, 'identify', '--id', '--branch', '--tags'),
             wait=True,
             wdir=self.rootdir,
             stdout=Subcommand.PIPE,
             stderr=os.devnull
         )
-        hg.wait()
-        hgout = hg.stdout.read().decode('UTF-8')
-        if hg.returncode == 0:
+        hgout = proc.stdout.read().decode('UTF-8')
+        if proc.returncode == 0:
             parts = hgout.rstrip().split()
             try:
                 parts[1]

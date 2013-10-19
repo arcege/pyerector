@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Define the standard tasks."""
 
 import logging
 import os
@@ -34,6 +35,7 @@ Chmod(*files, mode=0666)"""
     mode = int('666', 8)  # gets around Python 2.x vs 3.x octal issue
 
     def run(self):
+        """Change the permissions on the files."""
         from os import chmod
         mode = self.get_kwarg('mode', int)
         for fname in self.get_files(self.get_args('files')):
@@ -51,6 +53,7 @@ class Container(Task):
     exclude = Exclusions(usedefaults=False)
 
     def run(self):
+        """Gather filenames and put them into the container."""
         name = self.get_kwarg('name', str, noNone=True)
         root = self.join(self.get_kwarg('root', str))
         excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
@@ -63,13 +66,14 @@ class Container(Task):
         while queue:
             entry = queue[0]
             del queue[0]
-            for fn in glob(self.join(root, entry)):
-                if excludes.match(fn):  # if true, then ignore
+            for fname in glob(self.join(root, entry)):
+                if excludes.match(fname):  # if true, then ignore
                     pass
-                elif os.path.islink(fn) or os.path.isfile(fn):
-                    toadd.append(fn)
-                elif os.path.isdir(fn):
-                    fnames = [os.path.join(fn, f) for f in os.listdir(fn)]
+                elif os.path.islink(fname) or os.path.isfile(fname):
+                    toadd.append(fname)
+                elif os.path.isdir(fname):
+                    fnames = [os.path.join(fname, f)
+                                  for f in os.listdir(fname)]
                     queue.extend(fnames)
         #verbose('toadd =', toadd)
         self.manifest(name, root, toadd)
@@ -77,16 +81,16 @@ class Container(Task):
         self.postop(name, root, toadd)
 
     def preop(self, name, root, excludes):
-        pass
+        """To be overridden."""
 
     def postop(self, name, root, excludes):
-        pass
+        """To be overridden."""
 
     def manifest(self, name, root, toadd):
-        pass
+        """To be overridden."""
 
     def contain(self, name, root, toadd):
-        pass
+        """To be overridden."""
 
 
 class Copy(Task):
@@ -99,6 +103,7 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
     noglob = False
 
     def run(self):
+        """Copy files to a destination directory."""
         from .base import Mapper
         dest = self.get_kwarg('dest', str, noNone=False)
         files = self.get_args('files')
@@ -135,6 +140,7 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
     excludes = exclude  # deprecated
 
     def run(self):
+        """Copy a tree to a destination."""
         srcdir = self.get_kwarg('srcdir', str, noNone=True)
         dstdir = self.get_kwarg('dstdir', str, noNone=True)
         excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
@@ -169,6 +175,7 @@ level created in pyerector.helper."""
     msgs = ()
 
     def run(self):
+        """Display messages."""
         args = self.get_args('msgs')
         if args:
             msg, rest = args[0], args[1:]
@@ -188,6 +195,7 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
     hashs = ('md5', 'sha1')
 
     def run(self):
+        """Generate files with checksums inside."""
         from hashlib import md5, sha1
         files = self.get_files(self.get_args('files'))
         hashs = self.get_kwarg('hashs', tuple)
@@ -203,12 +211,15 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
             )
         for hashfunc, fmap in fmaps:
             for sname, dname in fmap:
-                h = hashfunc()
+                hashval = hashfunc()
                 if (os.path.isfile(sname) and
-                        not fmap.checkpair(self.join(sname), self.join(dname))):
-                    h.update(open(self.join(sname), 'rb').read())
+                        not fmap.checkpair(self.join(sname),
+                                           self.join(dname))):
+                    hashval.update(open(self.join(sname), 'rb').read())
                     self.logger.debug('writing %s', dname)
-                    open(self.join(dname), 'wt').write(h.hexdigest() + '\n')
+                    open(self.join(dname), 'wt').write(
+                            hashval.hexdigest() + '\n'
+                    )
 
 
 class Java(Task):
@@ -239,25 +250,27 @@ Java(jar=<JAR>, java_home=<$JAVA_HOME>, classpath=(), properties=[])"""
             raise Error("no java program to execute")
 
     def addprop(self, var, val):
+        """Add a Java system property to the list."""
         self.properties.append((var, val))
 
     def run(self):
+        """Call java."""
         from os import environ
         from os.path import pathsep
         jar = self.get_kwarg('jar', str, noNone=True)
         if self.properties:
-            sp = ['-D%s=%s' % x for x in self.properties]
+            sysprop = ['-D%s=%s' % x for x in self.properties]
         else:
-            sp = ()
-        cmd = (self.java_prog,) + tuple(sp) + ('-jar', jar,) + \
+            sysprop = ()
+        cmd = (self.java_prog,) + tuple(sysprop) + ('-jar', jar,) + \
             tuple([str(s) for s in self.args])
         env = environ.copy()
         if self.classpath:
             env['CLASSPATH'] = pathsep.join(self.classpath)
-        rc = Subcommand(cmd)
-        if rc.returncode:
+        proc = Subcommand(cmd)
+        if proc.returncode:
             raise Error(self, '%s failed with returncode %d' %
-                        (self.__class__.__name__.lower(), rc.returncode)
+                        (self.__class__.__name__.lower(), proc.returncode)
                         )
 
 
@@ -269,6 +282,7 @@ Mkdir(*files)"""
     noglob = True
 
     def run(self):
+        """Make directories."""
         files = self.get_files(self.get_args('files'))
         for arg in files:
             self.asserttype(arg, str, 'files')
@@ -276,6 +290,7 @@ Mkdir(*files)"""
 
     @classmethod
     def mkdir(cls, path):
+        """Recursive mkdir."""
         from logging import getLogger
         logger = getLogger('pyerector.execute')
         if os.path.islink(path) or os.path.isfile(path):
@@ -299,12 +314,13 @@ PyCompile(*files, dest=<DIR>, version='2')"""
     version = '2'
 
     def run(self):
+        """Compile Python source files."""
         import py_compile
         fileset = self.get_files(self.get_args('files'))
         if self.version[:1] == sys.version[:1]:  # compile inline
-            for s in fileset:
-                self.logger.debug('py_compile.compile(%s)', s)
-                py_compile.compile(self.join(s))
+            for fname in fileset:
+                self.logger.debug('py_compile.compile(%s)', fname)
+                py_compile.compile(self.join(fname))
         else:
             if self.version[:1] == '2':
                 cmd = 'python2'
@@ -320,10 +336,10 @@ PyCompile(*files, dest=<DIR>, version='2')"""
             try:
                 proc = Subcommand(cmdp)
             except Error:
-                t, e, tb = sys.exc_info()
-                if e.args[0] == 'ENOENT':
+                exc = sys.exc_info()[1]
+                if exc.args[0] == 'ENOENT':
                     self.logger.error('%s: Error with %s: %s',
-                        self.__class__.__name__, cmd, e.args[1]
+                        self.__class__.__name__, cmd, exc.args[1]
                     )
                 else:
                     raise
@@ -340,6 +356,7 @@ Remove(*files)"""
     noglob = False
 
     def run(self):
+        """Remove a file or directory tree."""
         for name in self.get_files(self.get_args('files')):
             self.asserttype(name, str, 'files')
             fname = self.join(name)
@@ -361,6 +378,7 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
     program = None
 
     def run(self):
+        """Replace the shebang string with a specific pathname."""
         self.logger.info('starting Shebang')
         program = self.get_kwarg('program', str, noNone=True)
         srcs = self.get_files(self.get_args('files'))
@@ -383,10 +401,10 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
             first = inf.readline()
             if first.startswith(self.token):
                 if ' ' in first:
-                    w = first.find(' ')
+                    wsp = first.find(' ')
                 else:
-                    w = first.find(os.linesep)
-                first = first.replace(first[len(self.token):w], program)
+                    wsp = first.find(os.linesep)
+                first = first.replace(first[len(self.token):wsp], program)
                 outf.write(first)
             else:
                 outf.write(first)
@@ -408,6 +426,7 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
     env = {}
 
     def run(self):
+        """Spawn a command."""
         infile = self.get_kwarg('infile', str)
         outfile = self.get_kwarg('outfile', str)
         errfile = self.get_kwarg('errfile', str)
@@ -416,13 +435,15 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
         errfile = errfile and self.join(errfile) or None
         env = self.get_kwarg('env', dict)
         cmd = self.get_args('cmd')
-        rc = Subcommand(cmd, env=env,
-                        stdin=infile, stdout=outfile, stderr=errfile,
-                        )
-        if rc.returncode < 0:
-            raise Error('Subcommand', '%s signal %d raised' % (str(self), abs(rc.returncode)))
-        elif rc.returncode > 0:
-            raise Error('Subcommand', '%s returned error = %d' % (str(self), rc.returncode))
+        proc = Subcommand(cmd, env=env,
+                          stdin=infile, stdout=outfile, stderr=errfile,
+                          )
+        if proc.returncode < 0:
+            raise Error('Subcommand', '%s signal %d raised' %
+                            (str(self), abs(proc.returncode)))
+        elif proc.returncode > 0:
+            raise Error('Subcommand', '%s returned error = %d' %
+                            (str(self), proc.returncode))
 
 
 class SubPyErector(Task):
@@ -436,6 +457,7 @@ Adds PYERECTOR_PREFIX environment variable."""
     env = {}
 
     def run(self):
+        """Call a PyErector program in a different directory."""
         targets = self.get_args('targets')
         prog = self.get_kwarg('prog', str)
         # we explicitly add './' to prevent searching PATH
@@ -461,9 +483,11 @@ Adds PYERECTOR_PREFIX environment variable."""
             env[evname] = nevname
         rc = Subcommand(cmd, wdir=wdir, env=env)
         if rc.returncode < 0:
-            raise Error('SubPyErector', '%s signal %d raised' % (str(self), abs(rc.returncode)))
+            raise Error('SubPyErector', '%s signal %d raised' %
+                            (str(self), abs(rc.returncode)))
         elif rc.returncode > 0:
-            raise Error('SubPyErector', '%s returned error = %d' % (str(self), rc.returncode))
+            raise Error('SubPyErector', '%s returned error = %d' %
+                            (str(self), rc.returncode))
 
 
 class Tar(Container):
@@ -471,18 +495,19 @@ class Tar(Container):
 Constructure arguments:
 Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""
     def contain(self, name, root, toadd):
-        from tarfile import open
+        """Add a list of files to the container."""
+        import tarfile
         try:
-            tfile = open(self.join(name), 'w:gz')
+            tfile = tarfile.open(self.join(name), 'w:gz')
         except IOError:
             raise ValueError('no such file or directory: %s' % name)
         else:
             for fname in toadd:
-                fn = fname.replace(
+                path = fname.replace(
                     root + os.sep, ''
                 )
-                self.logger.debug('tar.add(%s, %s)', fname, fn)
-                tfile.add(self.join(fname), fn)
+                self.logger.debug('tar.add(%s, %s)', fname, path)
+                tfile.add(self.join(fname), path)
             tfile.close()
 
 
@@ -496,24 +521,27 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
     tokenmap = VariableSet()
 
     def update_tokenmap(self):
-        pass
+        """To be overridden."""
 
     def run(self):
+        """Replace tokens found in tokenmap with their associated values."""
         tokenmap = self.get_kwarg('tokenmap', VariableSet)
         if not isinstance(tokenmap, VariableSet):
             raise TypeError('tokenmap must be a VariableSet instance')
         self.update_tokenmap()
         import re
 
-        def repltoken(m, map=tokenmap):
-            self.logger.debug('found %s', m.group(0))
-            result = map.get(m.group(0))
+        def repltoken(match, tmap=tokenmap):
+            """Replace."""
+            self.logger.debug('found %s', match.group(0))
+            result = tmap.get(match.group(0))
             return result is not None and str(result) or ''
 
-        def quote(s):
-            return s.replace('\\', r'\\').replace('.', r'\.')\
-                    .replace('$', r'\$').replace('(', r'\(')\
-                    .replace(')', r'\)').replace('|', r'\|')
+        def quote(string):
+            """Quote special characters."""
+            return string.replace('\\', r'\\').replace('.', r'\.')\
+                         .replace('$', r'\$').replace('(', r'\(')\
+                         .replace(')', r'\)').replace('|', r'\|')
         patt = '|'.join(
             [quote(k) for k in self.get_kwarg('tokenmap', VariableSet)]
         )
@@ -709,6 +737,7 @@ finally:
 '''
 
     def run(self):
+        """Dump the program to a tempfile and call it."""
         import tempfile
         pfile = sfile = None
         try:
@@ -729,7 +758,8 @@ finally:
             sfile.write(self.script)
             sfile.close()
             # call python <scriptname> <paramfile>
-            Subcommand((sys.executable, sfile.name, pfile.name), env={'COVERAGE_PROCESS_START': '/dev/null'})
+            Subcommand((sys.executable, sfile.name, pfile.name),
+                       env={'COVERAGE_PROCESS_START': '/dev/null'})
         finally:
             if pfile is not None and os.path.exists(pfile.name):
                 os.remove(pfile.name)
@@ -744,6 +774,7 @@ class Uncontainer(Task):
     files = ()
 
     def run(self):
+        """Extract members from the container."""
         name = self.get_kwarg('name', str, noNone=True)
         root = self.get_kwarg('root', str)
         self.asserttype(root, str, 'root')
@@ -758,13 +789,15 @@ class Uncontainer(Task):
             contfile.close()
 
     def get_file(self, name):
+        """To be overridden."""
         return None
 
     def extract_members(self, contfile, fileset, root):
-        pass
+        """To be overridden."""
 
     @staticmethod
     def retrieve_members(contfile, files):
+        """To be overridden."""
         return None
 
 
@@ -772,11 +805,13 @@ class Untar(Uncontainer):
     """Extract a 'tar' archive file.
 Untar(*files, name=<tarfilename>, root=None)"""
     def get_file(self, fname):
+        """Open the container."""
         import tarfile
         return tarfile.open(self.join(fname), 'r:gz')
 
     @staticmethod
     def retrieve_members(contfile, files):
+        """Retrieve the members from the container."""
         fileset = []
         files = tuple(files)  # needed for contents test
         for member in contfile.getmembers():
@@ -788,6 +823,7 @@ Untar(*files, name=<tarfilename>, root=None)"""
         return fileset
 
     def extract_members(self, contfile, fileset, root):
+        """Extract members from the container."""
         for fileinfo in fileset:
             self.logger.debug('tar.extract(%s)', fileinfo.name)
             contfile.extract(fileinfo, path=(root or ""))
@@ -797,11 +833,13 @@ class Unzip(Uncontainer):
     """Extract a 'zip' archive file.
 Unzip(*files, name=<tarfilename>, root=None)"""
     def get_file(self, fname):
+        """Open the container."""
         from zipfile import ZipFile
         return ZipFile(self.join(fname), 'r')
 
     @staticmethod
     def retrieve_members(contfile, files):
+        """Retrieve the members from the container."""
         fileset = []
         files = tuple(files)  # needed for contents test
         for member in contfile.namelist():
@@ -812,6 +850,7 @@ Unzip(*files, name=<tarfilename>, root=None)"""
         return fileset
 
     def extract_members(self, contfile, fileset, root):
+        """Extract members from the container."""
         for member in fileset:
             dname = os.path.join(root, member)
             Mkdir.mkdir(os.path.dirname(dname))
@@ -824,6 +863,7 @@ class Zip(Container):
     """Generate a 'zip' archive file.
 Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
     def contain(self, name, root, toadd):
+        """Add the files to the container."""
         from zipfile import ZipFile
         try:
             zfile = ZipFile(self.join(name), 'w')
@@ -831,11 +871,11 @@ Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
             raise ValueError('no such file or directory: %s' % name)
         else:
             for fname in toadd:
-                fn = fname.replace(
+                path = fname.replace(
                     root + os.sep, ''
                 )
-                self.logger.debug('zip.add(%s, %s)', fname, fn)
-                zfile.write(fname, fn)
+                self.logger.debug('zip.add(%s, %s)', fname, path)
+                zfile.write(fname, path)
             zfile.close()
 
 
@@ -843,6 +883,7 @@ class Egg(Zip):
     """Generate an egg file for Python deployments.
 Egg(*files, name=<eggfilename>, root=os.curdir, exclude=(defaults))"""
     def manifest(self, name, root, toadd):
+        """Generate a manifest structure."""
         if os.path.exists(os.path.join(root, 'setup.py')):
             setupvalue = self.get_setup_py(os.path.join(root, 'setup.py'))
         else:
@@ -895,7 +936,7 @@ Platform: UNKNOWN
 
     @staticmethod
     def get_setup_py(filename):
-        # simulate setup() in a fake distutils and setuptools
+        """Simulate setup() in a fake distutils and setuptools."""
         import imp
         backups = {}
         script = '''
@@ -925,3 +966,4 @@ def setup(**kwargs):
                     del sys.modules[modname]
                 else:
                     sys.modules[modname] = backups[modname]
+

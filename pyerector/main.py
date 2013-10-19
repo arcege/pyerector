@@ -1,5 +1,11 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""The main driver of the library.  The PyErector class acts like
+a void function, parsing the command-line arguments, setting up the
+environment, validating the 'updates', 'dependencies' and 'tasks' members
+of all registered targets and then processing the targets and variable
+assignments on the command-line.
+"""
 
 import logging
 import os
@@ -21,7 +27,11 @@ __all__ = [
 
 
 class PyErector(object):
-    try:
+    """The main program of the library.  Parses arguments, validates the
+calling tree, and starts the PyThread, which calls each target on the
+command-line.
+"""
+    try: 
         import argparse
         parser = argparse.ArgumentParser(
             description='PyErector build system; '
@@ -96,10 +106,34 @@ name of target to call or variable assignment, default target is "default"')
             raise SystemExit(self.returnstatus)
 
     def arguments(self, args):
+        """Process the command-line arguments.  Not sure if using argparse
+or optparse, so handle both.
+"""
         args = self.parser.parse_args(args)
         if isinstance(args, tuple):
             args, arglist = args
             args.targets = arglist
+        self.process_options(args)
+        # process the arguments
+        all_targets = registry.get('Target')
+        for name in args.targets:
+            if '=' in name:  # variable assignment?
+                var, val = name.split('=', 1)
+                V[var.strip()] = val.strip()
+            else:
+                try:
+                    obj = all_targets[name.capitalize()]
+                except KeyError:
+                    raise SystemExit('Error: unknown target: ' + str(name))
+                else:
+                    if not issubclass(obj, Target):
+                        raise SystemExit('Error: unknown target: ' + str(name))
+                    self.targets.append(obj)
+        if len(self.targets) == 0:
+            self.targets.append(registry['Default'])
+
+    def process_options(self, args):
+        """Process the options."""
         # check --verbose before --version
         if args.notimer:
             noTimer.on()
@@ -124,29 +158,11 @@ name of target to call or variable assignment, default target is "default"')
             V['basedir'] = args.directory
         else:
             V['basedir'] = self.progdir
-        # process the arguments
-        if args.targets:
-            self.targets = []
-            all_targets = registry.get('Target')
-            for name in args.targets:
-                if '=' in name:  # variable assignment?
-                    var, val = name.split('=', 1)
-                    V[var.strip()] = val.strip()
-                else:
-                    try:
-                        obj = all_targets[name.capitalize()]
-                    except KeyError:
-                        raise SystemExit('Error: unknown target: ' + str(name))
-                    else:
-                        if not issubclass(obj, Target):
-                            raise SystemExit('Error: unknown target: ' + str(name))
-                        self.targets.append(obj)
-        if len(self.targets) == 0:
-            self.targets.append(registry['Default'])
 
     def validate_targets(self):
-        # validate the dependency tree, make sure that all are subclasses of
-        # Target, validate all Uptodate values and all Task values
+        """Validate the dependency tree, make sure that all are subclasses of
+Target, validate all Uptodate values and all Task values.
+"""
         for target in self.targets:
             try:
                 target.validate_tree()
@@ -154,6 +170,7 @@ name of target to call or variable assignment, default target is "default"')
                 self.logger.exception('Validation')
 
     def run(self):
+        """Call the targets in order."""
         timer = Timer()
         # run all targets in the tree of each argument
         failed = True
@@ -190,6 +207,7 @@ pymain = PyErector
 
 
 class InitMain(Initialization):
+    """Initialize the main module."""
     basedir = os.curdir
     def run(self):
         V['basedir'] = os.path.realpath(self.basedir)

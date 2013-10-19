@@ -1,5 +1,10 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Define the primary constructs for use within the package; namely
+Initer (base class), Target, Task, Iterator, Mapper, Sequential, Parallel.
+
+Iterator and Mapper have most of their logic defined in iterators.
+"""
 
 import logging
 import os
@@ -28,6 +33,10 @@ __all__ = [
 
 
 class Initer(Base):
+    """Primary base class for everything.  This is responsible for
+establishing the common framework for the API, including argument
+handling.
+"""
     config = Config()  # for backward compatibility only
     # values to propagate to an iterator
     pattern = None
@@ -38,7 +47,8 @@ class Initer(Base):
 
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('pyerector.execute')
-        self.logger.debug('%s.__init__(*%s, **%s)', self.__class__.__name__, args, kwargs)
+        self.logger.debug('%s.__init__(*%s, **%s)',
+                          self.__class__.__name__, args, kwargs)
         try:
             basedir = kwargs['basedir']
         except KeyError:
@@ -60,6 +70,10 @@ class Initer(Base):
             V['basedir'] = basedir or curdir
 
     def get_files(self, files=None):
+        """Return an Iterator (or FileSet) of either a given sequence or
+the "files" member.  Iterator attributes define in the class will be
+propagated to the Iterator instance.
+"""
         # propagate 'noglob' keyword to the interator
         noglob = self.get_kwarg('noglob', bool)
         recurse = self.get_kwarg('recurse', bool)
@@ -68,7 +82,7 @@ class Initer(Base):
         exclude = self.get_kwarg('exclude', (Exclusions, tuple))
         if files is None:
             try:
-                files = self.files
+                files = getattr(self, 'files')
             except AttributeError:
                 files = ()
         if isinstance(files, Iterator):
@@ -76,7 +90,7 @@ class Initer(Base):
         else:
             # import here to avoid recursive references
             from .iterators import FileIterator, FileSet
-            fs = FileSet()
+            fset = FileSet()
             for entry in files:
                 if isinstance(entry, Iterator):
                     i = entry
@@ -88,14 +102,17 @@ class Initer(Base):
                     i = FileIterator((entry,), noglob=noglob,
                                      recurse=recurse, fileonly=fileonly,
                                      pattern=pattern, exclude=exclude)
-                fs.append(i)
-            return fs
+                fset.append(i)
+            return fset
 
     def join(self, *path):
-        self.logger.debug('%s.join(%s, *%s)', self.__class__.__name__, V['basedir'], path)
+        """Normjoin the basedir and the path."""
+        self.logger.debug('%s.join(%s, *%s)',
+                          self.__class__.__name__, V['basedir'], path)
         return normjoin(V['basedir'], *path)
 
     def asserttype(self, value, typeval, valname):
+        """Assert that the value is a value type."""
         if isinstance(typeval, type):
             typename = typeval.__name__
         else:
@@ -104,15 +121,18 @@ class Initer(Base):
             typename, valname, self.__class__.__name__
         )
         if isinstance(typeval, (tuple, list)) and callable in typeval:
-            l = list(typeval)[:]
-            l.remove(callable)
-            assert callable(value) or isinstance(value, tuple(l)), text
+            lst = list(typeval)[:]
+            lst.remove(callable)
+            assert callable(value) or isinstance(value, tuple(lst)), text
         else:
             assert isinstance(value, typeval), text
 
     def get_kwarg(self, name, typeval, noNone=False):
-        if hasattr(self, 'kwargs') and name in self.kwargs:
-            value = self.kwargs[name]
+        """Return a item in saved kwargs or an attribute of the name name.
+If noNone, then raise ValueError if the value is None.
+"""
+        if hasattr(self, 'kwargs') and name in getattr(self, 'kwargs'):
+            value = getattr(self, 'kwargs')[name]
         else:
             value = getattr(self, name)
         if noNone or value is not None:
@@ -123,6 +143,7 @@ class Initer(Base):
         return value
 
     def get_args(self, name):
+        """Return the saved argument list or an attribute of the name."""
         if hasattr(self, 'args') and self.args:
             value = self.args
         elif hasattr(self, name) and getattr(self, name):
@@ -134,14 +155,31 @@ class Initer(Base):
 
     @classmethod
     def validate_tree(cls):
+        """To be overridden in subclasses."""
         pass  # do nothing, Target will do something with this
 
     def display(self, msg, *args, **kwargs):
+        """Display a message at the DISPLAY log level, which should
+be above the level that the --quiet option would set."""
         from logging import getLevelName
         self.logger.log(getLevelName('DISPLAY'), msg, *args, **kwargs)
 
 
 class Target(Initer):
+    """A representation of an element of "organization".  There are
+three primary members and a method to be overridden:
+    uptodates - a Mapper instance to check if the target should be started.
+    dependencies - sequence of Targets (or Variable instances) to be called
+before tasks or the run() method.
+    tasks - sequence of Tasks (or Variable instances) to be called before
+the run() method.
+    run() - perform Python code.
+A timer tracks how long the tasks and run() method take.
+Exceptions raised:
+There are two primary exceptions, Abort and code-base (KeyError, etc.).  The
+abort is captured by PyErector.run(), but other exceptions are handled as
+normal (using getLogger('pyerector').exception()).
+"""
     dependencies = ()
     uptodates = ()
     tasks = ()
@@ -153,21 +191,28 @@ class Target(Initer):
     _been_called = False
     _been_called_lock = threading.RLock()
 
-    def get_been_called(self):
+    @property
+    def been_called(self):
+        """Return if the Target has been called already."""
         with self._been_called_lock:  # class member
             return not self.allow_reexec and self.__class__._been_called
 
-    def set_been_called(self, value):
+    @been_called.setter
+    def been_called(self, value):
+        """Set if the Target has been called."""
         with self._been_called_lock:  # class member
             self.__class__._been_called = value
-    been_called = property(get_been_called, set_been_called)
 
     def __str__(self):
         return self.__class__.__name__
 
     @classmethod
     def validate_tree(cls):
+        """Recursively validate the contents of 'dependencies' (Target),
+'uptodates' (Mapper) and 'tasks' (Task). Also allowable are Variable
+instances."""
         def validate_class(kobj, kset, ktype, ktname):
+            """Validate that the object is the correct type."""
             klassobj = registry[ktype]
             klasses = registry.get(ktype)
             for name in kset:
@@ -196,6 +241,7 @@ class Target(Initer):
         validate_class(cls.__name__, cls.tasks, 'Task', 'task')
 
     def call(self, name, args=()):
+        """Retrieve the correct object and then call the instance."""
         # find the object
         if isinstance(name, Variable):
             return
@@ -218,12 +264,9 @@ class Target(Initer):
         else:
             return obj(*args)
 
-    def __call__(self, *args):
-        myname = self.__class__.__name__
-        self.logger.debug('%s.__call__(*%s)', myname, args)
-        timer = Timer()
-        if self.been_called:
-            return
+    def member_cast(self):
+        """Cast each member as Sequential."""
+
         if not isinstance(self.dependencies, Sequential):
             self.dependencies = Sequential(*self.dependencies)
         if not isinstance(self.uptodates, Sequential):
@@ -236,6 +279,15 @@ class Target(Initer):
             not isinstance(self.uptodates, Parallel)
         assert isinstance(self.dependencies, Sequential)
         assert isinstance(self.tasks, Sequential)
+
+    def __call__(self, *args):
+        """Call the chain: uptodates, dependencies, tasks, run()."""
+        myname = self.__class__.__name__
+        self.logger.debug('%s.__call__(*%s)', myname, args)
+        timer = Timer()
+        if self.been_called:
+            return
+        self.member_cast()
         stack = get_current_stack()
         stack.push(self)  # push me onto the execution stack
         try:
@@ -277,15 +329,20 @@ class Target(Initer):
             stack.pop()
 
     def run(self):
-        pass
+        """To be overridden."""
 
     def verbose(self, *args):
+        """Display the class name with the message."""
         msg = u('%s: %s' % (str(self), ' '.join(str(s) for s in args)))
         self.logger.warning(msg)
 
 
 # Tasks
 class Task(Initer):
+    """A representation of a unit of work.  Generally performs Python code
+directly, either as one of the standard tasks or through the API.  The
+run() method is meant to be overridden.
+"""
     args = []
 
     def __str__(self):
@@ -299,10 +356,11 @@ class Task(Initer):
         try:
             self.handle_args(args, kwargs)
             if noop:
-                self.logger.warning('Calling %s(*%s, **%s)', myname, args, kwargs)
+                self.logger.warning('Calling %s(*%s, **%s)',
+                                    myname, args, kwargs)
                 return
             try:
-                rc = self.run()
+                returncode = self.run()
             except (KeyError, ValueError, TypeError,
                     RuntimeError, AttributeError):
                 raise
@@ -316,15 +374,16 @@ class Task(Initer):
                 raise Abort
         finally:
             stack.pop()
-        if rc:
-            raise Error(str(self), 'return error = %s' % rc)
+        if returncode:
+            raise Error(str(self), 'return error = %s' % returncode)
         else:
             self.logger.info('%s: done.', myname)
 
     def run(self):
-        pass
+        """To be overridden."""
 
     def handle_args(self, args, kwargs):
+        """"Put the arguments into their proper places."""
         if (hasattr(self, 'args') and not self.args) or args:
             self.args = list(args)
         if kwargs:
@@ -332,6 +391,8 @@ class Task(Initer):
 
 
 class Iterator(Initer):
+    """The base class for Iterators and Mappers.  Processes arguments as
+sequences of files."""
     def __init__(self, *path, **kwargs):
         super(Iterator, self).__init__(*path, **kwargs)
         exclude = self.get_kwarg('exclude',
@@ -343,15 +404,19 @@ class Iterator(Initer):
         return self
 
     def next(self):
+        """To be overridden."""
         raise StopIteration
 
 
 class Mapper(Iterator):
+    """The base class for Mappers."""
     def uptodate(self):
+        """To be overridden."""
         return False
 
 
 class Sequential(Initer):
+    """Class to sequentially call Target or Task instances."""
     items = ()
 
     def __repr__(self):
@@ -366,6 +431,7 @@ class Sequential(Initer):
     __nonzero__ = __bool__
 
     def run(self, caller, itype, iname, excmsg):
+        """Call the items in the list."""
         for item in self:
             try:
                 caller.call(item)
@@ -389,7 +455,9 @@ class Sequential(Initer):
 
 
 class Parallel(Sequential):
+    """Class to concurrently call Target or Task instances."""
     def run(self, caller, itype, iname, excmsg):
+        """Call the items in the list, in separate threads."""
         last_stack_item = get_current_stack()[-1]
         bname = '%s.' % last_stack_item.__class__.__name__
         threads = []
@@ -402,17 +470,18 @@ class Parallel(Sequential):
                 name = item.__name__
             else:
                 name = str(item)
-            t = PyThread(
+            thread = PyThread(
                 name=bname + name,
                 target=caller.call,
                 args=(item,)
             )
-            threads.append(t)
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-        for t in threads:
-            if t.exception:
+            threads.append(thread)
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        for thread in threads:
+            if thread.exception:
                 raise Abort
         del threads
+

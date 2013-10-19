@@ -1,14 +1,16 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""A thread-safe mapping object with a single instance, register."""
 
 import threading
 
 __all__ = [
-    'Register', 'registry',
+    'registry',
 ]
 
 
 class Register(object):
+    """Emulate a dicutionary, but thread-safe(?)."""
     def __init__(self):
         self.lock = threading.RLock()
         self.map = {}
@@ -19,6 +21,7 @@ class Register(object):
             return repr(self.map)
 
     def append(self, name, cls):
+        """Add a new mapping."""
         with self.lock:
             self.map[name] = cls
 
@@ -47,16 +50,20 @@ class Register(object):
             return iter(self.map)
 
     def get(self, name):
+        """Return a dict of all items of the same type as the one
+being given.  For example, if "All" is given, then return a dict of all
+Target subclasses."""
         with self.lock:
             cls = self[name]
             if cls in self._cache:
                 return self._cache[cls]
             else:
-                c = self._cache[cls] = {}
+                # build up the cache
+                clscache = self._cache[cls] = {}
                 for name in self:
                     kls = self[name]
                     if issubclass(kls, cls) and cls is not kls:
-                        c[name] = kls
-                return c
+                        clscache[name] = kls
+                return clscache
 
 registry = Register()

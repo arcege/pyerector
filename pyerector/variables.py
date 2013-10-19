@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 """
 Usage:
     Variable('name', 'value')
@@ -108,15 +107,16 @@ minimalistic.  And some functionality, like copy(), we don't want."""
                 raise Error('no such variable: %s', name)
 
     def __call__(self, name, value=None):
-        v = Variable(name)
+        var = Variable(name)
         if value is not None:
-            self[v] = value
-        return v
+            self[var] = value
+        return var
 
 V = VariableCache()
 
 
 class Variable(str):
+    """Create a persistent string with a mutable value."""
     cache = V
 
     def __new__(cls, name, value=None):
@@ -135,20 +135,24 @@ class Variable(str):
         return other + self.value
 
     def __str__(self):
+        """Return the value instead of the name."""
         return str(self.value)
 
     def __repr__(self):
         return 'Var(%s)' % super(Variable, self).__repr__()
 
     def toString(self):
+        """Deprecated."""
         return self.name  # use the 'name' property
 
     @property
     def name(self):
+        """Return the string (name)."""
         return super(Variable, self).__str__()
 
     @property
     def value(self):
+        """Retrieve the value from the cache."""
         try:
             return self.cache[self]
         except Error:
@@ -156,14 +160,17 @@ class Variable(str):
 
     @value.setter
     def value(self, value):
+        """Change the value in the cache."""
         self.cache[self] = value
 
     @value.deleter
     def value(self):
+        """Delete the variable from the cache."""
         del self.cache[self]
 
     @classmethod
     def list(cls):
+        """Return the cache as a tuple (not a list)."""
         return tuple(cls.cache)
 
 
@@ -180,6 +187,7 @@ as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
             self.add(var)
 
     def add(self, var):
+        """Add a new variable to the set."""
         if not isinstance(var, Variable):
             var = Variable(var)
         logging.debug('%s.add(%s)', self.__class__.__name__, repr(var))
@@ -195,7 +203,7 @@ as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
             item = Variable(item)
         if item not in self:
             self.add(item)
-        logging.debug('setitem(%s, %s)' % (repr(item), repr(value)))
+        logging.debug('setitem(%s, %s)', repr(item), repr(value))
         if item is not value:  # didn't pass in the same object
             self[item].value = value
 
@@ -204,12 +212,14 @@ as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
         super(VariableSet, self).__delitem__(item)
 
     def update(self, *args, **kwargs):
+        """Augment the set with additional values."""
         # how would args have 'keys' when it is a tuple?
         if hasattr(args, 'keys'):
-            for k in args:
-                self[k] = args[k]
+            for name in args:
+                self[name] = args[name]
         else:
-            for (k, v) in args:
-                self[k] = v
-        for k in kwargs:
-            self[k] = kwargs[k]
+            for (name, value) in args:
+                self[name] = value
+        for name in kwargs:
+            self[name] = kwargs[name]
+

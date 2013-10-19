@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Define the standard targets."""
 
 from .register import registry
 from .base import Target
@@ -36,13 +37,17 @@ Methods: None
     dependencies = ('InitVCS',)
 
     def run(self):
-        def firstline(s):
+        """Display callable targets with the first line of their
+docstrings.  If --verbose, then also show the contents of the
+VariableCache."""
+        def firstline(string):
+            """Return only up to the first newline."""
             try:
-                p = s.index('\n')
+                pos = string.index('\n')
             except ValueError:
-                return s
+                return string
             else:
-                return s[:p]
+                return string[:pos]
         for name, obj in sorted(registry.get('Target').items()):
             if name[1:].lower() != name[1:]:
                 continue  # ignore non-callable targets
@@ -79,13 +84,13 @@ Methods: None
 """
     def run(self):
         try:
-            v = VCS()
+            vcs = VCS()
         except RuntimeError:
             self.logger.info('No VCS found')
         else:
-            v.current_info()
-            V['pyerector.vcs'] = v
-            self.logger.info('Found %s', v)
+            vcs.current_info()
+            V['pyerector.vcs'] = vcs
+            self.logger.info('Found %s', vcs)
 
 
 class InitDirs(Target):

@@ -1,10 +1,12 @@
 #!/usr/bin/python
+# Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Determine the version control system being used."""
 
 import os
 
-from .git import *
-from .mercurial import *
-from .subversion import *
+from .git import Git
+from .mercurial import Mercurial
+from .subversion import Subversion
 
 vcs_set = [
     Git,
@@ -18,6 +20,9 @@ __all__ = [
 
 
 def VCS(*args, **kwargs):
+    """Determine the type of version control and return information
+about it.
+"""
     from ..variables import V
     try:
         basedir = V['basedir']
@@ -29,3 +34,4 @@ def VCS(*args, **kwargs):
     else:
         raise RuntimeError('no version control found')
     return vcs(*args, **kwargs)
+

@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+"""Redefine the execfile in Python 3.x, which was removed."""
 
 import sys
 
@@ -14,5 +15,6 @@ def execfile(filename, globals=None, locals=None):
         globals = sys._getframe(1).f_globals
     if locals is None:
         locals = sys._getframe(1).f_locals
-    with open(filename, 'rt') as fh:
-        exec(fh.read()+"\n", globals, locals)
+    with open(filename, 'rt') as filehandle:
+        exec(filehandle.read()+"\n", globals, locals)
+

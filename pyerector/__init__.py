@@ -73,7 +73,7 @@ from .targets import All, Build, Clean, Compile, Default, Dist, Help, \
 from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
                        DirList, FileMapper, BasenameMapper, MergeMapper, \
                        Uptodate
-from .variables import Path, V, Variable, VariableSet
+from .variables import V, Variable, VariableSet
 from .vcs import VCS
 
 __all__ = [
