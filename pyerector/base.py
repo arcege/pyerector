@@ -232,30 +232,6 @@ instances."""
         validate_class(cls.__name__, cls.uptodates, 'Mapper', 'uptodate')
         validate_class(cls.__name__, cls.tasks, 'Task', 'task')
 
-    def call(self, name, args=()):
-        """Retrieve the correct object and then call the instance."""
-        # find the object
-        if isinstance(name, Variable):
-            return
-        if isinstance(name, type) and issubclass(name, Initer):
-            obj = name()
-        elif isinstance(name, Initer):
-            obj = name
-        else:
-            try:
-                kobj = registry[name]
-            except (KeyError, AssertionError):
-                logging.getLogger('pyerector').exception('Cannot find %s', name)
-                raise Abort
-            else:
-                obj = kobj()
-        # now perform the operation
-        from .iterators import Uptodate
-        if not isinstance(obj, Uptodate) and isinstance(obj, Mapper):
-            return obj.uptodate()
-        else:
-            return obj(*args)
-
     def member_cast(self):
         """Cast each member as Sequential."""
 
@@ -284,19 +260,16 @@ instances."""
         stack.push(self)  # push me onto the execution stack
         try:
             # call uptodates
-            if self.uptodates.check(self, Mapper, 'uptodate',
-                                    'Exception in %s.uptodates' % myname):
+            if self.uptodates():
                 self.verbose('uptodate.')
                 return
 
             # call dependencies
-            self.dependencies.run(self, Target, 'dependencies',
-                                  'Exception in %s.dependencies' % myname)
+            self.dependencies()
 
             # call tasks, and run()
             with timer:
-                self.tasks.run(self, Task, 'tasks',
-                               'Exception in %s.tasks' % myname)
+                self.tasks()
 
                 try:
                     self.logger.debug('starting %s.run', myname)
@@ -402,6 +375,9 @@ sequences of files."""
 
 class Mapper(Iterator):
     """The base class for Mappers."""
+    def __call__(self):
+        """To be overridden."""
+
     def uptodate(self):
         """To be overridden."""
         return False
@@ -422,50 +398,83 @@ class Sequential(Initer):
         return len(self.get_args('items')) > 0
     __nonzero__ = __bool__
 
-    def run(self, caller, itype, iname, excmsg):
-        """Call the items in the list."""
-        for item in self:
+    @staticmethod
+    def retrieve(name):
+        if isinstance(name, Variable):
+            return None
+        elif isinstance(name, type) and issubclass(name, Initer):
+            obj = name()
+        elif isinstance(name, Initer):
+            obj = name
+        elif hasattr(name, 'lower'):
             try:
-                caller.call(item)
+                kobj = registry[name]
+            except (KeyError, AssertionError):
+                logging.getLogger('pyerector').exception(
+                        'Cannot find %s', name
+                )
+                raise Abort
+            else:
+                obj = kobj()
+        else:
+            logging.getLogger('pyerector.execute').exception(
+                    'could not retrieve %s', name
+            )
+            raise Abort
+        return obj
+
+
+    @staticmethod
+    def get_exception_message(obj, parent):
+        if isinstance(obj, Target):
+            return 'Exception in %s.dependencies: %s' % (parent, obj)
+        elif isinstance(obj, Task):
+            return 'Exception in %s.tasks: %s' % (parent, obj)
+        elif isinstance(obj, Mapper):
+            return 'Exception in %s.uptodates: %s' % (parent, obj)
+        else:
+            return None
+
+    def __call__(self, *args):
+        """Call the items in the list."""
+        parent = get_current_stack()[-1]
+        abortive = False
+        for item in self:
+            obj = self.retrieve(item)
+            self.logger.debug('Calling %s' % obj)
+            if obj is None:  # do not process Variable instances
+                continue
+            excmsg = self.get_exception_message(obj, parent)
+            try:
+                result = obj(*args)
             except Error:
                 self.logger.exception(excmsg)
                 raise Abort
-
-    def check(self, caller, itype, iname, excmsg):
-        """Used for uptodates which care about the return value."""
-        if self:
-            for item in self:
-                try:
-                    if not caller.call(item):
-                        break
-                except Error:
-                    self.logger.exception(excmsg)
-                    raise Abort
             else:
+                if abortive and not result:
+                    return False
+        else:
+            if abortive:
                 return True
-        return False
+            else:  # this is just being explicit
+                return
 
 
 class Parallel(Sequential):
     """Class to concurrently call Target or Task instances."""
-    def run(self, caller, itype, iname, excmsg):
+    def __call__(self, *args):
         """Call the items in the list, in separate threads."""
-        last_stack_item = get_current_stack()[-1]
-        bname = '%s.' % last_stack_item.__class__.__name__
+        parent = get_current_stack()[-1]
+        bname = '%s.' % parent
         threads = []
         for item in self:
-            if isinstance(item, Variable):
-                continue  # ignore Variables
-            elif isinstance(item, Initer):
-                name = item.__class__.__name__
-            elif isinstance(item, type(Initer)) and issubclass(item, Initer):
-                name = item.__name__
-            else:
-                name = str(item)
+            obj = self.retrieve(item)
+            if obj is None:  # do not process Variable instances
+                continue
+            exgmsg = self.get_exception_message(obj, parent)
             thread = PyThread(
-                name=bname + name,
-                target=caller.call,
-                args=(item,)
+                name=bname + str(obj),
+                target=obj,
             )
             threads.append(thread)
         for thread in threads:

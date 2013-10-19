@@ -18,10 +18,7 @@ class Regression(Target):
                     SubPyErector('all', wdir=sdir)
                 )
         tasks = Parallel(*tuple(subtasks))
-        tasks.run(self,
-                  Task, 'run',
-                  'Exception in %s.run' % self.__class__.__name__
-        )
+        tasks()
 
 All.dependencies = (Regression,)
 Default.dependencies = (Regression,)

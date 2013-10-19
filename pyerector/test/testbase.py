@@ -186,18 +186,18 @@ class TestTarget_functionality(TestCase):
         result = utd()
         self.assertTrue(result)
         target = TestCallUptodate_T(basedir=self.dir)
-        self.assertTrue(target.call(TestCallUptodate_utd))
+        self.assertTrue(TestCallUptodate_utd()())
 
     def test_call_task(self):
         self.assertFalse(os.path.isfile(normjoin(self.dir, 'calltask')))
         target = TestCallTask_T(basedir=self.dir)
-        self.assertIsNone(target.call(TestCallTask_t, ('calltask',)))
+        self.assertIsNone(TestCallTask_t()('calltask'))
         self.assertTrue(os.path.isfile(normjoin(self.dir, 'calltask')))
 
     def test_call_dependency(self):
         self.assertFalse(os.path.isfile(normjoin(self.dir, 'calldependency')))
         target = TestCallDependency_T(basedir=self.dir)
-        self.assertIsNone(target.call(TestCallDependency_T))
+        self.assertIsNone(target())
         self.assertTrue(os.path.isfile(normjoin(self.dir, 'calldependency')))
 
     def test_end_to_end(self):
