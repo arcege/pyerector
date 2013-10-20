@@ -141,11 +141,19 @@ then prepend the directory's contents to the pool (not the curset).
             # and either:
             #    recursive and directory
             #    no pattern or matches pattern
-            if (not self.exclusion.match(item) and
-                ((recurse and os.path.isdir(os.path.join(basedir, item))) or
-                 not pattern or fnmatch.fnmatchcase(name, pattern))):
+            if self.exclusion.match(item):
+                continue
+            elif recurse and os.path.isdir(os.path.join(basedir, item)):
                 self.logger.debug('item = %s' % repr(item))
                 break
+            elif not pattern or fnmatch.fnmatchcase(name, pattern):
+                self.logger.debug('item = %s' % repr(item))
+                break
+            #if (not self.exclusion.match(item) and
+            #    ((recurse and os.path.isdir(os.path.join(basedir, item))) or
+            #     not pattern or fnmatch.fnmatchcase(name, pattern))):
+            #    self.logger.debug('item = %s' % repr(item))
+            #    break
         assert isinstance(item, str), 'Expecting a string'
         fname = os.path.join(basedir, item)
         if os.path.isdir(fname) and recurse:
