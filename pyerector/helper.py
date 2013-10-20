@@ -80,7 +80,9 @@ class Exclusions(set):
     def match(self, string):
         """Return true if the given string matches one of the patterns
 in the set."""
-        values = [v for v in self if fnmatch.fnmatchcase(string, v)]
+        import logging
+        values = [v for v in self
+                      if fnmatch.fnmatchcase(os.path.basename(string), v)]
         return len(values) > 0
 
     @classmethod

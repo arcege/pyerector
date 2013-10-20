@@ -64,15 +64,12 @@ class Cleantest(Target):
 
 class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
-    directories = (
-        os.curdir, 'pyerector', 'pyerector/test',
-        'pyerector/py2', 'pyerector/py3', 'pyerector/vcs',
-    )
-    dontexclude = Exclusions(usedefaults=False)
+    exclude = Exclusions(items=('.hg',), usedefaults=False)
     tasks = (
         Remove(
-            FileIterator(directories, pattern='*.pyc', exclude=dontexclude),
-            FileIterator(directories, pattern='__pycache__', exclude=dontexclude),
+            DirList(os.curdir, pattern='*.pyc', exclude=exclude, fileonly=True),
+            DirList(os.curdir, pattern='__pycache__', exclude=exclude, fileonly=True),
+            exclude=exclude,
         ),
     )
     dependencies = (Clean,)
