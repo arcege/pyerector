@@ -44,8 +44,8 @@ VariableCache."""
             """Return only up to the first newline."""
             try:
                 pos = string.index('\n')
-            except ValueError:
-                return string
+            except (AttributeError, ValueError, IndexError):
+                return string or ''
             else:
                 return string[:pos]
         for name, obj in sorted(registry.get('Target').items()):
@@ -53,7 +53,7 @@ VariableCache."""
                 continue  # ignore non-callable targets
             self.display(
                 '%-20s  %s' % (obj.__name__.lower(),
-                               firstline(obj.__doc__) or "")
+                               firstline(obj.__doc__))
             )
         for var in sorted(V):
             self.logger.info('var %s = "%s"' % (var.name, var.value))
