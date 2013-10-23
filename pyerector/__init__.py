@@ -76,12 +76,15 @@ from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
 from .variables import V, Variable, VariableSet
 from .vcs import VCS
 
+# With the addition of pyerector.api, some of the lower-level objects, like
+# Target, Sequential, etc. should be removed in the future
 __all__ = [
     # base routines
     'Exclusions',
     'normjoin',
     'PyErector',
     'pymain',
+    # remove 'Target' and 'Task' to move to pyerector.api
     'Target',
     'Task',
     'Sequential',

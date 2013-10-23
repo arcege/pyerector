@@ -13,6 +13,15 @@ __init__
   - variables
   - vcs
 
+api
+  - vcs.base
+  - base
+  - iterators
+  - helper
+  - variables
+  - execute
+  - exception
+
 targets
   - register
   - base

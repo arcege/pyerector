@@ -3,6 +3,7 @@
 
 import os
 from pyerector import *
+from pyerector.api import Target
 import release
 
 distfile = '%s-%s' % (release.product, release.number)
