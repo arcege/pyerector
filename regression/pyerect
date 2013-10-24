@@ -18,7 +18,10 @@ class Regression(Target):
                     SubPyErector('all', wdir=sdir)
                 )
         tasks = Parallel(*tuple(subtasks))
-        tasks()
+        if callable(tasks):
+            tasks()
+        else:
+            tasks.run(self, None, None, None)
 
 All.dependencies = (Regression,)
 Default.dependencies = (Regression,)
