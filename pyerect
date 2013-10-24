@@ -78,14 +78,8 @@ class Realclean(Target):
 
 class Regression(SubPyErector):
     wdir = 'regression'
-    proddir = os.path.realpath(os.path.join('build', distfile))
-    if 'PYTHONPATH' in os.environ:
-        paths = os.environ['PYTHONPATH'].split(os.pathsep)
-        paths.append(proddir)
-        env = {'PYTHONPATH': os.pathsep.join(paths)}
-        del paths
-    else:
-        env = {'PYTHONPATH': proddir }
+    #proddir = os.path.realpath(os.path.join('build', distfile))
+    env = { 'PYERECTOR_PATH': V['basedir'] }
 
 class Localtest(Target):
     """Ensure the packaging looks correct."""

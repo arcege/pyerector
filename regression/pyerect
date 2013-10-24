@@ -1,5 +1,12 @@
 #!/usr/bin/python
 
+import os
+import sys
+if 'PYERECTOR_PATH' in os.environ and \
+        os.path.isdir(os.environ['PYERECTOR_PATH']):
+    for i, p in enumerate(sys.path):
+        if p.find('pyerector') != -1:
+            sys.path[i] = os.environ['PYERECTOR_PATH']
 from pyerector import *
 
 class Regression(Target):
