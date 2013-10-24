@@ -36,7 +36,8 @@ item, accumulating the result."""
 
 __all__ = [
     'FileSet', 'StaticIterator', 'FileIterator', 'FileList', 'DirList',
-    'FileMapper', 'BasenameMapper', 'MergeMapper', 'Uptodate',
+    'FileMapper', 'BasenameMapper', 'MergeMapper', 'IdentityMapper',
+    'Uptodate',
 ]
 
 

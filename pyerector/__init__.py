@@ -64,15 +64,15 @@ from .execute import Initialization
 from .version import Version
 from .main import PyErector, pymain
 from .base import Target, Task, Sequential, Parallel
-from .tasks import Chmod, Copy, CopyTree, Echo, Egg, HashGen, Java, \
-                   Mkdir, PyCompile, Remove, Shebang, Spawn, \
-                   SubPyErector, Tar, Tokenize, Unittest, Untar, Unzip, \
-                   Zip
+from .tasks import Chmod, Copy, CopyTree, Echo, Egg, HashGen, \
+                   Java, Mkdir, PyCompile, Remove, Scp, Shebang, Spawn, \
+                   SubPyErector, Ssh, Symlink, Tar, Tokenize, Unittest, \
+                   Untar, Unzip, Zip
 from .targets import All, Build, Clean, Compile, Default, Dist, Help, \
                      Init, InitDirs, InitVCS, Packaging, Test
 from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
                        DirList, FileMapper, BasenameMapper, MergeMapper, \
-                       Uptodate
+                       IdentityMapper, Uptodate
 from .variables import V, Variable, VariableSet
 from .vcs import VCS
 
@@ -105,9 +105,12 @@ __all__ = [
     'Mkdir',
     'PyCompile',
     'Remove',
+    'Scp',
     'Shebang',
     'Spawn',
+    'Ssh',
     'SubPyErector',
+    'Symlink',
     'Tar',
     'Tokenize',
     'Unittest',
@@ -138,6 +141,7 @@ __all__ = [
     # mappers
     'FileMapper',
     'BasenameMapper',
+    'IdentityMapper',
     'MergeMapper',
     'Uptodate',
 ]

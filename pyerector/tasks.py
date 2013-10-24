@@ -10,8 +10,9 @@ import sys
 from .exception import Error
 from .helper import Exclusions, Subcommand
 from .config import noTimer
-from .base import Task
-from .iterators import IdentityMapper, FileMapper, StaticIterator
+from .base import Task, Mapper
+from .iterators import BasenameMapper, IdentityMapper, FileMapper, \
+                       StaticIterator
 from .variables import VariableSet
 
 # Python 3.x removed the execfile function
@@ -21,9 +22,10 @@ except NameError:
     from .py3.execfile import execfile
 
 __all__ = [
-    'Chmod', 'Copy', 'CopyTree', 'Echo', 'Egg', 'HashGen', 'Java',
-    'Mkdir', 'PyCompile', 'Remove', 'Shebang', 'Spawn', 'SubPyErector',
-    'Tar', 'Tokenize', 'Unittest', 'Untar', 'Unzip', 'Zip',
+    'Chmod', 'Copy', 'CopyTree', 'Echo', 'Egg', 'HashGen',
+    'Java', 'Mkdir', 'PyCompile', 'Remove', 'Scp', 'Shebang', 'Spawn',
+    'Ssh', 'SubPyErector', 'Symlink', 'Tar', 'Tokenize', 'Unittest',
+    'Untar', 'Unzip', 'Zip',
 ]
 
 
@@ -104,7 +106,6 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
 
     def run(self):
         """Copy files to a destination directory."""
-        from .base import Mapper
         dest = self.get_kwarg('dest', str, noNone=False)
         files = self.get_args('files')
         excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
@@ -166,6 +167,45 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
                             dirs.append(os.path.join(tdir, fname))
                         else:
                             copy_t(spath, dest=dpath)
+
+
+class Download(Task):
+    """Retrieve contents of URLs.
+constructor arguments:
+Download(*urls, destdir=DIR)"""
+    dest = None
+    urls = ()
+    def run(self):
+        # this is unfinished, it requires a more generic Mapper class
+        # than one is available now
+        raise NotImplementedError
+        """
+        import urllib
+        from posixpath import basename
+        from .iterators import BaseIterator
+        urls = self.get_files(self.get_args('urls'))
+        urls = BaseIterators(self.get_args('urls'), noglob=True, fileonly=False)
+
+        dest = self.get_kwarg('dest', str)
+        if isinstance(urls, str):
+            urls = (urls,)
+        if isinstance(urls, FileMapper):
+            urls = urls
+        elif isinstance(dest, str) and os.path.isdir(dest):
+            urls = BasenameMapper(urls, destdir=dest,
+                                  mapper=lambda x: x or 'index.html')
+        elif isinstance(dest, str):
+            urls = IdentityMapper(urls, destdir=dest)
+        else:
+            urls = FileMapper(urls, destdir=dest)
+        for url, fname in urls:
+            path = urllib.splithost(urllib.splittype(url)[1])[1]
+            self.logger.debug('Download.path=%s; Download.fname=%s', path, fname)
+            try:
+                urllib.urlretrieve(url, filename=fname)
+            except Exception, e:
+                raise Error(str(self), '%s: unable to retrieve %s' % (e, url))
+        """
 
 
 class Echo(Task):
@@ -445,6 +485,101 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
             raise Error('Subcommand', '%s returned error = %d' %
                             (str(self), proc.returncode))
 
+class SshEngine(Task):
+    """Superclass for Scp and Ssh since there is the same basic logic."""
+    _cmdprog = None
+    host = None
+    user = None
+    identfile = None
+    @property
+    def remhost(self):
+        ruser = ''
+        host = self.get_kwarg('host', str, noNone=True)
+        user = self.get_kwarg('user', str)
+        if '@' in host:
+            ruser, host = host.split('@', 1)
+        if user:
+            return '%s@%s' % (user, host)
+        elif not user and ruser:
+            return '%s@%s' % (ruser, host)
+        else:
+            return host
+    def gencmd(self):
+        idfile = self.get_kwarg('identfile', str)
+        if idfile:
+            identfile = ('-i', idfile)
+        else:
+            identfile = ()
+        return (
+            self._cmdprog,
+            '-o', 'BatchMode=yes',
+            '-o', 'ConnectTimeout=10',
+            '-o', 'ForwardAgent=no',
+            '-o', 'ForwardX11=no',
+            '-o', 'GSSAPIAuthentication=no',
+            '-o', 'LogLevel=ERROR',
+            '-o', 'PasswordAuthentication=no',
+            '-o', 'StrictHostkeyChecking=no',
+        ) + identfile
+    def _run(self, cmd):
+        self.logger.debug('ssh.cmd = %s', cmd)
+        proc = Subcommand(cmd,
+                          stdout=Subcommand.PIPE,
+                          stderr=Subcommand.PIPE,
+                          wait=True)
+        if proc.returncode:
+            raise Error(str(self), proc.stderr.read().rstrip())
+        else:
+            return proc.stdout.read().rstrip()
+
+class Scp(SshEngine):
+    """Spawn an scp command.
+constructor arguments:
+Scp(*files, dest=<dir>, host=<hostname>, user=<username>, identfile=<filename>,
+    recurse=bool, down=bool)"""
+    _cmdprog = 'scp'
+    files = ()
+    dest = None
+    recurse = False
+    down=True
+
+    def remfile(self, filename):
+        return '%s:%s' % (self.remhost, filename)
+    def lclfile(self, filename):
+        return filename
+    def run(self):
+        recurse = self.get_kwarg('recurse', bool)
+        dest = self.get_kwarg('dest', str, noNone=True)
+        down = self.get_kwarg('down', bool)
+        files = self.get_args('files')
+        if down:
+            left, right = self.remfile, self.lclfile
+        else:
+            left, right = self.lclfile, self.remfile
+        cmd = self.gencmd()
+        if recurse:
+            cmd += ('-r',)
+        filelst = ()
+        for fname in files:
+            filelst += (left(fname),)
+        filelst += (right(dest),)
+        self.logger.info('%s%s', self, filelst)
+        self._run(cmd + filelst)
+
+class Ssh(SshEngine):
+    """Spawn an ssh command and display the response in verbose mode.
+constructor arguments:
+Ssh(*cmd, host=<hostname>, user=<username>, identfile=<filename>)
+"""
+    _cmdprog = 'ssh'
+    cmd = ()
+    def run(self):
+        usercmd = self.get_args('cmd')
+        cmd = self.gencmd() + ('-T', self.remhost) + usercmd
+        self.logger.info('%s%s', self, usercmd)
+        response = self._run(cmd)
+        #self.logger.info('Output from %s\n%s', usercmd, response)
+        self.logger.warning('\t' + response.rstrip().replace('\n', '\n\t'))
 
 class SubPyErector(Task):
     """Call a PyErector program in a different directory.
@@ -488,6 +623,39 @@ Adds PYERECTOR_PREFIX environment variable."""
         elif rc.returncode > 0:
             raise Error('SubPyErector', '%s returned error = %d' %
                             (str(self), rc.returncode))
+
+class Symlink(Task):
+    """Generate a symbolic link.
+constructor arguments:
+Symlink(*files, dest=<dest>, exclude=<defaults>)"""
+    files = ()
+    dest = None
+    exclude = None
+    def run(self):
+        dest = self.get_kwarg('dest', str)
+        files = self.get_args('files')
+        excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
+        if not isinstance(excludes, Exclusions):
+            excludes = Exclusions(excludes)
+        if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
+            fmap = files[0]
+        elif len(files) == 1 and dest is not None and not os.path.isdir(dest):
+            fmap = FileMapper(files[0], destdir=dest, exclude=excludes)
+        elif dest is not None:
+            fmap = FileMapper(self.get_files(files),
+                              destdir=dest, exclude=excludes)
+        else:
+            raise Error('must supply dest to %s' % self)
+        for (sname, dname) in fnap:
+            self.logger.debug('symlink.sname=%s; symlink.dname=%s', sname, dname)
+            srcfile = self.join(sname)
+            dstfile = self.join(dname)
+            if not excludes.match(sname):
+                if os.path.islink(srcfile) and fmap.checkpair(dstfile, srcfile):
+                    self.logger.debug('uptodate: %s', dstfile)
+                else:
+                    self.logger.info('symlink(%s, %s)', dname, sname)
+                    os.symlink(dstfile, srcfile)
 
 
 class Tar(Container):
