@@ -55,6 +55,10 @@ class TestCopyTree(TestCase):
     pass
 
 
+class TestDownload(TestCase):
+    pass
+
+
 class TestEgg(TestCase):
     pass
 
@@ -79,11 +83,23 @@ class TestRemove(TestCase):
     pass
 
 
+class TestScp(TestCase):
+    pass
+
+
 class TestShebang(TestCase):
     pass
 
 
 class TestSpawn(TestCase):
+    pass
+
+
+class TestSsh(TestCase):
+    pass
+
+
+class TestSymlink(TestCase):
     pass
 
 
