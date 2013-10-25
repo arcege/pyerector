@@ -92,3 +92,32 @@ v1.2.2  2013-10-17
   -- Use short-cut class instead of function-with-mutables for initialization.
   -- Some SCM cleanup.
 
+v1.2.3  2013-10-25
+  -- Issue 9 - Propagate iterator parameters in Initer.get_files.
+  -- Issue 23 - Add an 'api' module to aid programming
+  New tasks
+  -- Scp, perform remote copies (via scp)
+  -- Ssh, perform a remote command (via ssh)
+  New iterator/mapper
+  -- IdentityMapper, destination file is always the destdir value.
+  Other fixes/enhancements:
+  -- Allow a Variable instance in a dependencies or tasks sequence.
+  -- Code cleanup using PyCharm and pylint.
+  -- Collapse FileSet into BaseIterator, make FileSet same as FileIterator.
+  -- Greatly simplified the calling system, now allows for nested calls of
+     Sequential/Parallel.
+  -- Refactor the "allow" condition in BaseIterator.next to be more
+     straightforward.
+  -- Fix the RealClean target, including a fix to Exclusions.
+  -- Fix to Help target for Targets with no docstring.
+  -- Fix how the regression module sets the proper sys.path value.
+  -- Fix condition where exception was shown on Abort.
+  -- Fixes to Subcommand calls.
+  -- Change Regression to a Target from a SubPyErector subclass so it can be
+     called by itself.
+  -- Create symlinks under regression/ to the proper (local) distribution,
+     thus overriding sys.path.
+  -- Move unittest driver script, named "unit-test.py" (to prevent imports)
+     outside of tasks.py; pass the parameters as a string instead of a
+     filename.
+
