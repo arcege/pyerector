@@ -13,7 +13,7 @@ from .config import noTimer
 from .base import Task, Mapper
 from .iterators import BasenameMapper, IdentityMapper, FileMapper, \
                        StaticIterator
-from .variables import VariableSet
+from .variables import V, VariableSet
 
 # Python 3.x removed the execfile function
 try:
@@ -616,7 +616,7 @@ Adds PYERECTOR_PREFIX environment variable."""
             env[evname] = '%s: %s' % (environ[evname], nevname)
         else:
             env[evname] = nevname
-        rc = Subcommand(cmd, wdir=wdir, env=env)
+        rc = Subcommand(cmd, wdir=wdir, env=env, wait=True)
         if rc.returncode < 0:
             raise Error('SubPyErector', '%s signal %d raised' %
                             (str(self), abs(rc.returncode)))
@@ -927,6 +927,7 @@ finally:
             sfile.close()
             # call python <scriptname> <paramfile>
             Subcommand((sys.executable, sfile.name, pfile.name),
+                       wdir=V['basedir'],
                        env={'COVERAGE_PROCESS_START': '/dev/null'})
         finally:
             if pfile is not None and os.path.exists(pfile.name):
