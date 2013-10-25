@@ -144,7 +144,9 @@ are caught and displayed using getLogger('pyerector.execute').exception.
                     exc = sys.exc_info()[1]
                     logger.exception('Exception in %s', self.name)
                     self.exception = exc
-                    raise Abort
+                    return
+                except Abort:
+                    return
         finally:
             logger.debug('PyThread.limiter.released')
 
