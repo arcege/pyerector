@@ -7,9 +7,32 @@ if 'PYERECTOR_PATH' in os.environ and \
     for i, p in enumerate(sys.path):
         if p.find('pyerector') != -1:
             sys.path[i] = os.environ['PYERECTOR_PATH']
+
 from pyerector import *
+import pyerector
+libdir = os.path.dirname(pyerector.__file__)
+del pyerector
+
+class Clean(Target):
+    def run(self):
+        bdir = V['basedir']
+        for sdir in os.listdir(bdir):
+            fname = normjoin(bdir, sdir, 'pyerector')
+            if os.path.islink(fname):
+                Remove()(fname)
+
+class Init(Target):
+    def run(self):
+        bdir = V['basedir']
+        for sdir in os.listdir(bdir):
+            fname = normjoin(bdir, sdir, 'pyerector')
+            if os.path.isdir(normjoin(bdir, sdir)) and \
+                    not os.path.islink(fname):
+                os.symlink(libdir, fname)
+                #Symlink(fname, dest=libdir)
 
 class Regression(Target):
+    dependencies = (Init,)
     """Regression testing."""
     def run(self):
         import os
@@ -22,7 +45,8 @@ class Regression(Target):
                     Echo('Calling %s/pyerect', sdir)
                 )
                 subtasks.append(
-                    SubPyErector('all', wdir=sdir)
+                    SubPyErector('all', wdir=sdir,
+                        env={'PYTHONPATH': libdir})
                 )
         tasks = Parallel(*tuple(subtasks))
         if callable(tasks):
@@ -30,7 +54,8 @@ class Regression(Target):
         else:
             tasks.run(self, None, None, None)
 
-All.dependencies = (Regression,)
+Test.tasks = ()
+All.dependencies = (Clean, Regression,)
 Default.dependencies = (Regression,)
 
 PyErector()
