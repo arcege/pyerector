@@ -76,10 +76,12 @@ class Realclean(Target):
     dependencies = (Clean,)
 
 
-class Regression(SubPyErector):
-    wdir = 'regression'
-    #proddir = os.path.realpath(os.path.join('build', distfile))
-    env = { 'PYERECTOR_PATH': V['basedir'] }
+class Regression(Target):
+    #proddir = normjoin('build', distfile)
+    tasks = (
+        SubPyErector('all', wdir='regression',
+            env={'PYERECTOR_PATH': V['basedir']}),
+    )
 
 class Localtest(Target):
     """Ensure the packaging looks correct."""
@@ -87,11 +89,10 @@ class Localtest(Target):
         Untar(root='testdir/tar', name='dist/%s.tgz' % distfile),
         Unzip(root='testdir/zip', name='dist/%s.zip' % distfile),
         Unzip(root='testdir/egg', name='dist/%s.egg' % distfile),
-        Regression,
     )
     dependencies = (Dist,)
 
-Test.dependencies = Test.dependencies + (Localtest,)
+Test.dependencies = Test.dependencies + (Localtest, Regression)
 Clean.files = ('build', 'dist', 'MANIFEST')
 Clean.dependencies = (Cleantest,)
 InitDirs.files = (
