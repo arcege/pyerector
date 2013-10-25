@@ -110,7 +110,6 @@ __all__ = [
     'Spawn',
     'Ssh',
     'SubPyErector',
-    'Symlink',
     'Tar',
     'Tokenize',
     'Unittest',
