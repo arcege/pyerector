@@ -350,7 +350,10 @@ run() method is meant to be overridden.
     def handle_args(self, args, kwargs):
         """"Put the arguments into their proper places."""
         if (hasattr(self, 'args') and not self.args) or args:
-            self.args = list(args)
+            if len(args) == 1 and isinstance(args[0], Iterator):
+                self.args = args[0]
+            else:
+                self.args = tuple(args)
         if kwargs:
             self.kwargs = dict(kwargs)
 

@@ -10,9 +10,9 @@ import sys
 from .exception import Error
 from .helper import Exclusions, Subcommand
 from .config import noTimer
-from .base import Task, Mapper
+from .base import Task, Mapper, Iterator
 from .iterators import BasenameMapper, IdentityMapper, FileMapper, \
-                       StaticIterator
+                       FileIterator, StaticIterator
 from .variables import V, VariableSet
 
 # Python 3.x removed the execfile function
@@ -394,10 +394,20 @@ constructor arguments:
 Remove(*files)"""
     files = ()
     noglob = False
+    exclude = None
 
     def run(self):
         """Remove a file or directory tree."""
-        for name in self.get_files(self.get_args('files')):
+        files = self.get_args('files')
+        noglob = self.get_kwarg('noglob', bool)
+        excludes = self.get_kwarg('exclude', (Exclusions, list, tuple))
+        if isinstance(files, Iterator):
+            pass
+        elif len(files) == 1 and isinstance(files, Iterator):
+            files = files[0]
+        elif isinstance(files, (tuple, list)):
+            files = FileIterator(*tuple(files), noglob=noglob, exclude=excludes)
+        for name in files:
             self.asserttype(name, str, 'files')
             fname = self.join(name)
             if os.path.isfile(fname) or os.path.islink(fname):

@@ -3,7 +3,7 @@
 """Define the standard targets."""
 
 from .register import registry
-from .base import Target
+from .base import Target, Iterator
 from .tasks import Mkdir, Remove, Unittest
 from .iterators import StaticIterator
 from .variables import V
@@ -71,7 +71,16 @@ Methods: None
 
     def run(self):
         from .iterators import DirList
-        Remove()(DirList(self.get_args('files')))
+        files = self.get_args('files')
+        if isinstance(files, Iterator):
+            pass
+        elif isinstance(files, (list, tuple)) and \
+                len(files) == 1 and isinstance(files[0], Iterator):
+            files = files[0]
+        elif isinstance(files, (list, tuple)):
+            files = DirList(*tuple(files))
+        assert isinstance(files, Iterator)
+        Remove()(files)
 
 
 class InitVCS(Target):
