@@ -227,7 +227,7 @@ class TestTask(TestCase):
         self.assertEqual(str(obj), Task.__name__)
         self.assertIsNone(obj('foobar', 'xyzzy', widget=True))
         # after calling __call__()
-        self.assertEqual(obj.args, ['foobar', 'xyzzy'])
+        self.assertEqual(obj.args, ('foobar', 'xyzzy'))
         self.assertEqual(obj.kwargs, {'widget': True})
 
     def test_failure(self):
