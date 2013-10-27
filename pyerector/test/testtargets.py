@@ -12,7 +12,6 @@ from .base import *
 
 PyVersionCheck()
 
-from pyerector.helper import u
 from pyerector.config import noop
 from pyerector.base import Target
 from pyerector.iterators import Uptodate
@@ -58,7 +57,7 @@ All: done.
         output = self.stream.getvalue()
         long_output = self.clean_output + self.long_output + self.all_output
         short_output = self.clean_output + self.all_output
-        self.assertEqual(output, u(long_output))
+        self.assertEqual(output, long_output)
 
     #@unittest.skip("not working on reillym-lt")
     def _test_default(self):
@@ -66,7 +65,7 @@ All: done.
         output = self.stream.getvalue()
         long_output = self.long_output + self.default_output
         short_output = self.default_output
-        self.assertEqual(output, u(long_output))
+        self.assertEqual(output, long_output)
 
 
 # test code

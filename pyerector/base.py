@@ -18,7 +18,7 @@ if version[0] > '2':  # python 3+
     from .py3.base import Base
 else:
     from .py2.base import Base
-from .helper import Exclusions, normjoin, Timer, u
+from .helper import Exclusions, normjoin, Timer
 from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
@@ -298,7 +298,7 @@ instances."""
 
     def verbose(self, *args):
         """Display the class name with the message."""
-        msg = u('%s: %s' % (str(self), ' '.join(str(s) for s in args)))
+        msg = '%s: %s' % (str(self), ' '.join(str(s) for s in args))
         self.logger.warning(msg)
 
 

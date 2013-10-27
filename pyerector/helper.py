@@ -41,16 +41,6 @@ def normjoin(*args):
         args = ('',)
     return os.path.normpath(os.path.join(*args))
 
-if version < '3':
-    def u(string):
-        """Return a decoded unicode string."""
-        from codecs import unicode_escape_decode
-        return unicode_escape_decode(string)[0]
-else:
-    def u(string):
-        """Return a decoded unicode string."""
-        return string
-
 
 class Exclusions(set):
     """A list of exclusion patterns."""
