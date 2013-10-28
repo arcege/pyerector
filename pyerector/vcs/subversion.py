@@ -52,6 +52,5 @@ class Subversion(VCS_Base):
                         else:
                             Variable('svn.tags', parts[1][poste:postn])
 
-# this is used by the package to get the primary class
-VCS_class = Subversion
+Subversion.register()
 

@@ -59,4 +59,5 @@ class Git(DVCS_Base):
 
 # this is used by the package to get the primary class
 VCS_class = Git
+Git.register()
 

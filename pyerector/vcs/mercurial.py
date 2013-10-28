@@ -43,5 +43,5 @@ class Mercurial(DVCS_Base):
             Variable('hg.branch', parts[1])
             Variable('hg.tags', parts[2])
 
-# this is used by the package to get the primary class
-VCS_class = Mercurial
+Mercurial.register()
+

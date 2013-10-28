@@ -65,7 +65,9 @@ class Cleantest(Target):
 
 class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
-    exclude = Exclusions(items=('.hg',), usedefaults=False)
+    exclude = Exclusions(
+                (V['pyerector.vcs'].directory,),
+                usedefaults=False)
     tasks = (
         Remove(
             DirList(os.curdir, pattern='*.pyc', exclude=exclude, fileonly=True),

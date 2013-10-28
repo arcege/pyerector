@@ -8,7 +8,7 @@ from .base import *
 PyVersionCheck()
 
 from pyerector.variables import Variable
-from pyerector.vcs import VCS, Git, Mercurial, Subversion
+from pyerector.vcs import VCS, load_plugins
 from pyerector.variables import V
 
 
@@ -21,6 +21,7 @@ class TestVCS(TestCase):
             'mac': '',
             '': '',
         }
+        load_plugins()
         super(TestVCS, cls).setUpClass()
         cls.nodir = os.path.join(cls.dir, 'novcs')
         cls.hgdir = os.path.join(cls.dir, 'mercurial')
@@ -94,17 +95,17 @@ class TestVCS(TestCase):
     def testvcs_check_mercurial(self):
         if self.havehg:
             V['basedir'] = self.hgdir
-            self.assertIsInstance(VCS(), Mercurial)
+            self.assertEqual(VCS().name, 'mercurial')
 
     def testvcs_check_git(self):
         if self.havegit:
             V['basedir'] = self.gitdir
-            self.assertIsInstance(VCS(), Git)
+            self.assertEqual(VCS().name, 'git')
 
     def testvcs_check_subversion(self):
         if self.havesvn:
             V['basedir'] = self.svndir
-            self.assertIsInstance(VCS(), Subversion)
+            self.assertEqual(VCS().name, 'subversion')
 
     def testvcs_info_mercurial(self):
         if self.havehg:
@@ -129,3 +130,4 @@ class TestVCS(TestCase):
             self.assertEqual(Variable('svn.version').value, '0')
             self.assertEqual(Variable('svn.branch').value, '')
             self.assertEqual(Variable('svn.tags').value, '')
+

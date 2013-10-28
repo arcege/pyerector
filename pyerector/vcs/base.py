@@ -6,12 +6,23 @@ including centralized (VCS) and decentralized (DVCS)."""
 import os
 from ..helper import Subcommand
 from ..exception import Error
+from ..register import Register
 
 
 class Base(object):
     """Setup the structure of the subclasses."""
     name = None
     directory = ''
+    _register = Register()
+
+    @classmethod
+    def register(cls):
+        """Register this class for easier retrieval later."""
+        cls._register[cls.name] = cls
+    @classmethod
+    def registered(cls):
+        """Retrieve the registered classes."""
+        return sorted([cls._register[name] for name in cls._register])
 
     def __init__(self, rootdir=os.curdir):
         self.rootdir = rootdir
