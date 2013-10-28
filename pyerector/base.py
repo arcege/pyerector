@@ -43,7 +43,7 @@ handling.
     noglob = False
     recurse = False
     fileonly = True
-    exclude = None
+    exclude = ()
 
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('pyerector.execute')
@@ -360,28 +360,194 @@ run() method is meant to be overridden.
 
 class Iterator(Initer):
     """The base class for Iterators and Mappers.  Processes arguments as
-sequences of files."""
+sequences of files.
+Examples:
+ i = Iterator('src', 'test', pattern='*.py')
+ j = Iterator('build', pattern='*.py', recurse=True)
+ k = Iterator('conf', ['etc/build.properties', 'tmp/dummy'], i, j)
+ tuple(k) == ('conf/foo.cfg', 'etc/build.properties', 'tmp/dummy', 'src/foo.py', 'test/testfoo.py',
+              'build/foo.py', 'build/test/testfoo.py')
+
+ i = Iterator('src', pattern='*.py', recurse=True)
+ j = Iterator(i, pattern='test*')
+ tuple(j) == ('src/test/testfoo.py',)
+"""
+    exclusion = Exclusions()
+
     def __init__(self, *path, **kwargs):
         super(Iterator, self).__init__(*path, **kwargs)
+        self.pool = None
+        self.curset = None
         exclude = self.get_kwarg('exclude',
                                  (Exclusions, set, str, tuple, list, type(None))
         )
-        self.exclusion = Exclusions(exclude)
+        if isinstance(exclude, Exclusions):
+            self.exclusion = exclude
+        elif isinstance(exclude, (set, tuple, list)):
+            self.exclusion = Exclusions(exclude)
+        elif isinstance(exclude, str):
+            self.exclusion = Exclusions((exclude,))
+
+    def __call__(self):
+        """Iterators and Mappers do not get called as Targets, Tasks and
+Sequentials."""
+        raise NotImplemented
 
     def __iter__(self):
+        # this is a list so we can modify it later, if necessary
+        self.pool = list(self.get_args('path'))
+        self.curset = iter([])
         return self
 
+    def __next__(self):
+        return self.next()
+
     def next(self):
-        """To be overridden."""
-        raise StopIteration
+        """Cycle through the curset, returning strings that would "match".
+Matching strings are not in the exclusions, if a pattern is set, would
+match the pattern, and if recursive and a directory.  If it is a directory,
+then prepend the directory's contents to the pool (not the curset).
+"""
+        while True:
+            try:
+                candidate = next(self.curset)
+            except StopIteration:
+                self.logger.debug('caught StopIteration on next()')
+                self.getnextset()  # can raise StopIteration
+                try:
+                    candidate = next(self.curset)  # can raise StopIteration
+                except TypeError:
+                    exc = sys.exc_info()[1]
+                    raise TypeError(self.curset, exc)
+            if self.exclusion.match(candidate):
+                continue
+            if self.check_candidate(candidate):
+                break
+        return self.post_process_candidate(candidate)
+
+    def getnextset(self):
+        if not self.pool:
+            self.logger.debug('nothing left')
+            raise StopIteration
+        item = self.pool[0]
+        del self.pool[0]
+        self.logger.debug('next item from pool is %s', repr(item))
+        if isinstance(item, Iterator):
+            self.curset = iter(item)
+        elif isinstance(item, (tuple, list)):
+            items = [self.adjust(i) for i in item]
+            if items:
+                self.curset = iter(reduce(lambda a, b: a+b, items))
+            else:
+                self.curset = iter(())
+        elif isinstance(item, str):
+            self.curset = iter(self.adjust(item))
+        self.logger.debug('curset = %s', repr(self.curset))
+
+    def append(self, item):
+        """Add an item to the end of the pool."""
+        path = list(self.get_args('path'))
+        if isinstance(item, (tuple, list)):
+            path.extend(item)
+        else:
+            path.append(item)
+        self.path = tuple(path)
+
+    def _prepend(self, item):
+        """Add a string or sequence to the beginning of the pool."""
+        if isinstance(item, str):
+            item = [item]
+        self.pool[:0] = list(item)
+        self.logger.debug('adding to pool: %s', repr(item))
+
+    # text based
+    def post_process_candidate(self, candidate):
+        return candidate
+    def adjust(self, candidate):
+        return [candidate]
+    def check_candidate(self, candidate):
+        pattern = self.get_kwarg('pattern', str)
+        if not pattern:
+            return True
+        elif fnmatch.fnmatchcase(candidate, pattern):
+            return True
+        else:
+            return False
 
 
 class Mapper(Iterator):
-    """The base class for Mappers."""
-    def __call__(self):
-        """To be overridden."""
+    """Maps source files to destination files, using a base path, destdir.
+The mapper member is either a string or callable that will adjust the
+basename; if None, then there is no adjustment.
+The map() method can also adjust the basename.
+
+An example of using a mapper would be:
+    FileMapper(
+        FileIterator('src', pattern='*.py'),
+        destdir='build', mapper=lambda n: n+'c'
+        destdir='build', mapper='%(name)sc'
+    )
+This would map each py file in src to a pyc file in build:
+    src/base.py  ->  build/base.pyc
+    src/main.py  ->  build/main.pyc
+"""
+    destdir = None
+    mapper = None
+    def __init__(self, *files, **kwargs):
+        super(Iterator, self).__init__(*files, **kwargs)
+        mapper = self.get_kwarg('mapper', (callable, str))
+        if mapper is None:  # identity mapper
+            self.mapper_func = lambda x: x
+        elif callable(mapper):
+            self.mapper_func = mapper
+        elif isinstance(mapper, str):
+            self.mapper_func = \
+                lambda name, mapstr = mapper: mapstr % {'name': name}
+        else:
+            raise TypeError('map must be string or callable', mapper)
+
+    def next(self):
+        """Return the next item, with its mapped destination."""
+        destdir = self.get_kwarg('destdir', str)
+        if destdir is None:
+            destdir = ''
+        # do _not_ catch StopIteration
+        item = super(Mapper, self).next()
+        self.logger.debug('super.next() = %s', item)
+        mapped = self.mapper_func(item)
+        assert isinstance(mapped, str), "mapper must return a str"
+        self.logger.debug('self.map(%s) = %s', mapped, self.map(mapped))
+        mapped = self.map(mapped)
+        assert isinstance(mapped, str), 'map() must return a str'
+        result = normjoin(destdir, mapped)
+        self.logger.debug('mapper yields (%s, %s)', item, result)
+        return item, result
+
+    def map(self, item):
+        """Identity routine, one-to-one mapping."""
+        return item
+
+    def __call__(self, *args):
+        for (src, dst) in self:
+            if not self.checkpair(src, dst):
+                self.result.debug('%s.uptodate() => False', self)
+                break
+        else:
+            self.logger.debug('%s.uptodate() => True', self)
+            return True
+        return False
 
     def uptodate(self):
+        """For each src,dst pair, check the modification times.  If the
+dst is newer, then return True.
+"""
+        return self()  # run __call__
+
+    def checkpair(self, src, dst):
+        """To be overridden."""
+        return False
+
+    def checktree(self, src, dst):
         """To be overridden."""
         return False
 

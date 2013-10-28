@@ -17,7 +17,6 @@ from .exception import Abort, Error
 from .execute import get_current_stack, PyThread
 from .variables import V, Variable, VariableSet
 from .helper import Exclusions, normjoin, Subcommand, Timer
-from .iterators import BaseIterator
 from .base import Initer, Iterator, Mapper, Target, Task
 from .vcs.base import DVCS_Base, VCS_Base
 
