@@ -17,12 +17,7 @@ class Subversion(VCS_Base):
     """Version control class for Subversion."""
     name = 'subversion'
     prog = 'svn'
-
-    # used by the package to see which VCS system to use
-    def vcs_check(srcdir=os.curdir):
-        """Check if there is a Subversion working copy present."""
-        return os.path.isdir(os.path.join(srcdir, '.svn'))
-    vcs_check = staticmethod(vcs_check)
+    directory = '.svn'
 
     def current_info(self):
         """Retrieve information from the workarea."""

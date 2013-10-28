@@ -17,12 +17,7 @@ class Git(DVCS_Base):
     """Version control class for Git."""
     name = 'git'
     prog = 'git'
-
-    # used by the package to see which VCS system to use
-    def vcs_check(srcdir=os.curdir):
-        """Check if there is a Git repository present."""
-        return os.path.isdir(os.path.join(srcdir, '.git'))
-    vcs_check = staticmethod(vcs_check)
+    directory = '.git'
 
     def current_info(self):
         """Retrieve information from the workarea."""

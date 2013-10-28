@@ -17,12 +17,7 @@ class Mercurial(DVCS_Base):
     """Version control class for Mercurial."""
     name = 'mercurial'
     prog = 'hg'
-
-    # used by the package to see which VCS system to use
-    def vcs_check(srcdir=os.curdir):
-        """Check if there is a Mercurial repository present."""
-        return os.path.isdir(os.path.join(srcdir, '.hg'))
-    vcs_check = staticmethod(vcs_check)
+    directory = '.hg'
 
     def current_info(self):
         """Retrieve information from the workarea."""

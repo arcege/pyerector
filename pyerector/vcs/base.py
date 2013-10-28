@@ -11,6 +11,7 @@ from ..exception import Error
 class Base(object):
     """Setup the structure of the subclasses."""
     name = None
+    directory = ''
 
     def __init__(self, rootdir=os.curdir):
         self.rootdir = rootdir
@@ -19,10 +20,11 @@ class Base(object):
     def __str__(self):
         return self.name
 
-    def vcs_check(srcdir=os.curdir):
-        """To be overridden."""
-        return False
-    vcs_check = staticmethod(vcs_check)
+    # used by the package to see which VCS system to use
+    @classmethod
+    def vcs_check(cls, srcdir=os.curdir):
+        """Check if there is an appropriate directory for the VCS type."""
+        return os.path.isdir(os.path.join(srcdir, cls.directory))
 
     def current_info(self):
         """To be overridden."""
