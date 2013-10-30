@@ -99,8 +99,6 @@ the Iterator instance.
 
     def join(self, *path):
         """Normjoin the basedir and the path."""
-        self.logger.debug('%s.join(%s, *%s)',
-                          self.__class__.__name__, V['basedir'], path)
         return normjoin(V['basedir'], *path)
 
     def asserttype(self, value, typeval, valname):
@@ -260,16 +258,22 @@ instances."""
         stack.push(self)  # push me onto the execution stack
         try:
             # call uptodates
-            if self.uptodates():
-                self.verbose('uptodate.')
-                return
+            if self.uptodates:
+                self.logger.debug('calling %s.uptodates()', self)
+                if self.uptodates():
+                    self.verbose('uptodate.')
+                    return
 
             # call dependencies
-            self.dependencies()
+            if self.dependencies:
+                self.logger.debug('calling %s.dependencies()', self)
+                self.dependencies()
 
             # call tasks, and run()
             with timer:
-                self.tasks()
+                if self.tasks:
+                    self.logger.debug('calling %s.tasks()', self)
+                    self.tasks()
 
                 try:
                     self.logger.debug('starting %s.run', myname)
@@ -494,7 +498,7 @@ This would map each py file in src to a pyc file in build:
     destdir = None
     mapper = None
     def __init__(self, *files, **kwargs):
-        super(Iterator, self).__init__(*files, **kwargs)
+        super(Mapper, self).__init__(*files, **kwargs)
         mapper = self.get_kwarg('mapper', (callable, str))
         if mapper is None:  # identity mapper
             self.mapper_func = lambda x: x
@@ -530,11 +534,11 @@ This would map each py file in src to a pyc file in build:
     def __call__(self, *args):
         for (src, dst) in self:
             if not self.checkpair(src, dst):
-                self.result.debug('%s.uptodate() => False', self)
                 break
         else:
-            self.logger.debug('%s.uptodate() => True', self)
+            self.logger.debug('%s() => True', self)
             return True
+        self.logger.debug('%s.uptodate() => False', self)
         return False
 
     def uptodate(self):
@@ -545,6 +549,7 @@ dst is newer, then return True.
 
     def checkpair(self, src, dst):
         """To be overridden."""
+        self.logger.debug('%s.checkpair(%s, %s)', self, src, dst)
         return False
 
     def checktree(self, src, dst):
@@ -563,12 +568,22 @@ class Sequential(Initer):
     def __iter__(self):
         return iter(self.get_args('items'))
 
+    def __len__(self):
+        return len(self.get_args('items'))
+
     def __bool__(self):
-        return len(self.get_args('items')) > 0
+        return len(self) > 0
     __nonzero__ = __bool__
 
     @staticmethod
     def retrieve(name):
+        """Retrieve an instance.  If an instance of a Variable, return None.
+If a subclass of Initer, then return an instance of the subclass.
+If an instance of Inter, return the object.
+If a string (has 'lower' attribute), then find in registry and return an
+instance.
+Otherwise log an exception and raise Abort error.
+"""
         if isinstance(name, Variable):
             return None
         elif isinstance(name, type) and issubclass(name, Initer):
@@ -595,6 +610,7 @@ class Sequential(Initer):
 
     @staticmethod
     def get_exception_message(obj, parent):
+        """Generate the appropriate exception message."""
         if isinstance(obj, Target):
             return 'Exception in %s.dependencies: %s' % (parent, obj)
         elif isinstance(obj, Task):
@@ -613,6 +629,8 @@ class Sequential(Initer):
             self.logger.debug('Calling %s' % obj)
             if obj is None:  # do not process Variable instances
                 continue
+            if isinstance(obj, Mapper):
+                abortive = True
             excmsg = self.get_exception_message(obj, parent)
             try:
                 result = obj(*args)

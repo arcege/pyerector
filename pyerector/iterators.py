@@ -53,6 +53,20 @@ class FileIterator(Iterator):
             items = glob.glob(os.path.join(basedir, candidate))
             return [n.replace(os.path.join(basedir, ''), '') for n in items]
 
+    def post_process_candidate(self, candidate):
+        basedir = V['basedir']
+        recurse = self.get_kwarg('recurse', bool)
+        fileonly = self.get_kwarg('fileonly', bool)
+        if recurse and os.path.isdir(os.path.join(basedir, candidate)):
+            fnames = [os.path.join(candidate, fn) for fn in
+                os.listdir(os.path.join(basedir, candidate))
+            ]
+            self._prepend(fnames)
+            if fileonly:
+                candidate = FileIterator.next(self)
+        return candidate
+
+
     def check_candidate(self, candidate):
         basedir = V['basedir']
         recurse = self.get_kwarg('recurse', bool)
@@ -117,7 +131,7 @@ This would map each py file in src to a pyc file in build:
         except OSError:
             raise ValueError('no source:', src)
         try:
-            dsttime = round(os.path.getmtime(sfile), 4)
+            dsttime = round(os.path.getmtime(dfile), 4)
         except OSError:
             self.logger.debug('%s not found', dst)
             return False
@@ -183,8 +197,16 @@ subclasses."""
     def __call__(self, *args):
         klsname = self.__class__.__name__
         self.logger.debug('%s.__call__(*%s)', klsname, args)
-        srcs = FileIterator(self.get_kwarg('sources', sequencetypes))
-        dsts = FileIterator(self.get_kwarg('destinations', sequencetypes))
+        sources = self.get_kwarg('sources', sequencetypes)
+        if isinstance(sources, Iterator):
+            srcs = sources
+        else:
+            srcs = FileIterator(sources)
+        destinations = self.get_kwarg('destinations', sequencetypes)
+        if isinstance(destinations, Iterator):
+            dsts = destinations
+        else:
+            dsts = FileIterator(destinations)
         files = self.get_args('files')
         if not files and (not srcs or not dsts):
             self.logger.debug('%s *> %s', klsname, False)

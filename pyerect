@@ -10,11 +10,16 @@ distfile = '%s-%s' % (release.product, release.number)
 
 
 class PyCopy(Target):
+    uptodates = (
+        FileMapper('pyerector', recurse=True, fileonly=True,
+                   destdir=normjoin('build', distfile), exclude=('test')),
+        FileMapper('release.py', 'setup.py', 'README.txt', 'LICENSE.txt', 'CHANGES.txt', destdir=normjoin('build', distfile)),
+    )
     dependencies = (InitVCS,)
     tasks = (
         CopyTree(srcdir='pyerector',
                  dstdir=normjoin('build', distfile, 'pyerector'),
-                 exclude=['test*']
+                 exclude=['test']
         ),
         Copy('release.py', 'setup.py',
              'README.txt', 'LICENSE.txt', 'CHANGES.txt',
@@ -35,6 +40,19 @@ class PyCopy(Target):
 
 
 class PreCompile(Target):
+    uptodates = (
+        FileMapper(
+            normjoin('pyerector'),
+            normjoin('pyerector', 'py2'),
+            normjoin('pyerector', 'py3'),
+            normjoin('pyerector', 'vcs'),
+            destdir=normjoin('build', distfile),
+            pattern='*.py',
+            mapper='%(name)sc',
+            recurse=True,
+            fileonly=True
+        ),
+    )
     dependencies = (PyCopy,)
     tasks = Parallel(
         PyCompile(
@@ -66,7 +84,7 @@ class Cleantest(Target):
 class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
     exclude = Exclusions(
-                (V['pyerector.vcs'].directory,),
+                ('.hg',),
                 usedefaults=False)
     tasks = (
         Remove(
@@ -102,6 +120,7 @@ InitDirs.files = (
     'testdir/egg', 'testdir/zip', 'testdir/tar',
 )
 Compile.dependencies = (PreCompile,)
+
 Packaging.tasks = (
     Zip(distfile, name='dist/%s.zip' % distfile, root='build'),
     Tar(distfile, name='dist/%s.tgz' % distfile, root='build'),
