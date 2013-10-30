@@ -35,15 +35,11 @@ Start by importing from ``pyerector``::
   #!/usr/bin/python
   from pyerector import *
 
-Next create subclasses or modify attributes of standard targets::
+Next modify attributes of standard targets::
 
-  class PreCompile(Target):
-      tasks = (
-          PyCompile(
-              FileList('src', pattern='*.py')
-          ),
-      )
-  Compile.dependencies = (PreCompile,)
+  Compile.tasks = (
+      PyCompile(FileIterator('src', pattern='*.py')),
+  )
 
 Lastly, call the main routine::
 
