@@ -1,0 +1,139 @@
+#!/usr/bin/python
+# Copyright @ 2012 Michael P. Reilly. All rights reserved.
+
+import os
+from pyerector import *
+from pyerector.variables import Path
+from pyerector.api import Target
+import release
+
+distfile = '%s-%s' % (release.product, release.number)
+
+
+dirbuild = V('dir.build', 'build')
+dirdist = V('dir.dist', 'dist')
+
+class PyCopy(Target):
+    uptodates = (
+        FileMapper('pyerector', recurse=True, fileonly=True,
+                   destdir=Path(dirbuild, distfile), exclude=('test')),
+        FileMapper('release.py', 'setup.py', 'README.txt', 'LICENSE.txt', 'CHANGES.txt', destdir=Path(dirbuild, distfile)),
+    )
+    dependencies = (InitVCS,)
+    tasks = (
+        CopyTree(srcdir='pyerector',
+                 dstdir=Path(dirbuild, distfile, 'pyerector'),
+                 exclude=['test']
+        ),
+        Copy('release.py', 'setup.py',
+             'README.txt', 'LICENSE.txt', 'CHANGES.txt',
+             dest=Path(dirbuild, distfile)
+        ),
+        Echo('release %s-%s', release.product, release.number),
+        Tokenize(
+            Path(dirbuild, distfile, 'pyerector', 'version.py'),
+            tokenmap=VariableSet(
+                Variable('%release.product%', release.product),
+                Variable('%release.number%', release.number),
+                Variable('%hg.version%', Variable('hg.version')),
+                Variable('%hg.branch%', Variable('hg.branch')),
+                Variable('%hg.tags%', Variable('hg.tags')),
+            )
+        )
+    )
+
+
+class PreCompile(Target):
+    uptodates = (
+        FileMapper(
+            normjoin('pyerector'),
+            normjoin('pyerector', 'py2'),
+            normjoin('pyerector', 'py3'),
+            normjoin('pyerector', 'vcs'),
+            destdir=normjoin('build', distfile),
+            pattern='*.py',
+            mapper='%(name)sc',
+            recurse=True,
+            fileonly=True
+        ),
+    )
+    dependencies = (PyCopy,)
+    tasks = (  #XXX Parallel(
+        PyCompile(
+            FileIterator(
+                normjoin('build', distfile, 'pyerector'),
+                normjoin('build', distfile, 'pyerector', 'py2'),
+                normjoin('build', distfile, 'pyerector', 'vcs'),
+                pattern='*.py'),
+            version='2'
+        ),
+        PyCompile(
+            FileIterator(
+                Path(dirbuild, distfile, 'pyerector'),
+                Path(dirbuild, distfile, 'pyerector', 'py3'),
+                Path(dirbuild, distfile, 'pyerector', 'vcs'),
+                pattern='*.py'),
+            version='3'
+        ),
+    )
+
+
+class Cleantest(Target):
+    """Clean the test directory."""
+    tasks = (
+        Remove(files=('testdir',)),
+    )
+
+
+class Realclean(Target):
+    """Clean up the cruft (including pyc) files."""
+    exclude = Exclusions(
+                ('.hg',),
+                usedefaults=False)
+    tasks = (
+        Remove(
+            DirList(os.curdir, pattern='*.pyc', exclude=exclude, fileonly=True),
+            DirList(os.curdir, pattern='__pycache__', exclude=exclude, fileonly=True),
+            exclude=exclude,
+        ),
+    )
+    dependencies = (Clean,)
+
+
+class Regression(Target):
+    #proddir = normjoin('build', distfile)
+    tasks = (
+        SubPyErector('all', wdir='regression',
+            env={'PYERECTOR_PATH': V['basedir']}),
+    )
+
+class Localtest(Target):
+    """Ensure the packaging looks correct."""
+    tasks = Parallel(
+        Untar(root='testdir/tar', name='dist/%s.tgz' % distfile),
+        Unzip(root='testdir/zip', name='dist/%s.zip' % distfile),
+        Unzip(root='testdir/egg', name='dist/%s.egg' % distfile),
+    )
+    dependencies = (Dist,)
+
+Test.dependencies = Test.dependencies + (Localtest, Regression)
+Clean.files = ('build', 'dist', 'MANIFEST')
+Clean.dependencies = (Cleantest,)
+InitDirs.files = (
+    normjoin('build', distfile), 'dist',
+    'testdir/egg', 'testdir/zip', 'testdir/tar',
+)
+Compile.dependencies = (PreCompile,)
+
+Packaging.tasks = (
+    Zip(distfile, name='dist/%s.zip' % distfile, root='build'),
+    Tar(distfile, name='dist/%s.tgz' % distfile, root='build'),
+    Egg('*', name='dist/%s.egg' % distfile, root=normjoin('build', distfile)),
+    HashGen(
+        'dist/%s.egg' % distfile,
+        'dist/%s.zip' % distfile,
+        'dist/%s.tgz' % distfile,
+    ),
+)
+
+PyErector()
