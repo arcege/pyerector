@@ -22,15 +22,18 @@ class Git(DVCS_Base):
     def current_info(self):
         """Retrieve information from the workarea."""
         proc = Subcommand(
-            (self.prog, 'log', '--max-count=1', '--format=%h'),
+            (self.prog, 'log', '--max-count=1', '--format=%h%n%ce%cd'),
             wait=True,
             stdout=Subcommand.PIPE,
             stderr=os.devnull
         )
         gitout = proc.stdout.read().decode('UTF-8')
         if proc.returncode == 0:
-            Variable('git.version', gitout.strip())
-            git_version = gitout.strip()
+            (vers, user, date) = gitout.rstrip().split('\n')
+            Variable('git.version', vers)
+            Variable('git.user', user)
+            Variable('git.date', date)
+            git_version = vers
         else:
             git_version = None
         proc = Subcommand(
