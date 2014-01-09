@@ -43,11 +43,13 @@ class TestIniter(TestCase):
         else:
             self.assertEqual(obj.asserttype('foo', str, 'foobar'), None)
         for test in (('foo', int, 'name'), (1, str, 'foobar')):
-            self.assertRaises(AssertionError, obj.asserttype, *test)
-        with self.assertRaises(AssertionError) as cm:
+            self.assertRaises(TypeError, obj.asserttype, *test)
+        with self.assertRaises(TypeError) as cm:
             obj.asserttype(1, str, 'foobar')
         exc = cm.exception
-        self.assertEqual(str(exc), "Must supply str to 'foobar' in 'Initer'")
+        self.assertEqual(exc.args[0], 1)
+        self.assertEqual(exc.args[1],
+                         "Must supply str to 'foobar' in 'Initer'")
 
     def test_get_files_simple(self):
         #"""Retrieve files in basedir properly."""
