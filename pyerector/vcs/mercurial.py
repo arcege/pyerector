@@ -21,8 +21,21 @@ class Mercurial(DVCS_Base):
 
     def current_info(self):
         """Retrieve information from the workarea."""
+        import logging
         proc = Subcommand(
-            (self.prog, 'tip', '--template',
+            (self.prog, 'identify', '--id'),
+            wait=True,
+            wdir=self.rootdir,
+            stdout=Subcommand.PIPE,
+            stderr=os.devnull,
+        )
+        hgid = proc.stdout.read().decode('UTF-8').strip()
+        logging.debug('hgid = %s', hgid)
+        if proc.returncode != 0:
+            raise RuntimeError('could not retrieve Mercurial node')
+        del proc
+        proc = Subcommand(
+            (self.prog, 'log', '-r', hgid.replace('+', ''), '--template',
              '{node|short}\n{author|email}\n{date|isodate}\n{branch}\n{tags}\n'
             ),
             wait=True,
@@ -31,9 +44,10 @@ class Mercurial(DVCS_Base):
             stderr=os.devnull,
         )
         hgout = proc.stdout.read().decode('UTF-8')
+        logging.debug('hgout = %s', repr(hgout))
         if proc.returncode == 0:
             parts = hgout.rstrip().split('\n')
-            import logging; logging.info('parts = %s', parts)
+            logging.info('parts = %s', parts)
             try:
                 parts[3]
             except IndexError:
