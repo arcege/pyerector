@@ -656,7 +656,7 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
                               destdir=dest, exclude=excludes)
         else:
             raise Error('must supply dest to %s' % self)
-        for (sname, dname) in fnap:
+        for (sname, dname) in fmap:
             self.logger.debug('symlink.sname=%s; symlink.dname=%s', sname, dname)
             srcfile = self.join(sname)
             dstfile = self.join(dname)
