@@ -12,7 +12,8 @@ class TestVersion(TestCase):
     def test_version(self):
         self.assertEqual(
             Version.version,
-            'r%hg.version% (%hg.branch%) <%hg.tags%>'
+            'r () <>'
+            #'r%hg.version% (%hg.branch%) <%hg.tags%>'
         )
 
     def test_release(self):
