@@ -48,9 +48,9 @@ retrieve using this interface."""
     def version(self):
         """Retrieve the version control information."""
         vstr, bstr, tstr = (
-            V('pyerector.vcs.version'),
-            V('pyerector.vcs.branch'),
-            V('pyerector.vcs.tags'),
+            V('pyerector.release.version'),
+            V('pyerector.release.branch'),
+            V('pyerector.release.tags'),
         )
         version = vstr.value.replace('+', '')
         if bstr.value == 'default':
