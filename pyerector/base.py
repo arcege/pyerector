@@ -113,9 +113,13 @@ the Iterator instance.
         if isinstance(typeval, (tuple, list)) and callable in typeval:
             lst = list(typeval)[:]
             lst.remove(callable)
-            assert callable(value) or isinstance(value, tuple(lst)), text
+            #assert callable(value) or isinstance(value, tuple(lst)), text
+            if not callable(value) and not isinstance(value, tuple(lst)):
+                raise TypeError(value, text)
         else:
-            assert isinstance(value, typeval), text
+            #assert isinstance(value, typeval), text
+            if not isinstance(value, typeval):
+                raise TypeError(value, text)
 
     def get_kwarg(self, name, typeval, noNone=False):
         """Return a item in saved kwargs or an attribute of the name name.
