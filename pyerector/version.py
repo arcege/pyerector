@@ -12,9 +12,9 @@ class VersionClass(object):
     """Define variables with version/release information and
 retrieve using this interface."""
     def __init__(self):
-        V['pyerector.vcs.version'] = '%hg.version%'
-        V['pyerector.vcs.branch'] = '%hg.branch%'
-        V['pyerector.vcs.tags'] = '%hg.tags%'
+        V['pyerector.release.version'] = '%hg.version%'
+        V['pyerector.release.branch'] = '%hg.branch%'
+        V['pyerector.release.tags'] = '%hg.tags%'
         V['pyerector.release.product'] = '%release.product%'
         V['pyerector.release.number'] = '%release.number%'
 
@@ -48,9 +48,9 @@ retrieve using this interface."""
     def version(self):
         """Retrieve the version control information."""
         vstr, bstr, tstr = (
-            V('pyerector.vcs.version'),
-            V('pyerector.vcs.branch'),
-            V('pyerector.vcs.tags'),
+            V('pyerector.release.version'),
+            V('pyerector.release.branch'),
+            V('pyerector.release.tags'),
         )
         version = vstr.value.replace('+', '')
         if bstr.value == 'default':

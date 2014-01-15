@@ -47,6 +47,8 @@ class FileIterator(Iterator):
     def adjust(self, candidate):
         basedir = V['basedir']
         noglob = self.get_kwarg('noglob', bool)
+        if not isinstance(candidate, str):
+            raise TypeError('%s is not a string' % repr(candidate))
         if noglob or not self.checkglobpatt(candidate):
             return super(FileIterator, self).adjust(candidate)
         else:

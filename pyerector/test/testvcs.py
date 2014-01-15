@@ -2,6 +2,7 @@
 # Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
 
 import os
+import time
 
 from .base import *
 
@@ -114,6 +115,9 @@ class TestVCS(TestCase):
             self.assertEqual(Variable('hg.version').value, '000000000000')
             self.assertEqual(Variable('hg.branch').value, 'default')
             self.assertEqual(Variable('hg.tags').value, 'tip')
+            self.assertEqual(Variable('hg.user').value, '')
+            self.assertEqual(Variable('hg.date').value,
+                             '1970-01-01 00:00 +0000')
 
     def testvcs_info_git(self):
         if self.havegit:
@@ -122,12 +126,18 @@ class TestVCS(TestCase):
             self.assertEqual(Variable('git.version').value, '')
             self.assertEqual(Variable('git.branch').value, '')
             self.assertEqual(Variable('git.tags').value, '')
+            self.assertEqual(Variable('git.user').value, '')
+            self.assertEqual(Variable('git.date').value, '')
 
     def testcvs_info_svn(self):
         if self.havesvn:
+            # string format used by SVN
+            when = time.strftime('%Y-%m-%d %T %z (%a, %d %b %Y)')
             V['basedir'] = self.svndir
             VCS(rootdir=self.svndir)
             self.assertEqual(Variable('svn.version').value, '0')
             self.assertEqual(Variable('svn.branch').value, '')
             self.assertEqual(Variable('svn.tags').value, '')
+            self.assertEqual(Variable('svn.user').value, '')
+            self.assertEqual(Variable('svn.date').value, when)
 

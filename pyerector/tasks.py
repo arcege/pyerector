@@ -656,7 +656,7 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
                               destdir=dest, exclude=excludes)
         else:
             raise Error('must supply dest to %s' % self)
-        for (sname, dname) in fnap:
+        for (sname, dname) in fmap:
             self.logger.debug('symlink.sname=%s; symlink.dname=%s', sname, dname)
             srcfile = self.join(sname)
             dstfile = self.join(dname)
@@ -721,13 +721,17 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
                          .replace('$', r'\$').replace('(', r'\(')\
                          .replace(')', r'\)').replace('|', r'\|')
         patt = '|'.join(
-            [quote(k) for k in self.get_kwarg('tokenmap', VariableSet)]
+            [quote(k) for k in tokenmap]
         )
         tokens = re.compile(r'(%s)' % patt, re.MULTILINE)
         self.logger.debug('patt = %s', str(tokens.pattern))
-        mapper = FileMapper(self.get_args('files'),
-                            destdir=self.get_kwarg('dest', (Path, str)),
-                            iteratorclass=StaticIterator)
+        files = self.get_args('files')
+        if isinstance(files, tuple) and isinstance(files[0], Mapper):
+            mapper = files[0]
+        else:
+            mapper = FileMapper(self.get_args('files'),
+                                destdir=self.get_kwarg('dest', (Path, str)),
+                                iteratorclass=StaticIterator)
         for (sname, dname) in mapper:
             realcontents = open(self.join(sname), 'rt').read()
             alteredcontents = tokens.sub(repltoken, realcontents)

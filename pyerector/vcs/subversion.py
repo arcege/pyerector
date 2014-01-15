@@ -51,6 +51,12 @@ class Subversion(VCS_Base):
                             Variable('svn.tags', parts[1][poste:])
                         else:
                             Variable('svn.tags', parts[1][poste:postn])
+                elif line.startswith('Last Changed Author: '):
+                    parts = line.split(': ')
+                    Variable('svn.user', parts[1].strip())
+                elif line.startswith('Last Changed Date: '):
+                    parts = line.split(': ')
+                    Variable('svn.date', parts[1].strip())
 
 Subversion.register()
 
