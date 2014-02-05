@@ -115,12 +115,11 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
             fmap = files[0]
         elif len(files) == 1 and dest is not None and not os.path.isdir(dest):
             fmap = IdentityMapper(self.get_files(files), destdir=dest)
-        elif dest is not None:
-            fmap = FileMapper(self.get_files(files), destdir=dest)
         else:
-            raise Error('must supply dest to %s' % self.__class__.__name__)
+            fmap = FileMapper(self.get_files(files), destdir=dest)
         self.logger.debug('Copy.fmap = %s', vars(fmap))
         for (sname, dname) in fmap:
+            #self.logger.error( repr( (sname, dname) ) )
             srcfile = self.join(sname)
             dstfile = self.join(dname)
             if not excludes.match(os.path.basename(sname)):

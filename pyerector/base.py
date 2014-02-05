@@ -427,6 +427,8 @@ then prepend the directory's contents to the pool (not the curset).
                 except TypeError:
                     exc = sys.exc_info()[1]
                     raise TypeError(self.curset, exc)
+            if isinstance(candidate, tuple) and len(candidate) == 2:
+                break
             if self.exclusion.match(candidate):
                 continue
             if self.check_candidate(candidate):
@@ -522,7 +524,12 @@ This would map each py file in src to a pyc file in build:
         # do _not_ catch StopIteration
         item = super(Mapper, self).next()
         self.logger.debug('super.next() = %s', item)
-        mapped = self.mapper_func(item)
+        if isinstance(item, tuple) and len(item) == 2:
+            item, temp = item
+            mapped = self.mapper_func(temp)
+            del temp
+        else:
+            mapped = self.mapper_func(item)
         assert isinstance(mapped, str), "mapper must return a str"
         self.logger.debug('self.map(%s) = %s', mapped, self.map(mapped))
         mapped = self.map(mapped)
