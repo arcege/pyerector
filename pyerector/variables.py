@@ -9,12 +9,19 @@ Usage:
     (Variable('name1') < Variable('name2'))
     (hash(Variable('name')) == hash('name'))
     (Variable('name').name == 'name')
-    (Variable('name').value == 'value)
+    (Variable('name').value == 'value')
     (Variable('name').toString() == Variable('name').name)
     (Variable('name').value is Variable('name').value)
     (Variable('name').value == str(Variable('name')))
     (V['name'] == Variable('name').value)
     (V('name') == Variable('name'))  # for backward compatibility
+
+    fv = FileVariable('file', 'test.txt')
+    (Variable('file').value == 'test.txt')
+    fv.value == open('test.txt', 'rt').read().decode('UTF-8')
+    fv.value = 'test2.txt'
+    (Variable('file').value == 'test2.txt')
+    fv.value != open('test.txt', 'rt').read().decode('UTF-8')
 
     # VariableSet is an augmented dictionary
     vs = VariableSet(
@@ -37,6 +44,12 @@ Usage:
     (vs['phone'] == 'phone')
     (vs['phone'].value == '888-555-1234')
     ('name' in vs == True)
+    vs1 = VariableSet(
+        Variable('email': 'michael@springfield.us')
+    )
+    vs1.update(vs)
+    (vs1['name'] == Variable('name'))
+    ('email' not in vs and 'email' in vs1)
 
 """
 
@@ -46,6 +59,7 @@ import threading
 from .exception import Error
 
 __all__ = [
+    'FileVariable',
     'V',
     'Variable',
     'VariableSet',
@@ -91,10 +105,13 @@ minimalistic.  And some functionality, like copy(), we don't want."""
             name = Variable(name)
         with self.lock:
             logger = logging.getLogger('pyerector.execute')
-            try:
-                logger.debug('name = %s; name.value = %s; value= %s', repr(name), repr(name.value), repr(value))
-            except Error:
-                logger.debug('name = %s; value = %s', repr(name), repr(value))
+            # to prevent a really long string, just the first 25 characters
+            #s = repr(value)
+            #if len(s) > 25:
+            #    logger.debug('name = %s; value = %s', repr(name),
+            #        s[:25] + '...' + s[-1:])
+            #else:
+            #    logger.debug('name = %s; value= %s', repr(name), s)
             self.cache[name] = value
 
     def __delitem__(self, name):
@@ -150,13 +167,16 @@ class Variable(str):
         """Return the string (name)."""
         return super(Variable, self).__str__()
 
-    @property
-    def value(self):
-        """Retrieve the value from the cache."""
+    def retrieve_value(self):
         try:
             return self.cache[self]
         except Error:
             return ''
+
+    @property
+    def value(self):
+        """Retrieve the value from the cache."""
+        return self.retrieve_value()
 
     @value.setter
     def value(self, value):
@@ -172,6 +192,19 @@ class Variable(str):
     def list(cls):
         """Return the cache as a tuple (not a list)."""
         return tuple(cls.cache)
+
+
+class FileVariable(Variable):
+    """Load a variables value from a file, but only when we need it.
+Setting to the value changes the filename, getting the value reads the file.
+File contents are decoded by default as UTF-8."""
+    encoding = 'UTF-8'
+
+    def retrieve_value(self):
+        filename = self.cache[self]
+        with open(str(filename), 'rt') as infile:
+            contents = infile.read().decode(self.encoding)
+        return contents
 
 
 class VariableSet(dict):
@@ -213,13 +246,13 @@ as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
 
     def update(self, *args, **kwargs):
         """Augment the set with additional values."""
-        # how would args have 'keys' when it is a tuple?
-        if hasattr(args, 'keys'):
-            for name in args:
-                self[name] = args[name]
-        else:
-            for (name, value) in args:
-                self[name] = value
+        for datum in args:
+            if hasattr(datum, 'keys'):
+                for name in datum:
+                    self[name] = datum[name]
+            else:
+                for (name, value) in datum:
+                    self[name] = value
         for name in kwargs:
             self[name] = kwargs[name]
 

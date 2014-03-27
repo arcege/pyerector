@@ -73,7 +73,7 @@ from .targets import All, Build, Clean, Compile, Default, Dist, Help, \
 from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
                        DirList, FileMapper, BasenameMapper, MergeMapper, \
                        IdentityMapper, Uptodate
-from .variables import V, Variable, VariableSet
+from .variables import FileVariable, V, Variable, VariableSet
 from .vcs import VCS
 
 # With the addition of pyerector.api, some of the lower-level objects, like
@@ -90,6 +90,7 @@ __all__ = [
     'Sequential',
     'Parallel',
     'V',  # alias for Variable
+    'FileVariable',
     'Variable',
     'VariableSet',
     'VCS',
