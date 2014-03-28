@@ -50,6 +50,7 @@ class TestVCS(TestCase):
             assert rc is None, \
                 'could not create git repository: %s' % output
         # checking Subversion (svn)
+        cls.when = time.strftime('%Y-%m-%d %T %z (%a, %d %b %Y)')
         p = os.popen('svnadmin create "%s"' % cls.svnadmdir, 'r')
         output = p.read()
         rc = p.close()
@@ -132,12 +133,11 @@ class TestVCS(TestCase):
     def testcvs_info_svn(self):
         if self.havesvn:
             # string format used by SVN
-            when = time.strftime('%Y-%m-%d %T %z (%a, %d %b %Y)')
             V['basedir'] = self.svndir
             VCS(rootdir=self.svndir)
             self.assertEqual(Variable('svn.version').value, '0')
             self.assertEqual(Variable('svn.branch').value, '')
             self.assertEqual(Variable('svn.tags').value, '')
             self.assertEqual(Variable('svn.user').value, '')
-            self.assertEqual(Variable('svn.date').value, when)
+            self.assertEqual(Variable('svn.date').value, self.when)
 
