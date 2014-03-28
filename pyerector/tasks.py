@@ -725,12 +725,8 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
         tokens = re.compile(r'(%s)' % patt, re.MULTILINE)
         self.logger.debug('patt = %s', str(tokens.pattern))
         files = self.get_args('files')
-        if isinstance(files, tuple) and isinstance(files[0], Mapper):
-            mapper = files[0]
-        else:
-            mapper = FileMapper(self.get_args('files'),
-                                destdir=self.get_kwarg('dest', str),
-                                iteratorclass=StaticIterator)
+        mapper = FileMapper(files, destdir=self.get_kwarg('dest', str),
+                            iteratorclass=StaticIterator)
         for (sname, dname) in mapper:
             realcontents = open(self.join(sname), 'rt').read()
             alteredcontents = tokens.sub(repltoken, realcontents)
