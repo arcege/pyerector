@@ -43,11 +43,15 @@ __all__ = [
 
 
 class FileIterator(Iterator):
-    """File-based subclass of Iterator."""
+    """File-based subclass of Iterator.
+Default parameters: pattern=None, noglob=False, recurse=False,
+fileonly=True, exclude=()."""
     def adjust(self, candidate):
         basedir = V['basedir']
         noglob = self.get_kwarg('noglob', bool)
-        if not isinstance(candidate, str):
+        if isinstance(candidate, Iterator):
+            return list(candidate)
+        elif not isinstance(candidate, str):
             raise TypeError('%s is not a string' % repr(candidate))
         if noglob or not self.checkglobpatt(candidate):
             return super(FileIterator, self).adjust(candidate)
@@ -102,7 +106,8 @@ FileSet = FileIterator
 
 
 class DirList(FileIterator):
-    """By default, recurse and return both directory and file pathnames."""
+    """By default, recurse and return both directory and file pathnames.
+Default params: recurse=True, fileonly=False."""
     recurse = True
     fileonly = False
 
