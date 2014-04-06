@@ -4,6 +4,7 @@
 
 import os
 
+from ..execute import Initialization
 from ..variables import V
 from .base import Base
 
@@ -46,3 +47,19 @@ about it.
         raise RuntimeError('no version control found')
     return vcs(*args, **kwargs)
 
+class InitVCS(Initialization):
+    """Initialize the version control system, assigning to the
+pyerector.vcs variable.
+"""
+    def run(self):
+        import logging
+        try:
+            vcs = VCS()
+        except RuntimeError:
+            logging.info('No VCS found')
+        else:
+            vcs.current_info()
+            V['pyerector.vcs'] = vcs
+            logging.info('Found %s', vcs)
+
+InitVCS()

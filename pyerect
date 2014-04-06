@@ -15,7 +15,6 @@ class PyCopy(Target):
                    destdir=normjoin('build', distfile), exclude=('test')),
         FileMapper('release.py', 'setup.py', 'README.txt', 'LICENSE.txt', 'CHANGES.txt', destdir=normjoin('build', distfile)),
     )
-    dependencies = (InitVCS,)
     tasks = (
         CopyTree(srcdir='pyerector',
                  dstdir=normjoin('build', distfile, 'pyerector'),

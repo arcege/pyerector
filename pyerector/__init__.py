@@ -63,6 +63,7 @@ from .execute import Initialization
 
 from .version import Version
 from .main import PyErector, pymain
+from .vcs import VCS
 from .base import Target, Task, Sequential, Parallel
 from .tasks import Chmod, Copy, CopyTree, Echo, Egg, HashGen, \
                    Java, Mkdir, PyCompile, Remove, Scp, Shebang, Spawn, \
@@ -74,7 +75,6 @@ from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
                        DirList, FileMapper, BasenameMapper, MergeMapper, \
                        IdentityMapper, Uptodate
 from .variables import FileVariable, V, Variable, VariableSet
-from .vcs import VCS
 
 # With the addition of pyerector.api, some of the lower-level objects, like
 # Target, Sequential, etc. should be removed in the future

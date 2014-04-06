@@ -30,11 +30,10 @@ __all__ = [
 class Help(Target):
     """This information.
 Tasks: internal
-Dependencies: InitVCS
+Dependencies: None
 Members: None
 Methods: None
 """
-    dependencies = ('InitVCS',)
 
     def run(self):
         """Display callable targets with the first line of their
@@ -90,16 +89,11 @@ Tasks: None
 Dependencies: None
 Members: None
 Methods: None
+This functionality should now be handled by pyerector.vcs.__init__.InitVCS
+before pyerector finishes being imported.
 """
     def run(self):
-        try:
-            vcs = VCS()
-        except RuntimeError:
-            self.logger.info('No VCS found')
-        else:
-            vcs.current_info()
-            V['pyerector.vcs'] = vcs
-            self.logger.info('Found %s', vcs)
+        self.logger.warning('Target %s has been deprecated.', self)
 
 
 class InitDirs(Target):
@@ -119,11 +113,11 @@ Methods: None
 class Init(Target):
     """Initialize the build.
 Tasks: None
-Dependencies: InitDirs, InitVCS
+Dependencies: InitDirs
 Members: None
 Methods: None
 """
-    dependencies = (InitDirs, InitVCS)
+    dependencies = (InitDirs,)
 
 
 class Compile(Target):
