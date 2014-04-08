@@ -92,7 +92,9 @@ class TestVCS(TestCase):
     def testvcs_check_novcs(self):
         # set to temp directory with no version control
         V['basedir'] = self.nodir
-        self.assertRaises(RuntimeError, VCS)
+        vcs = VCS()
+        self.assertEqual(vcs.name, 'none')
+        self.assertIsNone(vcs.directory)
 
     def testvcs_check_mercurial(self):
         if self.havehg:

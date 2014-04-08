@@ -43,7 +43,12 @@ def normjoin(*args):
 
 
 class Exclusions(set):
-    """A list of exclusion patterns."""
+    """A list of exclusion patterns.
+The usedefaults argument can take three values: True (default), False and
+None.  A True will augment the set with the 'defaults' values.  A False
+will augment with a set containing V['pyerector.vcs'].directory.  And None
+will not augment any additional values - this is dangerous when used with
+the Remove task."""
     defaults = set(
         ('*.pyc', '*~', '.*.swp', '.git', '.hg', '.svn', 'CVS',
          '__pycache__')
@@ -63,15 +68,21 @@ class Exclusions(set):
         else:
             initialset = set()
         self.usedefaults = usedefaults
-        if usedefaults:
-            initialset |= self.defaults
         super(Exclusions, self).__init__(initialset)
 
     def match(self, string):
         """Return true if the given string matches one of the patterns
 in the set."""
-        import logging
-        values = [v for v in self
+        from .variables import V
+        vcs = V['pyerector.vcs']
+        # augment the possible matches with the defaults
+        if self.usedefaults == True:
+            matches = self | self.defaults
+        elif self.usedefaults == False and vcs.directory is not None:
+            matches = self | set( [vcs.directory] )
+        else:
+            matches = self
+        values = [v for v in matches
                       if fnmatch.fnmatchcase(os.path.basename(string), v)]
         return len(values) > 0
 

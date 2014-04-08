@@ -35,6 +35,8 @@ class Base(object):
     @classmethod
     def vcs_check(cls, srcdir=os.curdir):
         """Check if there is an appropriate directory for the VCS type."""
+        if cls.directory is None:
+            return True
         return os.path.isdir(os.path.join(srcdir, cls.directory))
 
     def current_info(self):

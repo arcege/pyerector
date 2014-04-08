@@ -69,24 +69,45 @@ class Testnormjoin(TestCase):
 
 class TestExclusions(TestCase):
     def setUp(self):
+        from ..vcs import VCS
         self.defaults = Exclusions.defaults.copy()
+        self.vcsdir = VCS().directory
 
     def test_no_items(self):
         e = Exclusions()
         self.assertSetEqual(e.defaults, self.defaults)
-        self.assertSetEqual(e, self.defaults)
+        self.assertSetEqual(e, set())
 
     def test_nodefaults(self):
         e = Exclusions(usedefaults=False)
         self.assertSetEqual(e, set())
+        self.assertFalse(e.match('testhelper.py'))
+        if self.vcsdir is not None:
+            self.assertTrue(e.match(self.vcsdir))
 
     def test_items(self):
-        e = Exclusions((1, 2, 3))
-        self.assertSetEqual(e, self.defaults | set((1, 2, 3)))
+        e = Exclusions(('1', '2', '3'))
+        self.assertSetEqual(e, set(('1', '2', '3')))
+        self.assertTrue(e.match('1'))
+        self.assertTrue(e.match('testhelper.pyc'))
+        if self.vcsdir is not None:
+            self.assertTrue(e.match(self.vcsdir))
 
     def test_items_nodefaults(self):
-        e = Exclusions((1, 2, 3), usedefaults=False)
-        self.assertSetEqual(e, set((1, 2, 3)))
+        e = Exclusions(('1', '2', '3'), usedefaults=False)
+        self.assertSetEqual(e, set(('1', '2', '3')))
+        self.assertTrue(e.match('1'))
+        self.assertFalse(e.match('testhelper.pyc'))
+        if self.vcsdir is not None:
+            self.assertTrue(e.match(self.vcsdir))
+
+    def test_items_nonedefaults(self):
+        e = Exclusions(('1', '2', '3'), usedefaults=None)
+        self.assertSetEqual(e, set(('1', '2', '3')))
+        self.assertTrue(e.match('1'))
+        self.assertFalse(e.match('testhelper.pyc'))
+        if self.vcsdir is not None:
+            self.assertFalse(e.match(self.vcsdir))
 
     def test_match(self):
         e = Exclusions()
@@ -96,14 +117,20 @@ class TestExclusions(TestCase):
     def test_setdefaults(self):
         e = Exclusions()
         self.assertFalse(hasattr(Exclusions, 'real_defaults'))
-        e.set_defaults((1, 2, 3))
+        e.set_defaults(('1', '2', '3'))
+        self.assertSetEqual(e, set())
         self.assertTrue(hasattr(Exclusions, 'real_defaults'))
-        self.assertSetEqual(e, self.defaults)
+        self.assertTrue(e.match('1'))
+        self.assertFalse(e.match('4'))
         f = Exclusions()
-        self.assertSetEqual(f, set((1, 2, 3)))
+        self.assertTrue(f.match('1'))
+        self.assertFalse(e.match('4'))
+        self.assertSetEqual(f, set())
         f.set_defaults(reset=True)
-        self.assertSetEqual(e, self.defaults)
+        self.assertSetEqual(e, set())
         self.assertFalse(hasattr(Exclusions, 'real_defaults'))
+        self.assertFalse(e.match('1'))
+        self.assertFalse(e.match('4'))
 
 
 class TestSubcommand(TestCase):
