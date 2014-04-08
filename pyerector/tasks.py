@@ -24,8 +24,8 @@ except NameError:
 __all__ = [
     'Chmod', 'Copy', 'CopyTree', 'Echo', 'Egg', 'HashGen',
     'Java', 'Mkdir', 'PyCompile', 'Remove', 'Scp', 'Shebang', 'Spawn',
-    'Ssh', 'SubPyErector', 'Symlink', 'Tar', 'Tokenize', 'Unittest',
-    'Untar', 'Unzip', 'Zip',
+    'Ssh', 'SubPyErector', 'Symlink', 'Tar', 'Tokenize', 'Touch',
+    'Unittest', 'Untar', 'Unzip', 'Zip',
 ]
 
 
@@ -733,6 +733,24 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
             if alteredcontents != realcontents:
                 open(self.join(dname), 'wt').write(alteredcontents)
 
+
+class Touch(Task):
+    """Create file if it didn't exist already.
+constructor arguments:
+Touch(*files, dest=None)"""
+    files = ()
+    dest = None
+
+    def run(self):
+        from .helper import normjoin
+        """Create files, unless they already exist."""
+        dest = self.get_kwarg('dest', str)
+        for fname in self.get_files(self.get_args('files')):
+            self.asserttype(fname, str, 'files')
+            if dest is not None:
+                fname = normjoin(dest, fname)
+            self.logger.info('touch(%s)', fname)
+            open(self.join(fname), 'a')
 
 class Unittest(Task):
     """Call Python unit tests found.

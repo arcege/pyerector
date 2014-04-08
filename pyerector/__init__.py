@@ -67,8 +67,8 @@ from .vcs import VCS
 from .base import Target, Task, Sequential, Parallel
 from .tasks import Chmod, Copy, CopyTree, Echo, Egg, HashGen, \
                    Java, Mkdir, PyCompile, Remove, Scp, Shebang, Spawn, \
-                   SubPyErector, Ssh, Symlink, Tar, Tokenize, Unittest, \
-                   Untar, Unzip, Zip
+                   SubPyErector, Ssh, Symlink, Tar, Tokenize, Touch, \
+                   Unittest, Untar, Unzip, Zip
 from .targets import All, Build, Clean, Compile, Default, Dist, Help, \
                      Init, InitDirs, InitVCS, Packaging, Test
 from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
@@ -113,6 +113,7 @@ __all__ = [
     'SubPyErector',
     'Tar',
     'Tokenize',
+    'Touch',
     'Unittest',
     'Untar',
     'Unzip',
