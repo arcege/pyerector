@@ -71,6 +71,15 @@ retrieve using this interface."""
             V('pyerector.release.number')
         )
 
+    def __call__(self, *args):
+        from logging import getLogger
+        logger = getLogger('pyerector')
+        name = V['pyerector.release.product']
+        for desired in args:
+            if desired and '%s %s' % (name, desired) > self.release:
+                logger.error('%s does not match %s, aborting', name, desired)
+                raise SystemExit(1)
+
 HG_VERSION = '%hg.version%'
 HG_BRANCH = '%hg.branch%'
 HG_TAGS = '%hg.tags%'

@@ -84,12 +84,13 @@ __all__ = [
     'normjoin',
     'PyErector',
     'pymain',
+    'Version',
     # remove 'Target' and 'Task' to move to pyerector.api
     'Target',
     'Task',
     'Sequential',
     'Parallel',
-    'V',  # alias for Variable
+    'V',  # alias for VariableCache
     'FileVariable',
     'Variable',
     'VariableSet',

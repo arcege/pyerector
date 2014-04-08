@@ -130,7 +130,12 @@ v1.2.4  2014-04-08
      with the rest of the modules.
   -- Issue 28 - Allow a cons as a valid return type of Iterator.next;
      handle that specially in Mapper.next.
-  -- Issue 29 - Works as expected.
+  -- Issue 29 - The InitVCS target has been deprecated.  The VCS() function
+     is called just before the package finishes being impored.
+  -- Issue 30 - pyerector.version.Version is now exported from the package;
+     it is callable with release number strings to compare with the the
+     current release number.  If greater than the current release,
+     terminate with an error message.
   New task
   -- Touch which is similar to the touch(1) command, creating files if
      they do not exist.
@@ -138,8 +143,6 @@ v1.2.4  2014-04-08
   -- FileVariable allows some deferred resolution; file is loaded when
      accessed, not when created.
   Other fixes/enhancements:
-  -- The InitVCS target has been deprecated.  The VCS() function is
-     called just before the package finishes being imported.
   -- The Exclusions object now accepts three values: True, False and None;
      False will still include VCS().directory, and None will not include
      any extra values.
