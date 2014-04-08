@@ -121,3 +121,17 @@ v1.2.3  2013-10-25
      outside of tasks.py; pass the parameters as a string instead of a
      filename.
 
+v1.2.4  2014-04-08
+  -- Issue 28 - Allow a cons as a valid return type of Iterator.next;
+     handle that specially in Mapper.next.
+  -- Issue 29 - Works as expected.
+  New type
+  -- FileVariable allows some deferred resolution; file is loaded when
+     accessed, not when created.
+  Other fixes/enhancements:
+  -- Get the proper information back from Mercurial; previously only the
+     tip was retrieve.
+  -- Tokenize now allows for multiple Iterators/Mappers to be passed.
+  -- Get a closer timestamp for svn.date comparison in unittests.
+  -- Allow an Iterator to be passed to Iterator.adjust.
+
