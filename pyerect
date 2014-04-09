@@ -82,10 +82,10 @@ class Cleantest(Target):
 
 class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
-    exclude = Exclusions(
-                ('.hg',),
-                usedefaults=False)
+    exclude = Exclusions(usedefaults=False)
     tasks = (
+        SubPyErector('clean', wdir='regression',
+            env={'PYERECTOR_PATH': V['basedir']}),
         Remove(
             DirList(os.curdir, pattern='*.pyc', exclude=exclude, fileonly=True),
             DirList(os.curdir, pattern='__pycache__', exclude=exclude, fileonly=True),
@@ -96,7 +96,6 @@ class Realclean(Target):
 
 
 class Regression(Target):
-    #proddir = normjoin('build', distfile)
     tasks = (
         SubPyErector('all', wdir='regression',
             env={'PYERECTOR_PATH': V['basedir']}),
