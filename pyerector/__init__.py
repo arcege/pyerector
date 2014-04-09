@@ -70,7 +70,7 @@ from .tasks import Chmod, Copy, CopyTree, Echo, Egg, HashGen, \
                    SubPyErector, Ssh, Symlink, Tar, Tokenize, Touch, \
                    Unittest, Untar, Unzip, Zip
 from .targets import All, Build, Clean, Compile, Default, Dist, Help, \
-                     Init, InitDirs, InitVCS, Packaging, Test
+                     Init, InitDirs, InitVCS, Packaging, Test, Testonly
 from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
                        DirList, FileMapper, BasenameMapper, MergeMapper, \
                        IdentityMapper, Uptodate
@@ -133,6 +133,7 @@ __all__ = [
     'InitVCS',
     'Packaging',
     'Test',
+    'Testonly',
 
     # iterators
     'FileSet',

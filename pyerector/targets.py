@@ -161,16 +161,23 @@ Methods: None
     # may be overriden
 
 
-class Test(Target):
-    """Run (unit)tests.
+class Testonly(Target):
+    """Run unittest, without dependencies.
 Tasks: Unittest
-Dependencies: Build
+Dependencies: None
 Members: None
 Methods: None
 """
-    dependencies = (Build,)
     tasks = (Unittest,)
-# default target
+
+class Test(Target):
+    """Run (unit)tests.
+Tasks: None
+Dependencies: Build, Testonly
+Members: None
+Methods: None
+"""
+    dependencies = (Build, Testonly)
 
 
 class All(Target):
@@ -182,6 +189,8 @@ Methods: None
 """
     dependencies = (Clean, Dist, Test)
 
+
+# default target
 
 class Default(Target):
     """When no target is specified.

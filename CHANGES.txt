@@ -136,6 +136,10 @@ v1.2.4  2014-04-08
      it is callable with release number strings to compare with the the
      current release number.  If greater than the current release,
      terminate with an error message.
+  New target
+  -- Testonly performs the Unittest task and the Test target now has
+     the dependencies of "Build, Testonly", with no tasks.  This allows
+     calling the "testonly" target without rebuilding everything.
   New task
   -- Touch which is similar to the touch(1) command, creating files if
      they do not exist.
