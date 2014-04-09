@@ -174,7 +174,11 @@ if __name__ == '__main__':
                 suite.addTests(loader.discover(path))
         else:
             suite.addTests(loader.discover(os.curdir))
-        runner.run(suite)
+        try:
+            runner.run(suite)
+        except KeyboardInterrupt:
+            print
+            raise SystemExit(5)
     finally:
         sys.argv[:] = real_args
 

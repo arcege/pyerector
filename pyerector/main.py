@@ -100,6 +100,8 @@ name of target to call or variable assignment, default target is "default"')
             newthread = PyThread(name='PyErector', target=self.run)
             newthread.start()
             newthread.join()
+        except KeyboardInterrupt:
+            raise SystemExit('Ctrl-C')
         except Abort:
             raise SystemExit(1)
         else:
