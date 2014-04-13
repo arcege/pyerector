@@ -7,11 +7,20 @@ if 'PYERECTOR_PATH' in os.environ and \
     for i, p in enumerate(sys.path):
         if p.find('pyerector') != -1:
             sys.path[i] = os.environ['PYERECTOR_PATH']
-
+import release
 from pyerector import *
-import pyerector
-libdir = os.path.dirname(pyerector.__file__)
-del pyerector
+
+#from pyerector.tasks import Symlink
+# try to use ../build/pyerector-{relno}/pyerector
+bname = '%s-%s' % (release.product, release.number)
+builddir = os.path.join(os.pardir, 'build', bname, 'pyerector')
+if os.path.isdir(builddir):
+    libdir = os.path.realpath(builddir)
+else:
+    import pyerector
+    libdir = os.path.dirname(pyerector.__file__)
+    del pyerector
+
 
 class Clean(Target):
     def run(self):
@@ -24,9 +33,10 @@ class Clean(Target):
 class Init(Target):
     def run(self):
         bdir = V['basedir']
-        for sdir in os.listdir(bdir):
-            fname = normjoin(bdir, sdir, 'pyerector')
-            if os.path.isdir(normjoin(bdir, sdir)) and \
+        for sdirname in os.listdir(bdir):
+            sdir = normjoin(bdir, sdirname)
+            fname = normjoin(sdir, 'pyerector')
+            if os.path.isdir(sdir) and \
                     not os.path.islink(fname):
                 os.symlink(libdir, fname)
                 #Symlink(fname, dest=libdir)
@@ -54,7 +64,7 @@ class Regression(Target):
         else:
             tasks.run(self, None, None, None)
 
-Test.tasks = ()
+Test.dependencies = ()
 All.dependencies = (Clean, Regression,)
 Default.dependencies = (Regression,)
 
