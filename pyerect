@@ -96,6 +96,7 @@ class Realclean(Target):
 
 
 class Regression(Target):
+    """Run regression tests."""
     tasks = (
         SubPyErector('all', wdir='regression',
             env={'PYERECTOR_PATH': V['basedir']}),
