@@ -1,0 +1,52 @@
+#!/usr/bin/python
+
+import threading
+from pyerector import *
+
+class SafeAppend(Task):
+    def run(self):
+        global lock, pool
+        text = self.get_kwarg('text', str, noNone=True)
+        with lock:
+            pool.append(text)
+class CheckPool(Task):
+    def run(self):
+        global lock, pool
+        with lock:
+            assert len(pool) == 12
+
+lock = threading.Lock()
+pool = []
+
+class P1(Target):
+    tasks = Parallel(
+        SafeAppend(text='1'),
+        SafeAppend(text='2'),
+        SafeAppend(text='3'),
+        SafeAppend(text='4'),
+    )
+
+class P2(Target):
+    tasks = Parallel(
+        SafeAppend(text='5'),
+        SafeAppend(text='6'),
+        SafeAppend(text='7'),
+        SafeAppend(text='8'),
+    )
+class P3(Target):
+    tasks = Parallel(
+        SafeAppend(text='9'),
+        SafeAppend(text='10'),
+        SafeAppend(text='11'),
+        SafeAppend(text='12'),
+    )
+
+Build.dependencies = Parallel(
+    P1, P2, P3
+)
+
+Test.tasks = (
+    CheckPool,
+)
+
+PyErector()

@@ -1,0 +1,10 @@
+build
+.coverage
+dist
+htmlcov
+.*\.pyc
+regression/.*/pyerector
+setuptools.py
+\..*\.swp
+tags
+testdir
