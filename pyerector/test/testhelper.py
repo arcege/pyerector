@@ -5,7 +5,18 @@ import os
 import sys
 import unittest
 
-from .base import *
+try:
+    from .base import *
+except ValueError:
+    sys.path.insert(
+        0,
+        os.path.normpath(
+            os.path.join(
+                os.path.dirname(__file__), os.pardir, os.pardir
+            )
+        )
+    )
+    from base import *
 
 PyVersionCheck()
 
@@ -369,3 +380,8 @@ class TestSubcommand(TestCase):
         self.assertIsNone(proc.stdin)
         self.assertIsNone(proc.stdout)
         self.assertIsNone(proc.stderr)
+
+if __name__ == '__main__':
+    import logging, unittest
+    logging.getLogger('pyerector').level = logging.ERROR
+    unittest.main()

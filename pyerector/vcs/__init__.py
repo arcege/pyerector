@@ -58,14 +58,15 @@ class InitVCS(Initialization):
 pyerector.vcs variable.
 """
     def run(self):
-        import logging
+        from logging import getLogger
+        logger = getLogger('pyerector')
         try:
             vcs = VCS()
         except RuntimeError:
-            logging.info('No VCS found')
+            logger.info('No VCS found')
         else:
             vcs.current_info()
             V['pyerector.vcs'] = vcs
-            logging.info('Found %s', vcs)
+            logger.info('Found %s', vcs)
 
 InitVCS()

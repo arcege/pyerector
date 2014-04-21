@@ -3,7 +3,19 @@
 
 import os
 
-from .base import *
+try:
+    from .base import *
+except ValueError:
+    import sys
+    sys.path.insert(
+        0,
+        os.path.normpath(
+            os.path.join(
+                os.path.dirname(__file__), os.pardir, os.pardir
+            )
+        )
+    )
+    from base import *
 
 PyVersionCheck()
 
@@ -125,3 +137,8 @@ class TestUnzip(TestCase):
 
 class TestZip(TestCase):
     pass
+
+if __name__ == '__main__':
+    import logging, unittest
+    logging.getLogger('pyerector').level = logging.ERROR
+    unittest.main()
