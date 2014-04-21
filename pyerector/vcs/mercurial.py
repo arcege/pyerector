@@ -21,7 +21,8 @@ class Mercurial(DVCS_Base):
 
     def current_info(self):
         """Retrieve information from the workarea."""
-        import logging
+        from logging import getLogger
+        logger = getLogger('pyerector')
         proc = Subcommand(
             (self.prog, 'identify', '--id'),
             wait=True,
@@ -30,7 +31,7 @@ class Mercurial(DVCS_Base):
             stderr=os.devnull,
         )
         hgid = proc.stdout.read().decode('UTF-8').strip()
-        logging.debug('hgid = %s', hgid)
+        logger.debug('hgid = %s', hgid)
         if proc.returncode != 0:
             raise RuntimeError('could not retrieve Mercurial node')
         del proc
@@ -44,10 +45,10 @@ class Mercurial(DVCS_Base):
             stderr=os.devnull,
         )
         hgout = proc.stdout.read().decode('UTF-8')
-        logging.debug('hgout = %s', repr(hgout))
+        logger.debug('hgout = %s', repr(hgout))
         if proc.returncode == 0:
             parts = hgout.rstrip().split('\n')
-            logging.info('parts = %s', parts)
+            logger.debug('parts = %s', parts)
             try:
                 parts[3]
             except IndexError:
