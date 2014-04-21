@@ -8,7 +8,19 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from .base import *
+try:
+    from .base import *
+except ValueError:
+    import os, sys
+    sys.path.insert(
+        0,
+        os.path.normpath(
+            os.path.join(
+                os.path.dirname(__file__), os.pardir, os.pardir
+            )
+        )
+    )
+    from base import *
 
 PyVersionCheck()
 
@@ -133,3 +145,8 @@ With three very lovely girls.
                 os.system('ls -lAtr ' + str(tmpdir))
         finally:
             Remove()(tmpdir)
+
+if __name__ == '__main__':
+    import logging, unittest
+    logging.getLogger('pyerector').level = logging.ERROR
+    unittest.main()

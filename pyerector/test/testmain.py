@@ -3,7 +3,19 @@
 
 import sys
 
-from .base import *
+try:
+    from .base import *
+except ValueError:
+    import os
+    sys.path.insert(
+        0,
+        os.path.normpath(
+            os.path.join(
+                os.path.dirname(__file__), os.pardir, os.pardir
+            )
+        )
+    )
+    from base import *
 
 PyVersionCheck()
 
@@ -47,3 +59,8 @@ class TestPyErectorThread(TestCase):
         self.assertRaises(SystemExit, PyErector, 'thread')
         # it is sufficient to check that the thread is not 'MainThread'
         self.assertEqual(Variable('thread.name').value, 'PyErector')
+
+if __name__ == '__main__':
+    import logging, unittest
+    logging.getLogger('pyerector').level = logging.ERROR
+    unittest.main()
