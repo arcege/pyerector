@@ -555,7 +555,7 @@ Scp(*files, dest=<dir>, host=<hostname>, user=<username>, identfile=<filename>,
     def remfile(self, filename):
         return '%s:%s' % (self.remhost, filename)
     def lclfile(self, filename):
-        return filename
+        return self.join(filename)
     def run(self):
         recurse = self.get_kwarg('recurse', bool)
         dest = self.get_kwarg('dest', str, noNone=True)
