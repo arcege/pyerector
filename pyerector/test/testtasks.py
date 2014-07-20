@@ -59,15 +59,67 @@ class TestChmod(TestCase):
             self.assertEqual(self.getmode(normjoin(self.dir, fname)), int('666', 8))
 
 
-class TestCopy(TestCase):
+class TestContainer(TestCase):
     pass
 
+
+class TestCopy(TestCase):
+    def setUp(self):
+        self.src = 'src'
+        self.dest = 'dest'
+        self.savedir = os.getcwd()
+        os.chdir(self.dir)
+        self.fullsrc = os.path.join(self.dir, self.src)
+        self.fulldest = os.path.join(self.dir, self.dest)
+        os.mkdir(self.fullsrc)
+        os.mkdir(self.fulldest)
+        open(os.path.join(self.dir, 'a'), 'w').write('hi\n')
+        open(os.path.join(self.dir, 'b'), 'w').write('bye\n')
+        open(os.path.join(self.dir, 'c'), 'w').write('xyzzy\n')
+    def tearDown(self):
+        import shutil
+        os.chdir(self.savedir)
+        shutil.rmtree(self.fullsrc)
+        shutil.rmtree(self.fulldest)
+
+    def testfile2dir(self):
+        src = normjoin('a')
+        Copy(src, dest=self.dest)()
+        self.assertTrue(os.path.exists(os.path.join(self.dest, 'a')))
+        self.assertEqual('hi\n', open(os.path.join(self.dest, 'a')).read())
+    def testfiles2dir(self):
+        Copy('a', 'b', 'c', dest=self.dest)()
+        self.assertTrue(os.path.exists(os.path.join(self.dest, 'a')))
+        self.assertTrue(os.path.exists(os.path.join(self.dest, 'b')))
+        self.assertTrue(os.path.exists(os.path.join(self.dest, 'c')))
+        self.assertEqual('hi\n', open(os.path.join(self.dest, 'a')).read())
+        self.assertEqual('bye\n', open(os.path.join(self.dest, 'b')).read())
+        self.assertEqual('xyzzy\n', open(os.path.join(self.dest, 'c')).read())
+
+    def _testexclusion(self):
+        src = os.path.join(self.dir, 'src')
+        dest = os.path.join(self.dir, 'dest')
+        Copy(
+            os.path.join(src, 'a'),
+            os.path.join(src, 'b'),
+            os.path.join(src, 'c'),
+            dest=dest,
+            exclusions=['b'])()
+        self.assertTrue(os.path.exists(os.path.join(dest, 'a')))
+        self.assertFalse(os.path.exists(os.path.join(dest, 'b')))
+        self.assertTrue(os.path.exists(os.path.join(dest, 'c')))
+        self.assertEqual('hi\n', open(os.path.join(dest, 'a').read()))
+        self.assertEqual('xyzzy\n', open(os.path.join(dest, 'c').read()))
 
 class TestCopyTree(TestCase):
     pass
 
 
 class TestDownload(TestCase):
+    pass
+
+
+class TestEcho(TestCase):
     pass
 
 
@@ -107,6 +159,10 @@ class TestSpawn(TestCase):
     pass
 
 
+class TestSshEngine(TestCase):
+    pass
+
+
 class TestSsh(TestCase):
     pass
 
@@ -120,6 +176,14 @@ class TestTar(TestCase):
 
 
 class TestTokenize(TestCase):
+    pass
+
+
+class TestTouch(TestCase):
+    pass
+
+
+class TestUncontainer(TestCase):
     pass
 
 
