@@ -35,9 +35,16 @@ class Base(object):
     @classmethod
     def vcs_check(cls, srcdir=os.curdir):
         """Check if there is an appropriate directory for the VCS type."""
+        srcdir = os.path.realpath(os.path.normpath(srcdir))
         if cls.directory is None:
             return True
-        return os.path.isdir(os.path.join(srcdir, cls.directory))
+        # many of the VCS now use a single db directory at the top level
+        # find that if not immediately available
+        while srcdir not in ('', os.sep):
+            if os.path.isdir(os.path.join(srcdir, cls.directory)):
+                return True
+            srcdir = os.path.dirname(srcdir)
+        return False
 
     def current_info(self):
         """To be overridden."""
