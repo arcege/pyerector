@@ -34,17 +34,20 @@ class Base(object):
     # used by the package to see which VCS system to use
     @classmethod
     def vcs_check(cls, srcdir=os.curdir):
-        """Check if there is an appropriate directory for the VCS type."""
+        """Check directory tree in reverse for one of the registered
+Base subclasses.  Return the subclass that 'fits'.  If the directory
+attribute is None, use that subclass as default."""
         srcdir = os.path.realpath(os.path.normpath(srcdir))
-        if cls.directory is None:
-            return True
-        # many of the VCS now use a single db directory at the top level
-        # find that if not immediately available
+        default = None
+        klasses = cls.registered()
         while srcdir not in ('', os.sep):
-            if os.path.isdir(os.path.join(srcdir, cls.directory)):
-                return True
+            for c in klasses:
+                if c.directory is None:
+                    default = c
+                elif os.path.isdir(os.path.join(srcdir, c.directory)):
+                    return c
             srcdir = os.path.dirname(srcdir)
-        return False
+        return default
 
     def current_info(self):
         """To be overridden."""

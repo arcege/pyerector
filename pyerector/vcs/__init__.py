@@ -40,17 +40,9 @@ about it.
         basedir = V['basedir']
     except KeyError:
         basedir = os.curdir
-    novcs = None
-    for vcs in Base.registered():
-        if vcs.name == 'none':
-            novcs = vcs  # save for the end
-        elif vcs.vcs_check(srcdir=basedir):
-            break
-    else:
-        if novcs is not None and novcs.vcs_check(srcdir=basedir):
-            vcs = novcs
-        else:
-            raise RuntimeError('no version control found')
+    vcs = Base.vcs_check(srcdir=basedir)
+    if vcs.name is None:
+        raise RuntimeError('no version control found')
     return vcs(*args, **kwargs)
 
 class InitVCS(Initialization):
