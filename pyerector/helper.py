@@ -46,13 +46,12 @@ class Exclusions(set):
     """A list of exclusion patterns.
 The usedefaults argument can take three values: True (default), False and
 None.  A True will augment the set with the 'defaults' values.  A False
-will augment with a set containing V['pyerector.vcs'].directory.  And None
-will not augment any additional values - this is dangerous when used with
-the Remove task."""
-    defaults = set(
-        ('*.pyc', '*~', '.*.swp', '.git', '.hg', '.svn', 'CVS',
-         '__pycache__')
-    )
+will augment with a set containing vcs_names.  And None will not augment
+any additional values - this is dangerous when used with the Remove
+task."""
+    vcs_names = set(('.git', '.hg', '.svn', 'CVS'))
+    cruft_patts = set(('*.pyc', '*~', '.*.swp', '__pycache__'))
+    defaults = vcs_names | cruft_patts
 
     def __init__(self, items=(), usedefaults=True):
         if isinstance(items, Exclusions):
@@ -73,13 +72,11 @@ the Remove task."""
     def match(self, string):
         """Return true if the given string matches one of the patterns
 in the set."""
-        from .variables import V
-        vcs = V['pyerector.vcs']
         # augment the possible matches with the defaults
         if self.usedefaults == True:
             matches = self | self.defaults
-        elif self.usedefaults == False and vcs.directory is not None:
-            matches = self | set( [vcs.directory] )
+        elif self.usedefaults == False:
+            matches = self | self.vcs_names
         else:
             matches = self
         values = [v for v in matches
