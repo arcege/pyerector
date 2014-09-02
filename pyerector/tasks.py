@@ -924,25 +924,34 @@ Description: %(long_description)s
 Platform: UNKNOWN
 %(classifiers)s
 ''' % pkg_data
+        eggdir = os.path.join(root, 'EGG-INFO')
         try:
-            os.mkdir(os.path.join(root, 'EGG-INFO'))
+            os.mkdir(eggdir)
         except OSError:
             pass
-        open(os.path.join(root, 'EGG-INFO', 'PKG-INFO'), 'wt').write(pkg_info)
+        open(os.path.join(eggdir, 'PKG-INFO'), 'wt').write(pkg_info)
+        if os.path.join(eggdir, 'PKG-INFO') in toadd:
+            toadd.remove(os.path.join(eggdir, 'PKG-INFO'))
         for fn in ('dependency_links.txt', 'zip-safe'):
-            open(os.path.join(root, 'EGG-INFO', fn), 'wt').write(os.linesep)
-        open(os.path.join(root, 'EGG-INFO', 'top_level.txt'), 'wt').write(
+            open(os.path.join(eggdir, fn), 'wt').write(os.linesep)
+            if os.path.join(eggdir, fn) in toadd:
+                toadd.remove(os.path.join(eggdir, fn))
+        open(os.path.join(eggdir, 'top_level.txt'), 'wt').write(
             'pyerector' + os.linesep
         )
-        open(os.path.join(root, 'EGG-INFO', 'SOURCES.txt'), 'wt').write(
+        if os.path.join(eggdir, 'top_level.txt') in toadd:
+            toadd.remove(os.path.join(eggdir, 'top_level.txt'))
+        open(os.path.join(eggdir, 'SOURCES.txt'), 'wt').write(
             '\n'.join(sorted([s.replace(root+os.sep, '') for s in toadd]))
         )
+        if os.path.join(eggdir, 'SOURCES.txt') in toadd:
+            toadd.remove(os.path.join(eggdir, 'SOURCES.txt'))
         toadd.extend(
-            [os.path.join(root, 'EGG-INFO', 'PKG-INFO'),
-             os.path.join(root, 'EGG-INFO', 'dependency_links.txt'),
-             os.path.join(root, 'EGG-INFO', 'zip-safe'),
-             os.path.join(root, 'EGG-INFO', 'top_level.txt'),
-             os.path.join(root, 'EGG-INFO', 'SOURCES.txt')
+            [os.path.join(eggdir, 'PKG-INFO'),
+             os.path.join(eggdir, 'dependency_links.txt'),
+             os.path.join(eggdir, 'zip-safe'),
+             os.path.join(eggdir, 'top_level.txt'),
+             os.path.join(eggdir, 'SOURCES.txt')
             ]
         )
 
