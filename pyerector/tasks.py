@@ -896,6 +896,42 @@ class Egg(Zip):
 Egg(*files, name=<eggfilename>, root=os.curdir, exclude=(defaults))"""
     def manifest(self, name, root, toadd):
         """Generate a manifest structure."""
+        fname = os.path.splitext(os.path.basename(name))[0]
+        p = fname.find('-')
+        if p != -1:
+            fname = fname[:p]
+        eggdir = os.path.join(root, 'EGG-INFO')
+        try:
+            os.mkdir(eggdir)
+        except OSError:
+            pass
+        self.do_file_pkginfo(eggdir, toadd, root)
+        self.do_file_dummy(eggdir, toadd, 'dependency_links.txt')
+        self.do_file_dummy(eggdir, toadd, 'zip-safe')
+        self.do_file_top_level(eggdir, toadd, fname)
+        self.do_file_sources(eggdir, toadd, root)
+
+    @staticmethod
+    def add_path(seq, path):
+        if path not in seq:
+            seq.append(path)
+
+    def do_file_dummy(self, rootdir, toadd, fname):
+        fn = os.path.join(rootdir, fname)
+        open(fn, 'wt').write(os.linesep)
+        self.add_path(toadd, fn)
+    def do_file_top_level(self, rootdir, toadd, name):
+        fn = os.path.join(rootdir, 'top_level.txt')
+        open(fn, 'wt').write(name + os.linesep)
+        self.add_path(toadd, fn)
+    def do_file_sources(self, rootdir, toadd, root):
+        fn = os.path.join(rootdir, 'SOURCES.txt')
+        with open(fn, 'wt') as f:
+            for s in sorted([s.replace(root+os.sep, '') for s in toadd]):
+                if not s.startswith('EGG-INFO'):
+                    f.write(s + os.linesep)
+        self.add_path(toadd, fn)
+    def do_file_pkginfo(self, rootdir, toadd, root):
         if os.path.exists(os.path.join(root, 'setup.py')):
             setupvalue = self.get_setup_py(os.path.join(root, 'setup.py'))
         else:
@@ -924,36 +960,9 @@ Description: %(long_description)s
 Platform: UNKNOWN
 %(classifiers)s
 ''' % pkg_data
-        eggdir = os.path.join(root, 'EGG-INFO')
-        try:
-            os.mkdir(eggdir)
-        except OSError:
-            pass
-        open(os.path.join(eggdir, 'PKG-INFO'), 'wt').write(pkg_info)
-        if os.path.join(eggdir, 'PKG-INFO') in toadd:
-            toadd.remove(os.path.join(eggdir, 'PKG-INFO'))
-        for fn in ('dependency_links.txt', 'zip-safe'):
-            open(os.path.join(eggdir, fn), 'wt').write(os.linesep)
-            if os.path.join(eggdir, fn) in toadd:
-                toadd.remove(os.path.join(eggdir, fn))
-        open(os.path.join(eggdir, 'top_level.txt'), 'wt').write(
-            'pyerector' + os.linesep
-        )
-        if os.path.join(eggdir, 'top_level.txt') in toadd:
-            toadd.remove(os.path.join(eggdir, 'top_level.txt'))
-        open(os.path.join(eggdir, 'SOURCES.txt'), 'wt').write(
-            '\n'.join(sorted([s.replace(root+os.sep, '') for s in toadd]))
-        )
-        if os.path.join(eggdir, 'SOURCES.txt') in toadd:
-            toadd.remove(os.path.join(eggdir, 'SOURCES.txt'))
-        toadd.extend(
-            [os.path.join(eggdir, 'PKG-INFO'),
-             os.path.join(eggdir, 'dependency_links.txt'),
-             os.path.join(eggdir, 'zip-safe'),
-             os.path.join(eggdir, 'top_level.txt'),
-             os.path.join(eggdir, 'SOURCES.txt')
-            ]
-        )
+        fn = os.path.join(rootdir, 'PKG-INFO')
+        open(fn, 'wt').write(pkg_info)
+        self.add_path(toadd, fn)
 
     @staticmethod
     def get_setup_py(filename):
