@@ -171,3 +171,16 @@ v1.2.4  2014-04-08
   -- Remove unused u() function.
   -- Fix unit tests after making Base.args into a tuple.
 
+v1.2.4.1  2014-07-25
+  -- Issue 33 - Traverse up the directory to find the right VCS.
+
+v1.3  2014-09-02
+  -- Issue 34 - Remove Unittest from the tasks of Testonly
+  Other fixes/enhancements:
+  -- Exclusions handle usedefaults better; usedefaults=False, add vcs
+     names; usedefaults=None, nothing added.
+  -- Fix vcs.base.Base.vcs_check to search each directory for a vcs
+     before moving up, to prevent nfs mount issues.
+  -- Fix warnings where EGG-INFO files were added twice to the toadd
+     list.
+
