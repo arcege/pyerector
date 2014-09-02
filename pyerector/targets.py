@@ -163,12 +163,11 @@ Methods: None
 
 class Testonly(Target):
     """Run unittest, without dependencies.
-Tasks: Unittest
+Tasks: None
 Dependencies: None
 Members: None
 Methods: None
 """
-    tasks = (Unittest,)
 
 class Test(Target):
     """Run (unit)tests.
