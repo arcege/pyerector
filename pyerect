@@ -111,6 +111,7 @@ class Localtest(Target):
     )
     dependencies = (Dist,)
 
+Testonly.tasks = (Unittest,)
 Test.dependencies = Test.dependencies + (Localtest, Regression)
 Clean.files = ('build', 'dist', 'MANIFEST')
 Clean.dependencies = (Cleantest,)
