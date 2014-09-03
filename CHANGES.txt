@@ -174,7 +174,7 @@ v1.2.4  2014-04-08
 v1.2.4.1  2014-07-25
   -- Issue 33 - Traverse up the directory to find the right VCS.
 
-v1.3  2014-09-02
+v1.2.5  2014-09-02
   -- Issue 34 - Remove Unittest from the tasks of Testonly
   Other fixes/enhancements:
   -- Exclusions handle usedefaults better; usedefaults=False, add vcs
