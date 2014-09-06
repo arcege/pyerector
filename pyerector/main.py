@@ -213,6 +213,7 @@ class InitMain(Initialization):
     basedir = os.curdir
     def run(self):
         V['basedir'] = os.path.realpath(self.basedir)
+        V['homedir'] = os.path.normpath(os.path.expanduser('~'))
 
 InitMain()
 
