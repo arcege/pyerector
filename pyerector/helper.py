@@ -405,13 +405,14 @@ create two loggers: pyerector and pyerector.execute, and if available,
 set warnings to be captured by the logging module.
 """
         logging.basicConfig(level=self.deflevel, message=self.message)
-        logging.addLevelName(level=logging.ERROR + 5, levelName='DISPLAY')
+        logging.addLevelName(level=DISPLAY, levelName='DISPLAY')
         self.setup('pyerector', logging.StreamHandler, LogFormatter)
         self.setup('pyerector.execute', logging.StreamHandler, LogExecFormatter)
         warnings.simplefilter("default", DeprecationWarning)
         if hasattr(logging, 'captureWarnings'):
             logging.captureWarnings(True)
 
+DISPLAY = logging.ERROR + 5
 InitLogging()
 
 display = Verbose(None, 'DISPLAY')

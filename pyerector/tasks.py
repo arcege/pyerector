@@ -8,7 +8,7 @@ import shutil
 import sys
 
 from .exception import Error
-from .helper import Exclusions, Subcommand
+from .helper import Exclusions, Subcommand, DISPLAY
 from .config import noTimer
 from .base import Task, Mapper, Iterator
 from .iterators import BasenameMapper, IdentityMapper, FileMapper, \
@@ -221,7 +221,7 @@ level created in pyerector.helper."""
             text = msg % rest
         else:
             text = ''
-        self.logger.log(logging.getLevelName('DISPLAY'), text)
+        self.logger.log(DISPLAY, text)
 
 
 class HashGen(Task):

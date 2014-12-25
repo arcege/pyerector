@@ -18,7 +18,7 @@ if version[0] > '2':  # python 3+
     from .py3.base import Base
 else:
     from .py2.base import Base
-from .helper import Exclusions, normjoin, Timer
+from .helper import Exclusions, normjoin, Timer, DISPLAY
 from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
@@ -156,7 +156,7 @@ If noNone, then raise ValueError if the value is None.
         """Display a message at the DISPLAY log level, which should
 be above the level that the --quiet option would set."""
         from logging import getLevelName
-        self.logger.log(getLevelName('DISPLAY'), msg, *args, **kwargs)
+        self.logger.log(DISPLAY, msg, *args, **kwargs)
 
 
 class Target(Initer):
