@@ -192,3 +192,6 @@ v1.2.5.1 2015-01-10
   -- Update download url after google code removed uploads.
   -- Update Copyright dates.
 
+v1.2.6 2015-XX-XX
+  -- Make Version instance displayable.
+
