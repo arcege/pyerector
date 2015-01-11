@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2015 Michael P. Reilly. All rights reserved.
 """Define the base classes for the various version control systems,
 including centralized (VCS) and decentralized (DVCS)."""
 

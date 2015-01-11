@@ -54,4 +54,4 @@ Please visit the `project site <http://code.google.com/p/pyerector>`_
 for documentation.
 
 ----
-Copyright (C) 2010-2013 Michael P. Reilly.  All rights reserved.
+Copyright (C) 2010-2015 Michael P. Reilly.  All rights reserved.

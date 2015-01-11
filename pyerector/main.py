@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2015 Michael P. Reilly. All rights reserved.
 """The main driver of the library.  The PyErector class acts like
 a void function, parsing the command-line arguments, setting up the
 environment, validating the 'updates', 'dependencies' and 'tasks' members

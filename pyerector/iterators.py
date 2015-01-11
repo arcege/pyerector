@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2015 Michael P. Reilly. All rights reserved.
 """Define various Iterator subclasses, for use in tasks to iterate over
 files and directories.
 """

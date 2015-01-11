@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2013 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2015 Michael P. Reilly. All rights reserved.
 """Define the primary constructs for use within the package; namely
 Initer (base class), Target, Task, Iterator, Mapper, Sequential, Parallel.
 
