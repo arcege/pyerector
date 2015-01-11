@@ -190,4 +190,5 @@ v1.2.5.1 2015-01-10
   -- Must preserve the logging level number as you cannot retrieve the
      level from the name in Py3k.
   -- Update download url after google code removed uploads.
+  -- Update Copyright dates.
 
