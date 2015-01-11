@@ -26,6 +26,18 @@ retrieve using this interface."""
             item.startswith('pyerector.release.')
         )
 
+    def __str__(self):
+        return '%s %s' % (self.release, self.version)
+
+    def __repr__(self):
+        return '<VersionClass "%s" "%s" "%s" "%s" "%s">' % (
+            V['pyerector.release.product'],
+            V['pyerector.release.number'],
+            V['pyerector.release.tags'],
+            V['pyerector.release.version'],
+            V['pyerector.release.branch'],
+        )
+
     def __len__(self):
         return 5
 
