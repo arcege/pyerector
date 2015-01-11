@@ -184,3 +184,10 @@ v1.2.5  2014-09-02
   -- Fix warnings where EGG-INFO files were added twice to the toadd
      list.
 
+v1.2.5.1 2015-01-10
+  Other fixes/enhancements
+  -- Py3k cannot sort types, so key off the names.
+  -- Must preserve the logging level number as you cannot retrieve the
+     level from the name in Py3k.
+  -- Update download url after google code removed uploads.
+
