@@ -1,0 +1,194 @@
+v1.1.1, 2013-03-31 -- Create proper Iterator classes.
+
+v1.1.2  2013-04-04 -- Add version control modules as 'VCS'.
+
+v1.1.3  2013-05-06
+  -- Issue 4 - Uptodate unit tests are skipped
+  -- Issue 6 - Build property stack of Target/Task calls...
+  -- Issue 7 - Unittests fail on Python 2.6
+  -- Issue 8 - Spawn keyword argument processor error and...
+  -- Issue 10 - Shebang task does not follow docs
+  -- Issue 14 - Basedir is set for current directory, not...
+  New tasks
+  -- HashGen to create md5/sha1 hash files
+  -- Egg to create python archive files
+  Other fixes/enhancements:
+  -- Add --quiet and --DEBUG options and handling output processing better;
+  -- Add timing information after targets and the program finish.
+  -- Add new display object, a Verbose object that should (almost) always be on.
+  -- Replaced multiple exclusion predicates with a class to handle it.
+  -- Use mappers instead of Uptodate instances.
+  -- Remove 'noglob' keyword from Initer.get_files() method.
+  -- Ignore cases where python3 is not installed.
+  -- Add a LOT more unit tests (from 15 tests to 91).
+  -- Prevent setup.py running if pyerect is present.
+  -- Use setuptools instead of distutils.
+
+v1.2.0  2013-10-13
+  -- Issue 11 - Better use of variables; including showing variables on
+     verbose output of "help" target.
+  -- Issue 12 - Add ability to specify variables on the command-line:
+     If a target has an equal sign ("="), then it is taken as a variable
+     assignment.
+  -- Issue 13 - Update Version model.
+  -- Issue 16 - Convert from Config to Variable; Initer.config is kept for
+     backward compatibility, but just references Variable
+  -- Issue 18 - Replace Verbose instances with Python's logging module.
+     -- Add a "DISPLAY" log level above ERROR; keep the display() routine
+     -- Use new State class instead for noop and noTimer.
+  -- Issue 20 - Make the product thread-safe
+  New targets
+  -- InitVCS, initializes the version control support
+  New tasks
+  -- SubPyErector, call other PyErector projects
+  Other fixes/enhancements:
+  -- Two new constructs: Sequential and Parallel; Parallel is a subclass of
+     Sequential; "uptodates", "dependencies" and "tasks" members of implicitly
+     instances of Sequential; "uptodates" cannot be Parallel, but the other
+     two can be.  Parallel targets/tasks are executed in separate threads but
+     may access Variables without concern (see Issue 20).
+  -- Add execution stacks for Target and Task instances; this stack is
+     displayed instead of Python's on errors.
+  -- Add default variables on startup:
+     -- basedir (set by PyErector and Initer instantiation)
+     -- pyerector.vcs.version
+     -- pyerector.vcs.branch
+     -- pyerector.vcs.tags
+     -- pyerector.release.product
+     -- pyerector.release.number
+  -- Handle PYERECTOR_PREFIX envvar better.
+  -- Remove extraneous "hasformat" functionality.
+  -- Fixes to unit tests.
+  -- Better help strings.
+
+v1.2.1  2013-10-11
+  -- Issue 12 - Add ability to specify variables on the command-line (update)
+  -- Issue 15 - Redesign iterators/mappers
+  -- Issue 19 - Dirlist does not work as might be expected
+  -- Issue 20 - Thread-safe operations (update)
+  -- Issue 21 - Backward compatibility for Verbose
+  New tasks
+  -- Echo, displays message
+  Other fixes/enhancements:
+  -- Add pyerector.pool.size variable, default to 10, to limit how many
+     PyThread instances can be created (not including the PyErector instance).
+  -- Update pyerect to better use iterators.
+  -- Handle that PyErector always returns an exception, mainly SystemExit
+  -- Mark as "Failed." instead of "Done." if an error occurs; have
+     PyErector handle a proper exit status on failure.
+  -- Update inheritance for LogFormatter - on py2.6, super() throws a TypeError
+  -- Use of Verbose and Config classes now raise DeprecationWarnings
+  -- Move noop and noTimer to config module.
+
+v1.2.2  2013-10-17
+  Other fixes/enhancements:
+  -- Add (initial) regression tests.
+  -- Fix BaseIterators to properly handle empty directories with
+     noglob=True; have Clean Target use DirList.
+  -- Fix bug when iterator has an empty sequence.
+  -- Have the Help target depend on InitVCS.
+  -- Unittest fix for Python3.
+  -- Fixes found during analysis from PyCharm and pylint.
+  -- Use short-cut class instead of function-with-mutables for initialization.
+  -- Some SCM cleanup.
+
+v1.2.3  2013-10-25
+  -- Issue 9 - Propagate iterator parameters in Initer.get_files.
+  -- Issue 23 - Add an 'api' module to aid programming
+  New tasks
+  -- Scp, perform remote copies (via scp)
+  -- Ssh, perform a remote command (via ssh)
+  New iterator/mapper
+  -- IdentityMapper, destination file is always the destdir value.
+  Other fixes/enhancements:
+  -- Allow a Variable instance in a dependencies or tasks sequence.
+  -- Code cleanup using PyCharm and pylint.
+  -- Collapse FileSet into BaseIterator, make FileSet same as FileIterator.
+  -- Greatly simplified the calling system, now allows for nested calls of
+     Sequential/Parallel.
+  -- Refactor the "allow" condition in BaseIterator.next to be more
+     straightforward.
+  -- Fix the RealClean target, including a fix to Exclusions.
+  -- Fix to Help target for Targets with no docstring.
+  -- Fix how the regression module sets the proper sys.path value.
+  -- Fix condition where exception was shown on Abort.
+  -- Fixes to Subcommand calls.
+  -- Change Regression to a Target from a SubPyErector subclass so it can be
+     called by itself.
+  -- Create symlinks under regression/ to the proper (local) distribution,
+     thus overriding sys.path.
+  -- Move unittest driver script, named "unit-test.py" (to prevent imports)
+     outside of tasks.py; pass the parameters as a string instead of a
+     filename.
+
+v1.2.4  2014-04-08
+  -- Issue 25 - Move BaseIterator and FileMapper logic to Iterator and
+     Mapper respectively; remove BaseIterator.
+  -- Issue 26 - Add directory attribute to pyerector.vcs.base.Base
+     subclasses; move vcs_check under Base as a classmethod.
+  -- Issue 27 - lazy-evaluating Path works, but not properly integrated
+     with the rest of the modules.
+  -- Issue 28 - Allow a cons as a valid return type of Iterator.next;
+     handle that specially in Mapper.next.
+  -- Issue 29 - The InitVCS target has been deprecated.  The VCS() function
+     is called just before the package finishes being impored.
+  -- Issue 30 - pyerector.version.Version is now exported from the package;
+     it is callable with release number strings to compare with the the
+     current release number.  If greater than the current release,
+     terminate with an error message.
+  New target
+  -- Testonly performs the Unittest task and the Test target now has
+     the dependencies of "Build, Testonly", with no tasks.  This allows
+     calling the "testonly" target without rebuilding everything.
+  New task
+  -- Touch which is similar to the touch(1) command, creating files if
+     they do not exist.
+  New type
+  -- FileVariable allows some deferred resolution; file is loaded when
+     accessed, not when created.
+  Other fixes/enhancements:
+  -- The Exclusions object now accepts three values: True, False and None;
+     False will still include VCS().directory, and None will not include
+     any extra values.
+  -- Change vcs modules to a plugin type setup, using same registration
+     as being used by Initer; plugins loaded automatically when
+     pyerector.vcs.VCS is called.
+  -- Get the proper information back from Mercurial; previously only the
+     tip was retrieve.
+  -- Allow for mappers in Tokenize.
+  -- Typo in Symlinki task.
+  -- Add *.user and *.date variables from VCS.current_info.
+  -- Fix the template string for git-log; add an assertion.
+  -- Tokenize now allows for multiple Iterators/Mappers to be passed.
+  -- Various fixes to Iterators and Mappers; add uptodates entries in
+     pyerect.
+  -- Do not use assertions for type checking.
+  -- Initer.asserttype returns TypeError now.
+  -- Blank values for version strings.
+  -- Get a closer timestamp for svn.date comparison in unittests.
+  -- Allow an Iterator to be passed to Iterator.adjust.
+  -- Use th proper version variables.
+  -- Remove unused u() function.
+  -- Fix unit tests after making Base.args into a tuple.
+
+v1.2.4.1  2014-07-25
+  -- Issue 33 - Traverse up the directory to find the right VCS.
+
+v1.2.5  2014-09-02
+  -- Issue 34 - Remove Unittest from the tasks of Testonly
+  Other fixes/enhancements:
+  -- Exclusions handle usedefaults better; usedefaults=False, add vcs
+     names; usedefaults=None, nothing added.
+  -- Fix vcs.base.Base.vcs_check to search each directory for a vcs
+     before moving up, to prevent nfs mount issues.
+  -- Fix warnings where EGG-INFO files were added twice to the toadd
+     list.
+
+v1.2.5.1 2015-01-10
+  Other fixes/enhancements
+  -- Py3k cannot sort types, so key off the names.
+  -- Must preserve the logging level number as you cannot retrieve the
+     level from the name in Py3k.
+  -- Update download url after google code removed uploads.
+  -- Update Copyright dates.
+
