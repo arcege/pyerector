@@ -73,6 +73,59 @@ class PreCompile(Target):
     )
 
 
+class Force(Target):
+    """Perform operations even when they would fail."""
+    def run(self):
+        V('force', True)
+
+
+class Installed(IdentityMapper):
+    """This only compares the version string against the value in
+pyerector.pth."""
+    def checkpair(self, src, dst):
+        if not V('force').value == '':
+            return False
+        from site import getusersitepackages
+        fname = normjoin(getusersitepackages(), dst)
+        try:
+            line = open(fname).readlines()[-1].strip()
+        except IOError:
+            self.logger.debug('Could not open %s', fname)
+            return False
+        else:
+            p = line.find('/')
+            if p != -1:
+                versstr = line[:p]
+            else:
+                versstr = line
+            if versstr == src:
+                self.logger.warn('%s is already installed', versstr)
+                return True
+            elif versstr > src:
+                self.logger.warn('A newer version is already installed [%s]' % versstr)
+                return True
+            else:
+                return False
+
+class Install(Target):
+    """Deploy to python user site-packages structure."""
+    uptodates = (Installed(distfile, destdir='pyerector.pth'),)
+    dependencies = (Dist,)
+    def run(self):
+        import site
+        userdir = site.getusersitepackages()
+        destdir = normjoin(userdir, distfile)
+        Remove(destdir)()
+        Mkdir.mkdir(destdir)
+        CopyTree(srcdir=normjoin('build', distfile),
+                 dstdir=destdir)()
+        open(normjoin(userdir, 'pyerector.pth'), 'wt').write(
+                '%s\n' % distfile
+        )
+        Echo()('Installed to %s', userdir)
+
+
+
 class Cleantest(Target):
     """Clean the test directory."""
     tasks = (
