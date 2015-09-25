@@ -19,7 +19,7 @@ setup(
     long_description="Python module to create simplified build scripts",
     author="Michael P. Reilly",
     author_email="arcege@gmail.com",
-    url="http://code.google.com/p/pyerector",
+    url="http://bitbucket.org/Arcege/pyerector",
     packages=[
         "pyerector", "pyerector.py2", "pyerector.py3", "pyerector.vcs",
     ],
