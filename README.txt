@@ -50,7 +50,7 @@ files found under the ``src`` directory.
 
 Documentation
 =============
-Please visit the `project site <http://code.google.com/p/pyerector>`_
+Please visit the `project site <https://bitbucket.org/Arcege/pyerector/wiki/>`_
 for documentation.
 
 ----
