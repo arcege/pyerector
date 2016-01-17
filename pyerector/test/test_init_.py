@@ -22,7 +22,7 @@ import pyerector
 
 class Test_all_(TestCase):
     def test__all__(self):
-        self.assertEqual(len(pyerector.__all__), 60)
+        self.assertEqual(len(pyerector.__all__), 61)
 
 
 class TestSettings(TestCase):

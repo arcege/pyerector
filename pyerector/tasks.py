@@ -22,7 +22,7 @@ except NameError:
     from .py3.execfile import execfile
 
 __all__ = [
-    'Chmod', 'Copy', 'CopyTree', 'Echo', 'Egg', 'HashGen',
+    'Chmod', 'Copy', 'CopyTree', 'Echo', 'Egg', 'EncodeVar', 'HashGen',
     'Java', 'Mkdir', 'PyCompile', 'Remove', 'Scp', 'Shebang', 'Spawn',
     'Ssh', 'SubPyErector', 'Symlink', 'Tar', 'Tokenize', 'Touch',
     'Unittest', 'Untar', 'Unzip', 'Zip',
@@ -222,6 +222,38 @@ level created in pyerector.helper."""
         else:
             text = ''
         self.logger.log(DISPLAY, text)
+
+
+class EncodeVar(Task):
+    """Encode a Variable using zlib and base64.
+To Decode, use:
+def Decode(data):
+    from zlib import decompress
+    try:
+        from base64 import b64decode
+    except ImportError:
+        from binascii import a2b_base64
+        accum = []
+        for line in data.rstrip().split('\n'):
+            accum.append(a2b_base64(line))
+        bdata = ''.join(accum)
+    else:
+        bdata = b64decode(data)
+    return decompress(data)
+"""
+    source = None
+    dest = None
+
+    def run(self):
+        """Encode a string."""
+        V(self.dest).value = self.encode(V(self.source).value)
+
+    @staticmethod
+    def encode(data):
+        """Perform the actual encoding."""
+        from zlib import compress
+        from base64 import b64encode
+        return b64encode(compress(data))
 
 
 class HashGen(Task):

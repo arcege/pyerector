@@ -65,7 +65,7 @@ from .version import Version
 from .main import PyErector, pymain
 from .vcs import VCS
 from .base import Target, Task, Sequential, Parallel
-from .tasks import Chmod, Copy, CopyTree, Echo, Egg, HashGen, \
+from .tasks import Chmod, Copy, CopyTree, Echo, Egg, EncodeVar, HashGen, \
                    Java, Mkdir, PyCompile, Remove, Scp, Shebang, Spawn, \
                    SubPyErector, Ssh, Symlink, Tar, Tokenize, Touch, \
                    Unittest, Untar, Unzip, Zip
@@ -102,6 +102,7 @@ __all__ = [
     'CopyTree',
     'Echo',
     'Egg',
+    'EncodeVar',
     'HashGen',
     'Java',
     'Mkdir',
