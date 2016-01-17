@@ -15,6 +15,10 @@ Objects are classes and can be subclassed to create new work flows.
 Installation
 ============
 
+Using pip
+---------
+Run ``pip pyerector`` to install inthe Python's distribution from pypi.
+
 Using file copy
 ---------------
 Copy the ``pyerector`` structure into the project directory, then create a
