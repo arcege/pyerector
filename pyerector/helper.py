@@ -201,7 +201,7 @@ if applicable."""
         elif self.infile == self.PIPE:
             ifile = self.PIPE
         elif hasattr(self.infile, 'lower'):
-            ifile = open(self.infile, 'r')
+            ifile = open(str(self.infile), 'r')
         else:
             ifile = None
         if hasattr(self.outfile, 'read'):
@@ -209,7 +209,7 @@ if applicable."""
         elif self.outfile == self.PIPE:
             ofile = self.PIPE
         elif hasattr(self.outfile, 'lower'):
-            ofile = open(self.outfile, 'w')
+            ofile = open(str(self.outfile), 'w')
         else:
             ofile = None
         if self.errfile == self.outfile:
@@ -219,7 +219,7 @@ if applicable."""
         elif self.errfile == self.PIPE:
             efile = self.PIPE
         elif hasattr(self.errfile, 'lower'):
-            efile = open(self.errfile, 'w')
+            efile = open(str(self.errfile), 'w')
         else:
             efile = None
         (self.stdin, self.stdout, self.stderr) = (ifile, ofile, efile)
@@ -228,7 +228,8 @@ if applicable."""
                       'stderr=%s, bufsize=0, env=%s)', self.cmd,
                       shellval, self.wdir, ifile, ofile, efile, self.env)
         try:
-            proc = Popen(self.cmd, shell=shellval, cwd=self.wdir,
+            proc = Popen(tuple([str(c) for c in self.cmd]),
+                         shell=shellval, cwd=self.wdir,
                          stdin=ifile, stdout=ofile, stderr=efile,
                          bufsize=0, env=realenv)
         except (IOError, OSError):

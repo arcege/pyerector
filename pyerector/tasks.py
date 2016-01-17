@@ -286,9 +286,9 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
                 if (os.path.isfile(sname) and
                         not fmap.checkpair(self.join(sname),
                                            self.join(dname))):
-                    hashval.update(open(self.join(sname), 'rb').read())
+                    hashval.update(open(str(self.join(sname)), 'rb').read())
                     self.logger.debug('writing %s', dname)
-                    open(self.join(dname), 'wt').write(
+                    open(str(self.join(dname)), 'wt').write(
                             hashval.hexdigest() + '\n'
                     )
 
@@ -477,7 +477,7 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
                 outfname = self.join(
                     dest, fname.replace(head, '')
                 )
-            inf = open(self.join(fname), 'r')
+            inf = open(str(self.join(fname)), 'r')
             outf = StringIO()
             first = inf.readline()
             if first.startswith(self.token):
@@ -492,7 +492,7 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
             shutil.copyfileobj(inf, outf)
             inf.close()
             outf.seek(0)
-            inf = open(outfname, 'w')
+            inf = open(str(outfname), 'w')
             shutil.copyfileobj(outf, inf)
 
 
@@ -707,7 +707,7 @@ Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""
         """Add a list of files to the container."""
         import tarfile
         try:
-            tfile = tarfile.open(self.join(name), 'w:gz')
+            tfile = tarfile.open(str(self.join(name)), 'w:gz')
         except IOError:
             raise ValueError('no such file or directory: %s' % name)
         else:
@@ -760,10 +760,10 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
         mapper = FileMapper(files, destdir=self.get_kwarg('dest', str),
                             iteratorclass=StaticIterator)
         for (sname, dname) in mapper:
-            realcontents = open(self.join(sname), 'rt').read()
+            realcontents = open(str(self.join(sname)), 'rt').read()
             alteredcontents = tokens.sub(repltoken, realcontents)
             if alteredcontents != realcontents:
-                open(self.join(dname), 'wt').write(alteredcontents)
+                open(str(self.join(dname)), 'wt').write(alteredcontents)
 
 
 class Touch(Task):
@@ -782,7 +782,7 @@ Touch(*files, dest=None)"""
             if dest is not None:
                 fname = normjoin(dest, fname)
             self.logger.info('touch(%s)', fname)
-            open(self.join(fname), 'a')
+            open(str(self.join(fname)), 'a')
 
 class Unittest(Task):
     """Call Python unit tests found.
@@ -851,7 +851,7 @@ Untar(*files, name=<tarfilename>, root=None)"""
     def get_file(self, fname):
         """Open the container."""
         import tarfile
-        return tarfile.open(self.join(fname), 'r:gz')
+        return tarfile.open(str(self.join(fname)), 'r:gz')
 
     @staticmethod
     def retrieve_members(contfile, files):
