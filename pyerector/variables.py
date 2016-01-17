@@ -200,11 +200,45 @@ Setting to the value changes the filename, getting the value reads the file.
 File contents are decoded by default as UTF-8."""
     encoding = 'UTF-8'
 
-    def retrieve_value(self):
+    @property
+    def filename(self):
+        try:
+            return self.cache[self]
+        except Error:
+            return ''
+
+    @filename.setter
+    def filename(self, value):
+        self.cache[self] = value
+
+    @filename.deleter
+    def filename(self):
+        del self.cache[self]
+
+    @property
+    def value(self):
         filename = self.cache[self]
-        with open(str(filename), 'rt') as infile:
-            contents = infile.read().decode(self.encoding)
+        try:
+            with open(str(filename), 'rt') as infile:
+                contents = infile.read().decode(self.encoding)
+        except IOError, e:
+            raise ValueError('%s: %s' % self.filename)
         return contents
+
+    @value.setter
+    def value(self, value):
+        try:
+            with open(str(self.filename), 'wt') as outfile:
+                outfile.write(value.encode(self.encoding))
+        except IOError, e:
+            raise ValueError('%s: %s' % self.filename, e)
+
+    @value.deleter
+    def value(self):
+        try:
+            os.remove(str(self.filename))
+        except OSError:
+            raise ValueError('cannot delete')
 
 
 class VariableSet(dict):
