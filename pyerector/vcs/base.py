@@ -38,16 +38,16 @@ class Base(object):
         """Check directory tree in reverse for one of the registered
 Base subclasses.  Return the subclass that 'fits'.  If the directory
 attribute is None, use that subclass as default."""
-        srcdir = os.path.realpath(os.path.normpath(srcdir))
+        srcdir = os.path.realpath(os.path.normpath(str(srcdir)))
         default = None
         klasses = cls.registered()
         while srcdir not in ('', os.sep):
             for c in klasses:
                 if c.directory is None:
                     default = c
-                elif os.path.isdir(os.path.join(srcdir, c.directory)):
+                elif os.path.isdir(os.path.join(str(srcdir), c.directory)):
                     return c
-            srcdir = os.path.dirname(srcdir)
+            srcdir = os.path.dirname(str(srcdir))
         return default
 
     def current_info(self):

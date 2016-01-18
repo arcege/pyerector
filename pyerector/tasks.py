@@ -71,11 +71,11 @@ class Container(Task):
             for fname in glob(self.join(root, entry)):
                 if excludes.match(fname):  # if true, then ignore
                     pass
-                elif os.path.islink(fname) or os.path.isfile(fname):
+                elif os.path.islink(str(fname)) or os.path.isfile(str(fname)):
                     toadd.append(fname)
-                elif os.path.isdir(fname):
-                    fnames = [os.path.join(fname, f)
-                                  for f in os.listdir(fname)]
+                elif os.path.isdir(str(fname)):
+                    fnames = [os.path.join(str(fname), f)
+                                  for f in os.listdir(str(fname))]
                     queue.extend(fnames)
         #verbose('toadd =', toadd)
         self.manifest(name, root, toadd)
@@ -113,7 +113,7 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
             excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
-        elif len(files) == 1 and dest is not None and not os.path.isdir(dest):
+        elif len(files) == 1 and dest is not None and not os.path.isdir(str(dest)):
             fmap = IdentityMapper(self.get_files(files), destdir=dest)
         else:
             fmap = FileMapper(self.get_files(files), destdir=dest)
@@ -122,12 +122,12 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
             #self.logger.error( repr( (sname, dname) ) )
             srcfile = self.join(sname)
             dstfile = self.join(dname)
-            if not excludes.match(os.path.basename(sname)):
+            if not excludes.match(os.path.basename(str(sname))):
                 if os.path.isfile(dstfile) and fmap.checkpair(srcfile, dstfile):
                     self.logger.debug('uptodate: %s', dstfile)
                 else:
                     self.logger.info('copy2(%s, %s)', sname, dname)
-                    shutil.copy2(srcfile, dstfile)
+                    shutil.copy2(str(srcfile), str(dstfile))
 
 
 class CopyTree(Task):
@@ -148,7 +148,7 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
             excludes = Exclusions(excludes)
         if not os.path.exists(self.join(srcdir)):
             raise OSError(2, "No such file or directory: " + srcdir)
-        elif not os.path.isdir(self.join(srcdir)):
+        elif not os.path.isdir(str(self.join(srcdir))):
             raise OSError(20, "Not a directory: " + srcdir)
         copy_t = Copy(noglob=True, exclude=excludes)
         mkdir_t = Mkdir()
@@ -158,11 +158,11 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
             del dirs[0]
             if not excludes.match(tdir):
                 mkdir_t(self.join(dstdir, tdir))
-                for fname in os.listdir(self.join(srcdir, tdir)):
+                for fname in os.listdir(str(self.join(srcdir, tdir))):
                     if not excludes.match(fname):
                         spath = self.join(srcdir, tdir, fname)
                         dpath = self.join(dstdir, tdir, fname)
-                        if os.path.isdir(spath):
+                        if os.path.isdir(str(spath)):
                             dirs.append(os.path.join(tdir, fname))
                         else:
                             copy_t(spath, dest=dpath)
@@ -283,7 +283,7 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
         for hashfunc, fmap in fmaps:
             for sname, dname in fmap:
                 hashval = hashfunc()
-                if (os.path.isfile(sname) and
+                if (os.path.isfile(str(sname)) and
                         not fmap.checkpair(self.join(sname),
                                            self.join(dname))):
                     hashval.update(open(str(self.join(sname)), 'rb').read())
@@ -309,15 +309,15 @@ Java(jar=<JAR>, java_home=<$JAVA_HOME>, classpath=(), properties=[])"""
 
     def __init__(self):
         Task.__init__(self)
-        if self.java_home and os.path.exists(self.java_home):
-            self.java_prog = os.path.join(self.java_home, 'bin', 'java')
+        if self.java_home and os.path.exists(str(self.java_home)):
+            self.java_prog = os.path.join(str(self.java_home), 'bin', 'java')
         elif os.path.exists(os.path.expanduser(os.path.join('~', 'java'))):
             self.java_prog = os.path.expanduser(
                 os.path.join('~', 'java', 'bin', 'java')
             )
         else:
             raise Error("no java program to execute")
-        if not os.access(self.java_prog, os.X_OK):
+        if not os.access(str(self.java_prog), os.X_OK):
             raise Error("no java program to execute")
 
     def addprop(self, var, val):
@@ -364,14 +364,14 @@ Mkdir(*files)"""
         """Recursive mkdir."""
         from logging import getLogger
         logger = getLogger('pyerector.execute')
-        if os.path.islink(path) or os.path.isfile(path):
+        if os.path.islink(str(path)) or os.path.isfile(str(path)):
             logger.info('remove(%s)', path)
-            os.remove(path)
+            os.remove(str(path))
             cls.mkdir(path)
         elif not path:
             pass
-        elif not os.path.isdir(path):
-            cls.mkdir(os.path.dirname(path))
+        elif not os.path.isdir(str(path)):
+            cls.mkdir(os.path.dirname(str(path)))
             logger.info('mkdir(%s)', path)
             os.mkdir(path)
 
@@ -441,12 +441,12 @@ Remove(*files)"""
         for name in files:
             self.asserttype(name, str, 'files')
             fname = self.join(name)
-            if os.path.isfile(fname) or os.path.islink(fname):
+            if os.path.isfile(str(fname)) or os.path.islink(str(fname)):
                 self.logger.info('remove(%s)', fname)
-                os.remove(fname)
-            elif os.path.isdir(fname):
+                os.remove(str(fname))
+            elif os.path.isdir(str(fname)):
                 self.logger.info('rmtree(%s)', fname)
-                shutil.rmtree(fname)
+                shutil.rmtree(str(fname))
 
 
 class Shebang(Copy):
@@ -647,12 +647,12 @@ Adds PYERECTOR_PREFIX environment variable."""
             options.append('--quiet')
         if noTimer:
             options.append('--timer')
-        cmd = (os.path.join('.', prog),) + tuple(options) + tuple(targets)
+        cmd = (os.path.join('.', str(prog)),) + tuple(options) + tuple(targets)
         env = self.get_kwarg('env', dict)
         wdir = self.get_kwarg('wdir', str)
         from os import environ
         evname = 'PYERECTOR_PREFIX'
-        nevname = os.path.basename(wdir)
+        nevname = os.path.basename(str(wdir))
         if evname in environ and environ[evname]:
             env[evname] = '%s: %s' % (environ[evname], nevname)
         else:
@@ -680,7 +680,7 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
             excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
-        elif len(files) == 1 and dest is not None and not os.path.isdir(dest):
+        elif len(files) == 1 and dest is not None and not os.path.isdir(str(dest)):
             fmap = FileMapper(files[0], destdir=dest, exclude=excludes)
         elif dest is not None:
             fmap = FileMapper(self.get_files(files),
@@ -692,11 +692,11 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
             srcfile = self.join(sname)
             dstfile = self.join(dname)
             if not excludes.match(sname):
-                if os.path.islink(srcfile) and fmap.checkpair(dstfile, srcfile):
+                if os.path.islink(str(srcfile)) and fmap.checkpair(dstfile, srcfile):
                     self.logger.debug('uptodate: %s', dstfile)
                 else:
                     self.logger.info('symlink(%s, %s)', dname, sname)
-                    os.symlink(dstfile, srcfile)
+                    os.symlink(str(dstfile), str(srcfile))
 
 
 class Tar(Container):
@@ -896,7 +896,7 @@ Unzip(*files, name=<tarfilename>, root=None)"""
     def extract_members(self, contfile, fileset, root):
         """Extract members from the container."""
         for member in fileset:
-            dname = os.path.join(root, member)
+            dname = os.path.join(str(root), member)
             Mkdir.mkdir(os.path.dirname(dname))
             self.logger.debug('zip.extract(%s)', member)
             dfile = open(dname, 'wb')
@@ -910,16 +910,16 @@ Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
         """Add the files to the container."""
         from zipfile import ZipFile
         try:
-            zfile = ZipFile(self.join(name), 'w')
+            zfile = ZipFile(str(self.join(name)), 'w')
         except IOError:
             raise ValueError('no such file or directory: %s' % name)
         else:
             for fname in toadd:
-                path = fname.replace(
+                path = str(fname).replace(
                     root + os.sep, ''
                 )
                 self.logger.debug('zip.add(%s, %s)', fname, path)
-                zfile.write(fname, path)
+                zfile.write(str(fname), path)
             zfile.close()
 
 
@@ -928,11 +928,11 @@ class Egg(Zip):
 Egg(*files, name=<eggfilename>, root=os.curdir, exclude=(defaults))"""
     def manifest(self, name, root, toadd):
         """Generate a manifest structure."""
-        fname = os.path.splitext(os.path.basename(name))[0]
+        fname = os.path.splitext(os.path.basename(str(name)))[0]
         p = fname.find('-')
         if p != -1:
             fname = fname[:p]
-        eggdir = os.path.join(root, 'EGG-INFO')
+        eggdir = os.path.join(str(root), 'EGG-INFO')
         try:
             os.mkdir(eggdir)
         except OSError:
@@ -959,13 +959,13 @@ Egg(*files, name=<eggfilename>, root=os.curdir, exclude=(defaults))"""
     def do_file_sources(self, rootdir, toadd, root):
         fn = os.path.join(rootdir, 'SOURCES.txt')
         with open(fn, 'wt') as f:
-            for s in sorted([s.replace(root+os.sep, '') for s in toadd]):
+            for s in sorted([str(s).replace(str(root)+os.sep, '') for s in toadd]):
                 if not s.startswith('EGG-INFO'):
                     f.write(s + os.linesep)
         self.add_path(toadd, fn)
     def do_file_pkginfo(self, rootdir, toadd, root):
-        if os.path.exists(os.path.join(root, 'setup.py')):
-            setupvalue = self.get_setup_py(os.path.join(root, 'setup.py'))
+        if os.path.exists(os.path.join(str(root), 'setup.py')):
+            setupvalue = self.get_setup_py(os.path.join(str(root), 'setup.py'))
         else:
             raise Error('Egg', 'unable to find a setup.py file')
         pkg_data = {
@@ -992,7 +992,7 @@ Description: %(long_description)s
 Platform: UNKNOWN
 %(classifiers)s
 ''' % pkg_data
-        fn = os.path.join(rootdir, 'PKG-INFO')
+        fn = os.path.join(str(rootdir), 'PKG-INFO')
         open(fn, 'wt').write(pkg_info)
         self.add_path(toadd, fn)
 

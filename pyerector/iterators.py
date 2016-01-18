@@ -56,16 +56,16 @@ fileonly=True, exclude=()."""
         if noglob or not self.checkglobpatt(candidate):
             return super(FileIterator, self).adjust(candidate)
         else:
-            items = glob.glob(os.path.join(basedir, candidate))
-            return [n.replace(os.path.join(basedir, ''), '') for n in items]
+            items = glob.glob(os.path.join(str(basedir), str(candidate)))
+            return [n.replace(os.path.join(str(basedir), ''), '') for n in items]
 
     def post_process_candidate(self, candidate):
         basedir = V['basedir']
         recurse = self.get_kwarg('recurse', bool)
         fileonly = self.get_kwarg('fileonly', bool)
-        if recurse and os.path.isdir(os.path.join(basedir, candidate)):
-            fnames = [os.path.join(candidate, fn) for fn in
-                os.listdir(os.path.join(basedir, candidate))
+        if recurse and os.path.isdir(os.path.join(str(basedir), str(candidate))):
+            fnames = [os.path.join(str(candidate), fn) for fn in
+                os.listdir(os.path.join(str(basedir), str(candidate)))
             ]
             self._prepend(fnames)
             if fileonly:
@@ -77,10 +77,10 @@ fileonly=True, exclude=()."""
         basedir = V['basedir']
         recurse = self.get_kwarg('recurse', bool)
         pattern = self.get_kwarg('pattern', str)
-        if recurse and os.path.isdir(os.path.join(basedir, candidate)):
+        if recurse and os.path.isdir(os.path.join(str(basedir), str(candidate))):
             return True
         elif not pattern or \
-                fnmatch.fnmatchcase(os.path.basename(candidate), pattern):
+                fnmatch.fnmatchcase(os.path.basename(str(candidate)), pattern):
             return True
         else:
             return False
@@ -131,14 +131,14 @@ This would map each py file in src to a pyc file in build:
         sfile = self.join(src)
         dfile = self.join(dst)
         """Return True if destination is newer than source."""
-        if self.exclusion.match(os.path.basename(sfile)):
+        if self.exclusion.match(os.path.basename(str(sfile))):
             return True
         try:
-            srctime = round(os.path.getmtime(sfile), 4)
+            srctime = round(os.path.getmtime(str(sfile)), 4)
         except OSError:
             raise ValueError('no source:', src)
         try:
-            dsttime = round(os.path.getmtime(dfile), 4)
+            dsttime = round(os.path.getmtime(str(dfile)), 4)
         except OSError:
             self.logger.debug('%s not found', dst)
             return False
@@ -155,15 +155,15 @@ modification times, using checkpair above.
         dirs = [os.curdir]
         while dirs:
             cdir = dirs.pop(0)
-            for fname in os.listdir(normjoin(src, cdir)):
+            for fname in os.listdir(str(normjoin(src, cdir))):
                 sname = normjoin(src, cdir, fname)
                 dname = normjoin(dst, cdir, fname)
                 if self.exclusion.match(fname):
                     continue
-                if os.path.isdir(sname):
+                if os.path.isdir(str(sname)):
                     self.logger.debug('adding %s to fifo',
                                       normjoin(cdir, fname))
-                    dirs.append(normjoin(cdir, fname))
+                    dirs.append(str(normjoin(cdir, fname)))
                 else:
                     self.logger.debug('checking %s with %s', sname, dname)
                     result = self.checkpair(sname, dname)
@@ -176,13 +176,13 @@ modification times, using checkpair above.
 class BasenameMapper(FileMapper):
     """Remove the last file extension including the dot."""
     def map(self, item):
-        return os.path.splitext(item)[0]
+        return os.path.splitext(str(item))[0]
 
 
 class MergeMapper(FileMapper):
     """Take only the base name, not subpaths."""
     def map(self, item):
-        return os.path.basename(item)
+        return os.path.basename(str(item))
 
 
 class IdentityMapper(FileMapper):
@@ -224,7 +224,7 @@ subclasses."""
                 times = []
                 for fname in lst:
                     try:
-                        times.append(os.path.getmtime(slf.join(fname)))
+                        times.append(os.path.getmtime(str(self.join(fname))))
                     except OSError:
                         pass
                 return times

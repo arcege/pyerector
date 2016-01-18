@@ -39,7 +39,7 @@ def normjoin(*args):
     """Join and normalize the arguments into a pathname."""
     if not args:
         args = ('',)
-    return os.path.normpath(os.path.join(*args))
+    return os.path.normpath(os.path.join(*tuple([str(f) for f in args])))
 
 
 class Exclusions(set):
@@ -80,7 +80,7 @@ in the set."""
         else:
             matches = self
         values = [v for v in matches
-                      if fnmatch.fnmatchcase(os.path.basename(string), v)]
+                      if fnmatch.fnmatchcase(os.path.basename(str(string)), v)]
         return len(values) > 0
 
     @classmethod
