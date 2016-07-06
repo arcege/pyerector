@@ -200,6 +200,18 @@ Setting to the value changes the filename, getting the value reads the file.
 File contents are decoded by default as UTF-8."""
     encoding = 'UTF-8'
 
+    def encode(self, data):
+        return data.encode(self.encoding)
+
+    def decode(self, data):
+        return data.decode(self.encoding)
+
+    def read(self, fileobj):
+        return fileobj.read()
+
+    def write(self, fileobj, data):
+        fileobj.write(data)
+
     @property
     def filename(self):
         try:
@@ -217,10 +229,9 @@ File contents are decoded by default as UTF-8."""
 
     @property
     def value(self):
-        filename = self.cache[self]
         try:
-            with open(str(filename), 'rt') as infile:
-                contents = infile.read().decode(self.encoding)
+            with open(str(self.filename), 'rt') as infile:
+                contents = self.decode(self.read(infile))
         except IOError, e:
             raise ValueError('%s: %s' % self.filename)
         return contents
@@ -229,7 +240,7 @@ File contents are decoded by default as UTF-8."""
     def value(self, value):
         try:
             with open(str(self.filename), 'wt') as outfile:
-                outfile.write(value.encode(self.encoding))
+                self.write(outfile, self.encode(value))
         except IOError, e:
             raise ValueError('%s: %s' % self.filename, e)
 
