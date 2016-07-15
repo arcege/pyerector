@@ -5,6 +5,7 @@
 import os
 
 from ..execute import Initialization
+from ..path import Path
 from ..variables import V
 from .base import Base
 
@@ -39,7 +40,7 @@ about it.
     try:
         basedir = V['basedir']
     except KeyError:
-        basedir = os.curdir
+        basedir = Path(os.curdir)
     vcs = Base.vcs_check(srcdir=basedir)
     if vcs.name is None:
         raise RuntimeError('no version control found')

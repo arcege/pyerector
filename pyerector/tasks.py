@@ -8,6 +8,7 @@ import shutil
 import sys
 
 from .exception import Error
+from .path import Path
 from .helper import Exclusions, Subcommand, DISPLAY
 from .config import noTimer
 from .base import Task, Mapper, Iterator
@@ -38,12 +39,14 @@ Chmod(*files, mode=0666)"""
 
     def run(self):
         """Change the permissions on the files."""
-        from os import chmod
         mode = self.get_kwarg('mode', int)
         for fname in self.get_files(self.get_args('files')):
-            self.asserttype(fname, str, 'files')
+            self.asserttype(fname, (Path, str), 'files')
             self.logger.info('chmod(%s, %o)', fname, mode)
-            chmod(self.join(fname), mode)
+            p = self.join(fname)
+            p.chmod(mode)
+            if isinstance(fname, Path):
+                fname.refresh()
 
 
 class Container(Task):
@@ -56,27 +59,30 @@ class Container(Task):
 
     def run(self):
         """Gather filenames and put them into the container."""
-        name = self.get_kwarg('name', str, noNone=True)
-        root = self.join(self.get_kwarg('root', str))
+        name = self.get_kwarg('name', (Path, str), noNone=True)
+        root = self.join(self.get_kwarg('root', (Path, str)))
         excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
+        self.logger.debug('Container.run(name=%s, root=%s, excludes=%s)',
+                repr(name), repr(root), repr(excludes))
         self.preop(name, root, excludes)
         toadd = []
-        from glob import glob
         queue = list(self.get_args('files'))
         while queue:
             entry = queue[0]
             del queue[0]
-            for fname in glob(self.join(root, entry)):
-                if excludes.match(fname):  # if true, then ignore
-                    pass
-                elif os.path.islink(str(fname)) or os.path.isfile(str(fname)):
-                    toadd.append(fname)
-                elif os.path.isdir(str(fname)):
-                    fnames = [os.path.join(str(fname), f)
-                                  for f in os.listdir(str(fname))]
-                    queue.extend(fnames)
+            try:
+                for fname in root.glob(entry):
+                    if excludes.match(fname):  # if true, ignore
+                        pass
+                    elif fname.islink or fname.isfile:
+                        toadd.append(fname)
+                    elif fname.isdir:
+                        fnames = list(fname)
+                        queue.extend(fnames)
+            except TypeError:
+                pass
         #verbose('toadd =', toadd)
         self.manifest(name, root, toadd)
         self.contain(name, root, toadd)
@@ -106,7 +112,7 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
 
     def run(self):
         """Copy files to a destination directory."""
-        dest = self.get_kwarg('dest', str, noNone=False)
+        dest = self.get_kwarg('dest', (Path, str), noNone=False)
         files = self.get_args('files')
         excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
@@ -120,14 +126,17 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
         self.logger.debug('Copy.fmap = %s', vars(fmap))
         for (sname, dname) in fmap:
             #self.logger.error( repr( (sname, dname) ) )
+            self.logger.debug('sname = %s; dname = %s', sname, dname)
             srcfile = self.join(sname)
             dstfile = self.join(dname)
-            if not excludes.match(os.path.basename(str(sname))):
-                if os.path.isfile(dstfile) and fmap.checkpair(srcfile, dstfile):
+            if not excludes.match(sname):
+                if dstfile.isfile and fmap.checkpair(srcfile, dstfile):
                     self.logger.debug('uptodate: %s', dstfile)
                 else:
                     self.logger.info('copy2(%s, %s)', sname, dname)
-                    shutil.copy2(str(srcfile), str(dstfile))
+                    srcfile.copy(dstfile)
+            else:
+                self.logger.debug('ignoring %s to %s', sname, dname)
 
 
 class CopyTree(Task):
@@ -141,31 +150,32 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
 
     def run(self):
         """Copy a tree to a destination."""
-        srcdir = self.get_kwarg('srcdir', str, noNone=True)
-        dstdir = self.get_kwarg('dstdir', str, noNone=True)
+        srcdir = self.join(self.get_kwarg('srcdir', (Path, str), noNone=True))
+        dstdir = self.join(self.get_kwarg('dstdir', (Path, str), noNone=True))
         excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
-        if not os.path.exists(self.join(srcdir)):
+        if not srcdir.exists:
             raise OSError(2, "No such file or directory: " + srcdir)
-        elif not os.path.isdir(str(self.join(srcdir))):
+        elif not srcdir.isdir:
             raise OSError(20, "Not a directory: " + srcdir)
         copy_t = Copy(noglob=True, exclude=excludes)
         mkdir_t = Mkdir()
-        dirs = [os.curdir]
+        dirs = [srcdir]
+        #print 'CopyTree.dirs =', dirs
         while dirs:
-            tdir = dirs[0]
-            del dirs[0]
+            tdir = dirs.pop(0)
             if not excludes.match(tdir):
-                mkdir_t(self.join(dstdir, tdir))
-                for fname in os.listdir(str(self.join(srcdir, tdir))):
+                mkdir_t.mkdir(dstdir + (tdir - srcdir))
+                for fname in tdir:
+                    self.logger.debug('fname = %s', fname)
                     if not excludes.match(fname):
-                        spath = self.join(srcdir, tdir, fname)
-                        dpath = self.join(dstdir, tdir, fname)
-                        if os.path.isdir(str(spath)):
-                            dirs.append(os.path.join(tdir, fname))
+                        dpath = dstdir + (fname - srcdir)
+                        self.logger.debug('dpath = %s', dpath)
+                        if fname.isdir:
+                            dirs.append(fname)
                         else:
-                            copy_t(spath, dest=dpath)
+                            copy_t(fname, dest=dpath)
 
 
 class Download(Task):
@@ -283,12 +293,12 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
         for hashfunc, fmap in fmaps:
             for sname, dname in fmap:
                 hashval = hashfunc()
-                if (os.path.isfile(str(sname)) and
-                        not fmap.checkpair(self.join(sname),
-                                           self.join(dname))):
-                    hashval.update(open(str(self.join(sname)), 'rb').read())
+                sname = self.join(sname)
+                dname = self.join(dname)
+                if sname.isfile and not fmap.checkpair(sname, dname):
+                    hashval.update(sname.open('rb').read())
                     self.logger.debug('writing %s', dname)
-                    open(str(self.join(dname)), 'wt').write(
+                    dname.open('wt').write(
                             hashval.hexdigest() + '\n'
                     )
 
@@ -355,25 +365,29 @@ Mkdir(*files)"""
     def run(self):
         """Make directories."""
         files = self.get_files(self.get_args('files'))
+        self.logger.debug('files = %s: %s', repr(files), vars(files))
         for arg in files:
-            self.asserttype(arg, str, 'files')
+            self.logger.debug('arg = %s', repr(arg))
+            self.asserttype(arg, (Path, str), 'files')
             self.mkdir(self.join(arg))
 
     @classmethod
     def mkdir(cls, path):
         """Recursive mkdir."""
+        # a class method, so we need to get the logger explicitly
         from logging import getLogger
         logger = getLogger('pyerector.execute')
-        if os.path.islink(str(path)) or os.path.isfile(str(path)):
+        if isinstance(path, str):
+            path = Path(path)
+        if path.islink or path.isfile:
             logger.info('remove(%s)', path)
-            os.remove(str(path))
-            cls.mkdir(path)
-        elif not path:
-            pass
-        elif not os.path.isdir(str(path)):
-            cls.mkdir(os.path.dirname(str(path)))
-            logger.info('mkdir(%s)', path)
-            os.mkdir(path)
+            path.remove()
+            path.mkdir()
+        elif path.isdir:
+            logger.debug('ignoring(%s)', path)
+        elif not path.exists:
+            #logger.info('mkdir(%s)', path)
+            path.mkdir()
 
 
 class PyCompile(Task):
@@ -391,7 +405,7 @@ PyCompile(*files, dest=<DIR>, version='2')"""
         if self.version[:1] == sys.version[:1]:  # compile inline
             for fname in fileset:
                 self.logger.debug('py_compile.compile(%s)', fname)
-                py_compile.compile(self.join(fname))
+                py_compile.compile(str(self.join(fname)))
         else:
             if self.version[:1] == '2':
                 cmd = 'python2'
@@ -439,14 +453,10 @@ Remove(*files)"""
         elif isinstance(files, (tuple, list)):
             files = FileIterator(*tuple(files), noglob=noglob, exclude=excludes)
         for name in files:
-            self.asserttype(name, str, 'files')
+            self.asserttype(name, (Path, str), 'files')
             fname = self.join(name)
-            if os.path.isfile(str(fname)) or os.path.islink(str(fname)):
-                self.logger.info('remove(%s)', fname)
-                os.remove(str(fname))
-            elif os.path.isdir(str(fname)):
-                self.logger.info('rmtree(%s)', fname)
-                shutil.rmtree(str(fname))
+            self.logger.info('remove(%s)', fname)
+            fname.remove()
 
 
 class Shebang(Copy):
@@ -469,15 +479,11 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
         except ImportError:
             from StringIO import StringIO
         for fname in srcs:
-            infname = self.join(fname)
-            head = infname.replace(fname, '')
             if dest is None:
                 outfname = infname
             else:
-                outfname = self.join(
-                    dest, fname.replace(head, '')
-                )
-            inf = open(str(self.join(fname)), 'r')
+                outfname = Path(dest, fname.basename)
+            inf = infile.open()
             outf = StringIO()
             first = inf.readline()
             if first.startswith(self.token):
@@ -492,7 +498,7 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
             shutil.copyfileobj(inf, outf)
             inf.close()
             outf.seek(0)
-            inf = open(str(outfname), 'w')
+            inf = outfname.open('w')
             shutil.copyfileobj(outf, inf)
 
 
@@ -548,7 +554,7 @@ class SshEngine(Task):
     def gencmd(self):
         idfile = self.get_kwarg('identfile', str)
         if idfile:
-            identfile = ('-i', idfile)
+            identfile = ('-i', str(idfile))
         else:
             identfile = ()
         return (
@@ -649,14 +655,14 @@ Adds PYERECTOR_PREFIX environment variable."""
             options.append('--timer')
         cmd = (os.path.join('.', str(prog)),) + tuple(options) + tuple(targets)
         env = self.get_kwarg('env', dict)
-        wdir = self.get_kwarg('wdir', str)
+        wdir = self.get_kwarg('wdir', (Path, str))
         from os import environ
         evname = 'PYERECTOR_PREFIX'
-        nevname = os.path.basename(str(wdir))
+        nevname = Path(wdir).basename
         if evname in environ and environ[evname]:
-            env[evname] = '%s: %s' % (environ[evname], nevname)
+            env[evname] = '%s: %s' % (environ[evname], str(nevname))
         else:
-            env[evname] = nevname
+            env[evname] = str(nevname)
         rc = Subcommand(cmd, wdir=wdir, env=env, wait=True)
         if rc.returncode < 0:
             raise Error('SubPyErector', '%s signal %d raised' %
@@ -673,14 +679,14 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
     dest = None
     exclude = None
     def run(self):
-        dest = self.get_kwarg('dest', str)
+        dest = Path(self.get_kwarg('dest', (Path, str)))
         files = self.get_args('files')
         excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
-        elif len(files) == 1 and dest is not None and not os.path.isdir(str(dest)):
+        elif len(files) == 1 and dest is not None and not dest.isdir:
             fmap = FileMapper(files[0], destdir=dest, exclude=excludes)
         elif dest is not None:
             fmap = FileMapper(self.get_files(files),
@@ -692,11 +698,11 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
             srcfile = self.join(sname)
             dstfile = self.join(dname)
             if not excludes.match(sname):
-                if os.path.islink(str(srcfile)) and fmap.checkpair(dstfile, srcfile):
+                if srcfile.islink and fmap.checkpair(dstfile, srcfile):
                     self.logger.debug('uptodate: %s', dstfile)
                 else:
                     self.logger.info('symlink(%s, %s)', dname, sname)
-                    os.symlink(str(dstfile), str(srcfile))
+                    dstfile.makelink(srcfile)
 
 
 class Tar(Container):
@@ -716,7 +722,7 @@ Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""
                     root + os.sep, ''
                 )
                 self.logger.debug('tar.add(%s, %s)', fname, path)
-                tfile.add(self.join(fname), path)
+                tfile.add(str(self.join(fname)), path)
             tfile.close()
 
 
@@ -760,10 +766,10 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
         mapper = FileMapper(files, destdir=self.get_kwarg('dest', str),
                             iteratorclass=StaticIterator)
         for (sname, dname) in mapper:
-            realcontents = open(str(self.join(sname)), 'rt').read()
+            realcontents = self.join(sname).open('rt').read()
             alteredcontents = tokens.sub(repltoken, realcontents)
             if alteredcontents != realcontents:
-                open(str(self.join(dname)), 'wt').write(alteredcontents)
+                self.join(dname).open('wt').write(alteredcontents)
 
 
 class Touch(Task):
@@ -776,13 +782,13 @@ Touch(*files, dest=None)"""
     def run(self):
         from .helper import normjoin
         """Create files, unless they already exist."""
-        dest = self.get_kwarg('dest', str)
+        dest = Path(self.get_kwarg('dest', (Path, str)))
         for fname in self.get_files(self.get_args('files')):
-            self.asserttype(fname, str, 'files')
+            self.asserttype(fname, (Path, str), 'files')
             if dest is not None:
-                fname = normjoin(dest, fname)
+                fname = dest + fname
             self.logger.info('touch(%s)', fname)
-            open(str(self.join(fname)), 'a')
+            self.join(fname).open('a')
 
 class Unittest(Task):
     """Call Python unit tests found.
@@ -794,9 +800,9 @@ Unittest(*modules, path=())"""
     def run(self):
         """Call the 'unit-test.py' script in the package directory with
 serialized parameters as the first argument string."""
-        bdir = os.path.dirname(__file__)
-        sfile = os.path.join(bdir, 'unit-test.py')
-        if not os.path.exists(sfile):
+        bdir = Path(__file__).dirname
+        sfile = bdir + 'unit-test.py'
+        if not sfile.exists:
             raise Error(self, 'unable to find unittest helper program')
         # create a parameter file with a serialized set of the arguments
         params = repr({
@@ -806,7 +812,7 @@ serialized parameters as the first argument string."""
             'quiet': bool(self.logger.isEnabledFor(logging.ERROR)),
         })
         # call python <scriptname> <params>
-        Subcommand((sys.executable, sfile, params),
+        Subcommand((sys.executable, str(sfile), params),
                    wdir=V['basedir'],
                    env={'COVERAGE_PROCESS_START': '/dev/null'})
 
@@ -821,7 +827,7 @@ class Uncontainer(Task):
         """Extract members from the container."""
         name = self.get_kwarg('name', str, noNone=True)
         root = self.get_kwarg('root', str)
-        self.asserttype(root, str, 'root')
+        self.asserttype(root, (Path, str), 'root')
         files = self.get_args('files')
         try:
             contfile = self.get_file(name)
@@ -879,7 +885,7 @@ Unzip(*files, name=<tarfilename>, root=None)"""
     def get_file(self, fname):
         """Open the container."""
         from zipfile import ZipFile
-        return ZipFile(self.join(fname), 'r')
+        return ZipFile(str(self.join(fname)), 'r')
 
     @staticmethod
     def retrieve_members(contfile, files):
@@ -910,14 +916,14 @@ Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
         """Add the files to the container."""
         from zipfile import ZipFile
         try:
+            self.logger.debug('Zip.contain(name=%s, root=%s, toadd=%s)',
+                    repr(name), repr(root), repr(toadd))
             zfile = ZipFile(str(self.join(name)), 'w')
         except IOError:
             raise ValueError('no such file or directory: %s' % name)
         else:
             for fname in toadd:
-                path = str(fname).replace(
-                    root + os.sep, ''
-                )
+                path = str(fname - root)
                 self.logger.debug('zip.add(%s, %s)', fname, path)
                 zfile.write(str(fname), path)
             zfile.close()
@@ -992,9 +998,34 @@ Description: %(long_description)s
 Platform: UNKNOWN
 %(classifiers)s
 ''' % pkg_data
-        fn = os.path.join(str(rootdir), 'PKG-INFO')
-        open(fn, 'wt').write(pkg_info)
-        self.add_path(toadd, fn)
+        eggdir = root + 'EGG_INFO'
+        try:
+            eggdir.mkdir()
+        except OSError:
+            pass
+        fname = eggdir + 'PKG-INFO'
+        fname.open('wt').write(pkg_info)
+        if fname not in toadd:
+            toadd.append(fname)
+        for fn in ('depenency_links.txt', 'zip-safe'):
+            fname = eggdir + fn
+            fname.open('wt').write(os.linesep)
+            if fname not in toadd:
+                toadd.append(fname)
+        fname = eggdir + 'top_level.txt'
+        fname.open('wt').write('pyerector' + os.linesep)
+        if fname not in toadd:
+            toadd.append(fname)
+        fname = eggdir + 'SOURCES.txt'
+        fname.open('wt').write(
+            os.linesep.join(sorted(
+                [str(s - root) for s in toadd
+                    if s.basename != 'EGG-INFO']
+            )) + os.linesep
+        )
+        if fname not in toadd:
+            toadd.append(fname)
+        toadd[:] = [str(f) for f in toadd]
 
     @staticmethod
     def get_setup_py(filename):
@@ -1016,7 +1047,7 @@ def setup(**kwargs):
                 mod = sys.modules[modname] = imp.new_module(modname)
                 exec(code, mod.__dict__, mod.__dict__)
             mod = {'__builtins__': __builtins__, 'myvalue': None}
-            execfile(filename, mod, mod)
+            execfile(str(filename), mod, mod)
             for modname in ('setuptools', 'distutils'):
                 if sys.modules[modname].myvalue is not None:
                     return sys.modules[modname].myvalue

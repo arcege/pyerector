@@ -10,19 +10,14 @@ distfile = '%s-%s' % (release.product, release.number)
 
 
 class PyCopy(Target):
-    uptodates = (
-        FileMapper('pyerector', recurse=True, fileonly=True,
-                   destdir=normjoin('build', distfile), exclude=('test')),
-        FileMapper('release.py', 'setup.py', 'README.txt', 'LICENSE.txt', 'CHANGES.txt', destdir=normjoin('build', distfile)),
-    )
     tasks = (
         CopyTree(srcdir='pyerector',
-                 dstdir=normjoin('build', distfile, 'pyerector'),
+                 dstdir=Path('build', distfile, 'pyerector'),
                  exclude=['test']
         ),
         Copy('release.py', 'setup.py',
              'README.txt', 'LICENSE.txt', 'CHANGES.txt',
-             dest=normjoin('build', distfile)
+             dest=Path('build', distfile)
         ),
         Echo('release %s-%s', release.product, release.number),
         Tokenize(
@@ -39,19 +34,6 @@ class PyCopy(Target):
 
 
 class PreCompile(Target):
-    uptodates = (
-        FileMapper(
-            normjoin('pyerector'),
-            normjoin('pyerector', 'py2'),
-            normjoin('pyerector', 'py3'),
-            normjoin('pyerector', 'vcs'),
-            destdir=normjoin('build', distfile),
-            pattern='*.py',
-            mapper='%(name)sc',
-            recurse=True,
-            fileonly=True
-        ),
-    )
     dependencies = (PyCopy,)
     tasks = Parallel(
         PyCompile(
@@ -169,8 +151,8 @@ Test.dependencies = Test.dependencies + (Localtest, Regression)
 Clean.files = ('build', 'dist', 'MANIFEST')
 Clean.dependencies = (Cleantest,)
 InitDirs.files = (
-    normjoin('build', distfile), 'dist',
-    'testdir/egg', 'testdir/zip', 'testdir/tar',
+    Path('build', distfile),
+    'dist', 'testdir/egg', 'testdir/zip', 'testdir/tar'
 )
 Compile.dependencies = (PreCompile,)
 

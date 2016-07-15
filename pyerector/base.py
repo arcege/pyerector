@@ -9,6 +9,7 @@ Iterator and Mapper have most of their logic defined in iterators.
 import logging
 import os
 from sys import version
+import sys
 import threading
 try:
     reduce
@@ -19,6 +20,7 @@ if version[0] > '2':  # python 3+
 else:
     from .py2.base import Base
 from .helper import Exclusions, normjoin, Timer, DISPLAY
+from .path import Path
 from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
@@ -47,8 +49,8 @@ handling.
 
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('pyerector.execute')
-        self.logger.debug('%s.__init__(*%s, **%s)',
-                          self.__class__.__name__, args, kwargs)
+        #self.logger.debug('%s.__init__(*%s, **%s)',
+        #                  self.__class__.__name__, args, kwargs)
         try:
             basedir = kwargs['basedir']
         except KeyError:
@@ -66,8 +68,10 @@ handling.
         if kwargs:
             for key in kwargs:
                 setattr(self, key, kwargs[key])
-        if basedir is not None:
-            V['basedir'] = basedir or curdir
+        if basedir is None:
+            V['basedir'] = Path(curdir)
+        else:
+            V['basedir'] = Path(basedir)
 
     def get_files(self, files=None):
         """Return an Iterator of either a given sequence or the "files"
@@ -94,12 +98,19 @@ the Iterator instance.
                                 fileonly=fileonly, pattern=pattern,
                                 exclude=exclude)
             for entry in files:
-                fset.append(entry)
+                if isinstance(entry, Iterator):
+                    fset.append(entry)
+                elif isinstance(entry, Path):
+                    fset.append(entry)
+                else:
+                    fset.append(Path(entry))
+            self.logger.debug('get_files(%s) = %s', files or "", fset)
             return fset
 
     def join(self, *path):
         """Normjoin the basedir and the path."""
-        return normjoin(V['basedir'], *path)
+        self.logger.debug('%s.join(V("basedir"[%s]), *%s)', self, V('basedir'), path)
+        return Path(V['basedir'], *path)
 
     def asserttype(self, value, typeval, valname):
         """Assert that the value is a value type."""
@@ -356,7 +367,7 @@ run() method is meant to be overridden.
         """To be overridden."""
 
     def handle_args(self, args, kwargs):
-        """"Put the arguments into their proper places."""
+        """Put the arguments into their proper places."""
         if (hasattr(self, 'args') and not self.args) or args:
             if len(args) == 1 and isinstance(args[0], Iterator):
                 self.args = args[0]
@@ -429,8 +440,11 @@ then prepend the directory's contents to the pool (not the curset).
                     raise TypeError(self.curset, exc)
             if isinstance(candidate, tuple) and len(candidate) == 2:
                 break
+            if not isinstance(candidate, Path):
+                candidate = Path(candidate)
             if self.exclusion.match(candidate):
                 continue
+            self.logger.debug('candidate = %s', repr(candidate))
             if self.check_candidate(candidate):
                 break
         return self.post_process_candidate(candidate)
@@ -439,47 +453,54 @@ then prepend the directory's contents to the pool (not the curset).
         if not self.pool:
             self.logger.debug('nothing left')
             raise StopIteration
-        item = self.pool[0]
-        del self.pool[0]
+        item = self.pool.pop(0)
         self.logger.debug('next item from pool is %s', repr(item))
         if isinstance(item, Iterator):
-            self.curset = iter(item)
+            items = item
         elif isinstance(item, (tuple, list)):
-            items = [self.adjust(i) for i in item]
-            if items:
-                self.curset = iter(reduce(lambda a, b: a+b, items))
-            else:
-                self.curset = iter(())
-        elif isinstance(item, str):
-            self.curset = iter(self.adjust(item))
+            items = [
+                i for subitems in [self.adjust(i) for i in item]
+                    for i in subitems
+            ]
+        elif isinstance(item, (Path, str)):
+            items = self.adjust(item)
+        self.curset = iter(items)
         #self.logger.debug('curset = %s', repr(self.curset))
 
     def append(self, item):
         """Add an item to the end of the pool."""
         path = list(self.get_args('path'))
-        if isinstance(item, (tuple, list)):
+        if isinstance(item, Iterator):
             path.extend(item)
-        else:
+        elif isinstance(item, (tuple, list)):
+            path.extend([Path(i) for i in item])
+        elif isinstance(item, Path):
             path.append(item)
+        else:
+            path.append(Path(item))
         self.path = tuple(path)
 
     def _prepend(self, item):
         """Add a string or sequence to the beginning of the pool."""
         if isinstance(item, str):
+            item = [Path(item)]
+        elif isinstance(item, Path):
             item = [item]
-        self.pool[:0] = list(item)
+        else:
+            item = [Path(i) for i in item]
+        self.pool[:0] = item
         self.logger.debug('adding to pool: %s', repr(item))
 
     # text based
     def post_process_candidate(self, candidate):
         return candidate
     def adjust(self, candidate):
-        return [candidate]
+        return [Path(candidate)]
     def check_candidate(self, candidate):
         pattern = self.get_kwarg('pattern', str)
         if not pattern:
             return True
-        elif fnmatch.fnmatchcase(candidate, pattern):
+        elif candidate.match(pattern):
             return True
         else:
             return False
@@ -507,20 +528,20 @@ This would map each py file in src to a pyc file in build:
         super(Mapper, self).__init__(*files, **kwargs)
         mapper = self.get_kwarg('mapper', (callable, str))
         if mapper is None:  # identity mapper
-            self.mapper_func = lambda x: x
+            self.mapper_func = lambda x: Path(x)
         elif callable(mapper):
             self.mapper_func = mapper
         elif isinstance(mapper, str):
             self.mapper_func = \
-                lambda name, mapstr = mapper: mapstr % {'name': name}
+                lambda name, mapstr = mapper: Path(mapstr % {'name': name})
         else:
             raise TypeError('map must be string or callable', mapper)
 
     def next(self):
         """Return the next item, with its mapped destination."""
-        destdir = self.get_kwarg('destdir', str)
+        destdir = self.get_kwarg('destdir', (Path, str))
         if destdir is None:
-            destdir = ''
+            destdir = Path(os.curdir)
         # do _not_ catch StopIteration
         item = super(Mapper, self).next()
         #self.logger.debug('super.next() = %s', item)
@@ -530,17 +551,21 @@ This would map each py file in src to a pyc file in build:
             del temp
         else:
             mapped = self.mapper_func(item)
-        assert isinstance(mapped, str), "mapper must return a str"
-        self.logger.debug('self.map(%s) = %s', mapped, self.map(mapped))
-        mapped = self.map(mapped)
-        assert isinstance(mapped, str), 'map() must return a str'
-        result = normjoin(destdir, mapped)
+        assert isinstance(mapped, (Path, str)), "mapper must return a str"
+        result = self.map(mapped)
+        self.logger.debug('self.map(%s) = %s[%s]', mapped, repr(result), type(result))
+        mapped = result
+        assert isinstance(mapped, (Path, str)), 'map() must return a str or Path'
+        result = destdir + mapped #normjoin(destdir, mapped)
         self.logger.debug('mapper yields (%s, %s)', item, result)
         return item, result
 
     def map(self, item):
         """Identity routine, one-to-one mapping."""
-        return item
+        if isinstance(item, Path):
+            return item
+        else:
+            return Path(item)
 
     def __call__(self, *args):
         for (src, dst) in self:

@@ -26,10 +26,10 @@ from pyerector.variables import V
 class TestConfig(TestCase):
     def setUp(self):
         self.thisdir = os.path.realpath(os.curdir)
-        self.dir = os.path.realpath(self.dir)
+        self.dir = self.dir.real
         if 'basedir' not in V:
             from os import curdir
-            V['basedir'] = curdir
+            V['basedir'] = Path(curdir)
 
     def test_property_get(self):
         c = Config()

@@ -4,6 +4,7 @@
 including centralized (VCS) and decentralized (DVCS)."""
 
 import os
+from ..path import Path
 from ..helper import Subcommand
 from ..exception import Error
 from ..register import Register
@@ -34,20 +35,22 @@ class Base(object):
 
     # used by the package to see which VCS system to use
     @classmethod
-    def vcs_check(cls, srcdir=os.curdir):
+    def vcs_check(cls, srcdir=Path(os.curdir)):
         """Check directory tree in reverse for one of the registered
 Base subclasses.  Return the subclass that 'fits'.  If the directory
 attribute is None, use that subclass as default."""
-        srcdir = os.path.realpath(os.path.normpath(str(srcdir)))
+        if not isinstance(srcdir, Path):
+            srcdir = Path(srcdir)
+        srcdir = srcdir.real
         default = None
         klasses = cls.registered()
-        while srcdir not in ('', os.sep):
+        while srcdir.value not in ('', os.sep, os.curdir):
             for c in klasses:
                 if c.directory is None:
                     default = c
-                elif os.path.isdir(os.path.join(str(srcdir), c.directory)):
+                elif (srcdir + c.directory).isdir:
                     return c
-            srcdir = os.path.dirname(str(srcdir))
+            srcdir = srcdir.dirname
         return default
 
     def current_info(self):
@@ -59,10 +62,10 @@ class VCS_Base(Base):
     """Base class for VCS classes (e.g. Subversion)."""
     prog = None
 
-    def checkout(self, url, destdir=os.curdir):
+    def checkout(self, url, destdir=Path(os.curdir)):
         """Perform a checkout."""
         Subcommand(
-            (self.prog, 'checkout', url, destdir),
+            (self.prog, 'checkout', url, str(destdir)),
             wait=True
         )
 
@@ -73,7 +76,8 @@ class VCS_Base(Base):
         else:
             revopts = ('-r', str(rev))
         proc = Subcommand(
-            (self.prog, 'update') + revopts + (destdir or self.rootdir,),
+            (self.prog, 'update') + revopts + \
+                    (destdir and str(destdir) or str(self.rootdir),),
             wait=True,
             stderr=Subcommand.PIPE,
         )
@@ -93,7 +97,8 @@ class DVCS_Base(Base):
     def checkout(self, url, destdir=None):
         """Perform a checkout (clone)."""
         Subcommand(
-            (self.prog, 'clone', url, destdir or self.rootdir),
+            (self.prog, 'clone', url,
+             destdir and str(destdir) or str(self.rootdir)),
             wait=True
         )
 
@@ -110,7 +115,7 @@ class DVCS_Base(Base):
         proc = Subcommand(
             (self.prog, 'pull', '-u') + revopts + sourcearg,
             wait=True,
-            wdir=self.rootdir,
+            wdir=str(self.rootdir),
             stderr=Subcommand.PIPE,
         )
         proc.wait()

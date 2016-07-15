@@ -25,6 +25,7 @@ import warnings
 
 from .exception import Error
 from .execute import get_current_stack, Initialization
+from .path import Path
 
 __all__ = [
     'Exclusions',
@@ -79,8 +80,7 @@ in the set."""
             matches = self | self.vcs_names
         else:
             matches = self
-        values = [v for v in matches
-                      if fnmatch.fnmatchcase(os.path.basename(str(string)), v)]
+        values = [v for v in matches if Path(string).match(v)]
         return len(values) > 0
 
     @classmethod
@@ -131,8 +131,8 @@ class Subcommand(object):
             self.wait()
 
     def __del__(self):
-        import traceback
-        logging.debug('starting %s.__del__()', self.__class__.__name__)
+        #import traceback
+        logging.getLogger('pyerector.execute').debug('starting %s.__del__()', self.__class__.__name__)
         self.close()
         if hasattr(self, 'returncode') and hasattr(self, 'proc') and \
                 self.returncode is None and self.proc is not None:
@@ -195,11 +195,15 @@ if applicable."""
         """Call subprocess.Popen and handle the I/O."""
         from subprocess import Popen
         realenv = os.environ.copy()
-        realenv.update(self.env)
+        # convert env to strings
+        env = dict([(n, str(self.env[n])) for n in self.env])
+        realenv.update(env)
         if hasattr(self.infile, 'write'):
             ifile = self.infile
         elif self.infile == self.PIPE:
             ifile = self.PIPE
+        elif isinstance(self.infile, Path):
+            ifile = self.infile.open()
         elif hasattr(self.infile, 'lower'):
             ifile = open(str(self.infile), 'r')
         else:
@@ -208,6 +212,8 @@ if applicable."""
             ofile = self.outfile
         elif self.outfile == self.PIPE:
             ofile = self.PIPE
+        elif isinstance(self.outfile, Path):
+            ofile = self.outfile.open('w')
         elif hasattr(self.outfile, 'lower'):
             ofile = open(str(self.outfile), 'w')
         else:
@@ -218,24 +224,27 @@ if applicable."""
             efile = self.errfile
         elif self.errfile == self.PIPE:
             efile = self.PIPE
+        elif isinstance(self.errfile, Path):
+            efile = self.errfile.open('w')
         elif hasattr(self.errfile, 'lower'):
             efile = open(str(self.errfile), 'w')
         else:
             efile = None
         (self.stdin, self.stdout, self.stderr) = (ifile, ofile, efile)
         shellval = not isinstance(self.cmd, tuple)
-        logging.debug('Popen(%s, shell=%s, cwd=%s, stdin=%s, stdout=%s,'
-                      'stderr=%s, bufsize=0, env=%s)', self.cmd,
-                      shellval, self.wdir, ifile, ofile, efile, self.env)
+        cmd = tuple(str(c) for c in self.cmd)
+        logging.getLogger('pyerector.execute').debug('Popen(%s, shell=%s, cwd=%s, stdin=%s, stdout=%s,'
+                      'stderr=%s, bufsize=0, env=%s)', cmd,
+                      shellval, repr(self.wdir), ifile, ofile, efile, env)
         try:
-            proc = Popen(tuple([str(c) for c in self.cmd]),
-                         shell=shellval, cwd=self.wdir,
+            proc = Popen(cmd,
+                         shell=shellval, cwd=str(self.wdir),
                          stdin=ifile, stdout=ofile, stderr=efile,
                          bufsize=0, env=realenv)
         except (IOError, OSError):
             exc = exc_info()[1]
             if exc.args[0] == 2:  # ENOENT
-                raise Error('ENOENT', 'Program not found')
+                raise Error('ENOENT', 'Program not found: %s' % self.cmd[0])
             else:
                 raise
         self.proc = proc
@@ -297,6 +306,7 @@ class Timer(object):
 
 
 class Verbose(object):
+    import logging
     # deprecated
     """Deprecated and should no longer be used."""
     def __init__(self, state=False, level=logging.INFO):
@@ -310,7 +320,7 @@ class Verbose(object):
     @staticmethod
     def _getlevelnum(level):
         """Return the logging level based on its name."""
-        return logging.getLevelName(level)
+        return Verbose.logging.getLevelName(level)
 
     def __bool__(self):
         return self._getlogger().isEnabledFor(self.level)

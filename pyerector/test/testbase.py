@@ -19,6 +19,7 @@ except ValueError:
 
 PyVersionCheck()
 
+from pyerector.path import Path
 from pyerector.config import noop
 from pyerector.helper import normjoin
 from pyerector.exception import Error
@@ -40,9 +41,9 @@ class TestIniter(TestCase):
         #"""Ensure that join() method returns proper values."""
         obj = Initer(basedir=self.dir)
         self.assertEqual(obj.join('foobar'),
-                         normjoin(self.dir, 'foobar'))
+                         Path(self.dir, 'foobar'))
         self.assertEqual(obj.join('xyzzy', 'foobar'),
-                         normjoin(self.dir, 'xyzzy', 'foobar'))
+                         Path(self.dir, 'xyzzy', 'foobar'))
 
     def test_asserttype(self):
         obj = Initer(basedir=self.dir)
@@ -61,17 +62,19 @@ class TestIniter(TestCase):
 
     def test_get_files_simple(self):
         #"""Retrieve files in basedir properly."""
-        subdir = normjoin(self.dir, 'get_files_simple')
-        os.mkdir(subdir)
+        subdir = Path(self.dir, 'get_files_simple')
+        subdir.mkdir()
         obj = Initer(basedir=subdir)
         # no files
+        ofiles = obj.get_files('*')
+        print 'ofiles =', repr(ofiles), 'vars(ofiles) =', vars(ofiles)
         self.assertEqual(list(obj.get_files(('*',))), [])
         for n in ('bar', 'far', 'tar'):
-            fn = normjoin(subdir, '%s' % n)
-            open(fn, 'w').close()
-        logger.debug('files in %s are %s', subdir, os.listdir(subdir))
+            (subdir + n).open('w').close()
         # test simple glob
-        self.assertEqual(sorted(obj.get_files(('*',))),
+        result = obj.get_files(('*',))
+        print repr(result), vars(result)
+        self.assertEqual(sorted(result),
                          ['bar',
                           'far',
                           'tar'])
@@ -128,7 +131,7 @@ class TestCallUptodate_T(Target):
 class TestCallTask_t(Task):
     def run(self):
         logger.debug('Creating %s', self.join(self.args[0]))
-        open(self.join(self.args[0]), 'w').close()
+        self.join(self.args[0]).open('w').close()
 
 
 class TestCallTask_T(Target):
@@ -137,7 +140,7 @@ class TestCallTask_T(Target):
 
 class TestCallDependency_t(Task):
     def run(self):
-        open(self.join('calldependency'), 'w').close()
+        self.join('calldependency').open('w').close()
 
 
 class TestCallDependency_T1(Target):
@@ -151,13 +154,13 @@ class TestCallDependency_T(Target):
 class TestE2E_t1(Task):
     def run(self):
         #from time import sleep
-        open(self.join('e2e_t1'), 'w').close()
+        self.join('e2e_t1').open('w').close()
         #sleep(1)
 
 
 class TestE2E_t2(Task):
     def run(self):
-        open(self.join('e2e_t2'), 'w').close()
+        self.join('e2e_t2').open('w').close()
 
 
 class TestE2E_utd(Uptodate):
@@ -190,44 +193,44 @@ class TestTarget_functionality(TestCase):
         self.assertIsNone(target())
 
     def test_call_uptodate(self):
-        open(normjoin(self.dir, 'call_uptodate.older'), 'w').close()
-        open(normjoin(self.dir, 'call_uptodate.newer'), 'w').close()
-        utd = TestCallUptodate_utd(basedir=self.dir)
+        Path(self.dir, 'call_uptodate.older').open('w').close()
+        Path(self.dir, 'call_uptodate.newer').open('w').close()
+        utd = TestCallUptodate_utd(basedir=Path(self.dir))
         result = utd()
         self.assertTrue(result)
-        target = TestCallUptodate_T(basedir=self.dir)
+        target = TestCallUptodate_T(basedir=Path(self.dir))
         self.assertTrue(TestCallUptodate_utd()())
 
     def test_call_task(self):
-        self.assertFalse(os.path.isfile(normjoin(self.dir, 'calltask')))
+        self.assertFalse(Path(self.dir, 'calltask').isfile)
         target = TestCallTask_T(basedir=self.dir)
         self.assertIsNone(TestCallTask_t()('calltask'))
-        self.assertTrue(os.path.isfile(normjoin(self.dir, 'calltask')))
+        self.assertTrue(Path(self.dir, 'calltask').isfile)
 
     def test_call_dependency(self):
-        self.assertFalse(os.path.isfile(normjoin(self.dir, 'calldependency')))
+        self.assertFalse(Path(self.dir, 'calldependency').isfile)
         target = TestCallDependency_T(basedir=self.dir)
         self.assertIsNone(target())
-        self.assertTrue(os.path.isfile(normjoin(self.dir, 'calldependency')))
+        self.assertTrue(Path(self.dir, 'calldependency').isfile)
 
     def test_end_to_end(self):
-        self.assertFalse(os.path.isfile(normjoin(self.dir, 'e2e_t1')))
-        self.assertFalse(os.path.isfile(normjoin(self.dir, 'e2e_t2')))
+        self.assertFalse(Path(self.dir, 'e2e_t1').isfile)
+        self.assertFalse(Path(self.dir, 'e2e_t2').isfile)
         target = TestE2E_T(basedir=self.dir)
         self.assertIsNone(target())
-        self.assertTrue(os.path.isfile(normjoin(self.dir, 'e2e_t1')))
-        self.assertTrue(os.path.isfile(normjoin(self.dir, 'e2e_t2')))
-        t1 = os.path.getmtime(normjoin(self.dir, 'e2e_t1'))
-        t2 = os.path.getmtime(normjoin(self.dir, 'e2e_t2'))
+        self.assertTrue(Path(self.dir, 'e2e_t1').isfile)
+        self.assertTrue(Path(self.dir, 'e2e_t2').isfile)
+        t1 = Path(self.dir, 'e2e_t1').mtime
+        t2 = Path(self.dir, 'e2e_t2').mtime
         # maybe change the mtime of one then other to test uptodate?
         target = TestE2E_T(basedir=self.dir)
         self.assertIsNone(target())
         # not testing what I think should be tested
         self.assertEqual(round(t1, 4),
-                         round(os.path.getmtime(normjoin(self.dir, 'e2e_t1')), 4)
+                         round(Path(self.dir, 'e2e_t1').mtime, 4)
                          )
         self.assertEqual(round(t2, 4),
-                         round(os.path.getmtime(normjoin(self.dir, 'e2e_t2')), 4)
+                         round(Path(self.dir, 'e2e_t2').mtime, 4)
                          )
 
 

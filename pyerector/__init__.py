@@ -57,6 +57,7 @@ This does not change the task's flow, but it does set up certain defaults
 which does change the behavior.
 """
 
+from .path import Path
 from .helper import normjoin, Exclusions
 from .helper import display, warn, verbose, debug  # being deprecated
 from .execute import Initialization
@@ -95,6 +96,7 @@ __all__ = [
     'Variable',
     'VariableSet',
     'VCS',
+    'Path',
 
     # tasks
     'Chmod',

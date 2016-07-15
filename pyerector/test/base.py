@@ -22,6 +22,7 @@ logger.propagate = False
 logger.addHandler(logging.StreamHandler())
 
 # this will initialize by virtue of importing pyerector implicitly
+from pyerector.path import Path
 from pyerector.variables import V
 
 Platform = sys.platform[:3]
@@ -40,7 +41,7 @@ class TestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         logger.debug('%s.setupClass()', cls.__name__)
-        cls.dir = tempfile.mkdtemp()
+        cls.dir = Path(tempfile.mkdtemp())
         try:
             cls.oldconfigbasedir = V['basedir']
         except KeyError:
@@ -60,6 +61,6 @@ class TestCase(unittest.TestCase):
                 writable = os.path.stat.S_IWRITE
             else:
                 writable = int('755', 8)
-            os.chmod(path, writable)
+            path.chmod(writable)
             func(path)
-        shutil.rmtree(cls.dir, onerror=handle_perms)
+        cls.dir.remove()

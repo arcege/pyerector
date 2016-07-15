@@ -11,6 +11,7 @@ import logging
 import os
 import sys
 from .exception import Abort, Error
+from .path import Path
 from .helper import Timer
 from .execute import PyThread, Initialization
 from .config import noop, noTimer
@@ -212,8 +213,6 @@ class InitMain(Initialization):
     """Initialize the main module."""
     basedir = os.curdir
     def run(self):
-        V['basedir'] = os.path.realpath(self.basedir)
-        V['homedir'] = os.path.normpath(os.path.expanduser('~'))
+        V['basedir'] = Path(self.basedir).real
 
 InitMain()
-

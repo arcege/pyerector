@@ -20,6 +20,7 @@ except ValueError:
 
 PyVersionCheck()
 
+from pyerector.path import Path
 from pyerector.helper import normjoin, Exclusions, Subcommand
 
 try:
@@ -92,56 +93,56 @@ class TestExclusions(TestCase):
     def test_nodefaults(self):
         e = Exclusions(usedefaults=False)
         self.assertSetEqual(e, set())
-        self.assertFalse(e.match('testhelper.py'))
+        self.assertFalse(e.match(Path('testhelper.py')))
         if self.vcsdir is not None:
             self.assertTrue(e.match(self.vcsdir))
 
     def test_items(self):
         e = Exclusions(('1', '2', '3'))
         self.assertSetEqual(e, set(('1', '2', '3')))
-        self.assertTrue(e.match('1'))
-        self.assertTrue(e.match('testhelper.pyc'))
+        self.assertTrue(e.match(Path('1')))
+        self.assertTrue(e.match(Path('testhelper.pyc')))
         if self.vcsdir is not None:
             self.assertTrue(e.match(self.vcsdir))
 
     def test_items_nodefaults(self):
         e = Exclusions(('1', '2', '3'), usedefaults=False)
         self.assertSetEqual(e, set(('1', '2', '3')))
-        self.assertTrue(e.match('1'))
-        self.assertFalse(e.match('testhelper.pyc'))
+        self.assertTrue(e.match(Path('1')))
+        self.assertFalse(e.match(Path('testhelper.pyc')))
         if self.vcsdir is not None:
             self.assertTrue(e.match(self.vcsdir))
 
     def test_items_nonedefaults(self):
         e = Exclusions(('1', '2', '3'), usedefaults=None)
         self.assertSetEqual(e, set(('1', '2', '3')))
-        self.assertTrue(e.match('1'))
-        self.assertFalse(e.match('testhelper.pyc'))
+        self.assertTrue(e.match(Path('1')))
+        self.assertFalse(e.match(Path('testhelper.pyc')))
         if self.vcsdir is not None:
             self.assertFalse(e.match(self.vcsdir))
 
     def test_match(self):
         e = Exclusions()
-        self.assertTrue(e.match('testhelper.pyc'))
-        self.assertFalse(e.match('testhelper.py'))
+        self.assertTrue(e.match(Path('testhelper.pyc')))
+        self.assertFalse(e.match(Path('testhelper.py')))
 
     def test_setdefaults(self):
         e = Exclusions()
         self.assertFalse(hasattr(Exclusions, 'real_defaults'))
-        e.set_defaults(('1', '2', '3'))
+        e.set_defaults((Path('1'), Path('2'), Path('3')))
         self.assertSetEqual(e, set())
         self.assertTrue(hasattr(Exclusions, 'real_defaults'))
-        self.assertTrue(e.match('1'))
-        self.assertFalse(e.match('4'))
+        self.assertTrue(e.match(Path('1')))
+        self.assertFalse(e.match(Path('4')))
         f = Exclusions()
-        self.assertTrue(f.match('1'))
-        self.assertFalse(e.match('4'))
+        self.assertTrue(f.match(Path('1')))
+        self.assertFalse(e.match(Path('4')))
         self.assertSetEqual(f, set())
         f.set_defaults(reset=True)
         self.assertSetEqual(e, set())
         self.assertFalse(hasattr(Exclusions, 'real_defaults'))
-        self.assertFalse(e.match('1'))
-        self.assertFalse(e.match('4'))
+        self.assertFalse(e.match(Path('1')))
+        self.assertFalse(e.match(Path('4')))
 
 
 class TestSubcommand(TestCase):
@@ -180,18 +181,18 @@ class TestSubcommand(TestCase):
                 os.remove(fname)
 
     def test_stdin(self):
-        infile = os.path.join(self.dir, 'stdin.stdin.txt')
-        open(infile, 'wt').write('Spam, Spam, Spam, Spam!\nWonderful spam, beautiful spam!\n')
+        infile = self.dir + 'stdin.stdin.txt'
+        infile.open('wt').write('Spam, Spam, Spam, Spam!\nWonderful spam, beautiful spam!\n')
         proc = Subcommand(
             (sys.executable, '-c', Commands.wc),
-            stdin=infile, stdout=Subcommand.PIPE
+            stdin=str(infile), stdout=Subcommand.PIPE
         )
         try:
             self.assertEqual(proc.returncode, 0)
             self.assertEqual(proc.stdout.read().decode('UTF-8').rstrip(), '56')
         finally:
             proc.close()
-        inf = open(infile, 'rt')
+        inf = infile.open('rt')
         try:
             proc = Subcommand(
                 (sys.executable, '-c', Commands.wc),
@@ -206,49 +207,49 @@ class TestSubcommand(TestCase):
 
     def test_stdout(self):
         contents = 'abcdefghijklmnopqrstuvwxyz0123456789\n'
-        infile = os.path.join(self.dir, 'stdout.infile.txt')
-        open(infile, 'wt').write(contents)
-        outfile = os.path.join(self.dir, 'stdout.stdout.txt')
+        infile = self.dir + 'stdout.infile.txt'
+        infile.open('wt').write(contents)
+        outfile = self.dir + 'stdout.stdout.txt'
         proc = Subcommand(
-            (sys.executable, '-c', Commands.cat, infile),
-            stdout=outfile
+            (sys.executable, '-c', Commands.cat, str(infile)),
+            stdout=str(outfile)
         )
         try:
             self.assertEqual(proc.returncode, 0)
-            self.assertEqual(open(outfile, 'rt').read(), contents)
+            self.assertEqual(outfile.open('rt').read(), contents)
         finally:
             proc.close()
-        outf = open(outfile, 'wt+')
+        outf = outfile.open('wt+')
         try:
             proc = Subcommand(
-                (sys.executable, '-c', Commands.cat, infile),
+                (sys.executable, '-c', Commands.cat, str(infile)),
                 stdout=outf
             )
             self.assertEqual(proc.returncode, 0)
             self.assertIs(proc.stdout, outf)
             outf.seek(0)
-            self.assertEqual(open(outfile, 'rt').read(), contents)
+            self.assertEqual(outfile.open('rt').read(), contents)
         finally:
             outf.close()
             proc.close()
 
     def test_stderr(self):
-        errfile = os.path.join(self.dir, 'stderr.stderr.txt')
-        nonfile = os.path.join(self.dir, 'stderr.does-not-exist')
+        errfile = self.dir + 'stderr.stderr.txt'
+        nonfile = self.dir + 'stderr.does-not-exist'
         proc = Subcommand(
-            (sys.executable, '-c', Commands.cat, nonfile),
-            stderr=errfile
+            (sys.executable, '-c', Commands.cat, str(nonfile)),
+            stderr=str(errfile)
         )
         errmsg = 'no such file or directory\n'
         try:
             self.assertGreater(proc.returncode, 0)
-            self.assertEqual(open(errfile, 'rt').read(), errmsg)
+            self.assertEqual(errfile.open().read(), errmsg)
         finally:
             proc.close()
-        errf = open(errfile, 'wt+')
+        errf = errfile.open('wt+')
         try:
             proc = Subcommand(
-                (sys.executable, '-c', Commands.cat, nonfile),
+                (sys.executable, '-c', Commands.cat, str(nonfile)),
                 stderr=errf
             )
             self.assertGreater(proc.returncode, 0)
@@ -359,14 +360,14 @@ class TestSubcommand(TestCase):
             raise
 
     def test_close(self):
-        touchfile = os.path.join(self.dir, 'close.touch.txt')
-        infile = os.path.join(self.dir, 'close.stdin.txt')
-        outfile = os.path.join(self.dir, 'close.stdout.txt')
-        errfile = os.path.join(self.dir, 'close.stderr.txt')
-        open(infile, 'wt')  # just create the file
+        touchfile = self.dir + 'close.touch.txt'
+        infile = self.dir + 'close.stdin.txt'
+        outfile = self.dir + 'close.stdout.txt'
+        errfile = self.dir + 'close.stderr.txt'
+        infile.open('wt')  # just create the file
         proc = Subcommand(
-            (sys.executable, '-c', Commands.touch, touchfile),
-            stdin=infile, stdout=outfile, stderr=errfile,
+            (sys.executable, '-c', Commands.touch, str(touchfile)),
+            stdin=str(infile), stdout=str(outfile), stderr=str(errfile),
             wait=False,
         )
         self.assertFalse(proc.stdin.closed)

@@ -10,6 +10,7 @@ import os
 import re
 import sys
 from .helper import normjoin
+from .path import Path
 from .base import Iterator, Mapper
 from .variables import V
 
@@ -51,36 +52,42 @@ fileonly=True, exclude=()."""
         noglob = self.get_kwarg('noglob', bool)
         if isinstance(candidate, Iterator):
             return list(candidate)
-        elif not isinstance(candidate, str):
+        elif not isinstance(candidate, (Path, str)):
             raise TypeError('%s is not a string' % repr(candidate))
         if noglob or not self.checkglobpatt(candidate):
             return super(FileIterator, self).adjust(candidate)
         else:
-            items = glob.glob(os.path.join(str(basedir), str(candidate)))
-            return [n.replace(os.path.join(str(basedir), ''), '') for n in items]
+            print 'basedir =', repr(basedir), 'candidate =', repr(candidate)
+            if isinstance(basedir, Path):
+                glist = basedir.glob(candidate)
+            else:
+                glist = glob.glob(candidate)
+            self.logger.debug('glob(%s) = %s', candidate, glist)
+            return [(c - basedir) for c in glist]
+            #return [(c - basedir) for c in basedir.glob(candidate)]
 
     def post_process_candidate(self, candidate):
         basedir = V['basedir']
         recurse = self.get_kwarg('recurse', bool)
         fileonly = self.get_kwarg('fileonly', bool)
-        if recurse and os.path.isdir(os.path.join(str(basedir), str(candidate))):
-            fnames = [os.path.join(str(candidate), fn) for fn in
-                os.listdir(os.path.join(str(basedir), str(candidate)))
-            ]
-            self._prepend(fnames)
+        c = basedir + candidate
+        #print 'candidate', repr(c)
+        if recurse and c.isdir:
+            self._prepend([(i - basedir) for i in c])
             if fileonly:
                 candidate = FileIterator.next(self)
         return candidate
 
 
     def check_candidate(self, candidate):
+        candidate = candidate
         basedir = V['basedir']
         recurse = self.get_kwarg('recurse', bool)
         pattern = self.get_kwarg('pattern', str)
-        if recurse and os.path.isdir(os.path.join(str(basedir), str(candidate))):
+        c = basedir + candidate
+        if recurse and c.isdir:
             return True
-        elif not pattern or \
-                fnmatch.fnmatchcase(os.path.basename(str(candidate)), pattern):
+        elif not pattern or c.match(pattern):
             return True
         else:
             return False
@@ -91,7 +98,7 @@ fileonly=True, exclude=()."""
         try:
             from glob import match_check
         except ImportError:
-            return re.search('[[*?]', string) is not None
+            return re.search('[[*?]', str(string)) is not None
         else:
             return match_check.search(string) is not None
 
@@ -131,14 +138,21 @@ This would map each py file in src to a pyc file in build:
         sfile = self.join(src)
         dfile = self.join(dst)
         """Return True if destination is newer than source."""
-        if self.exclusion.match(os.path.basename(str(sfile))):
+        if self.exclusion.match(sfile):
             return True
         try:
-            srctime = round(os.path.getmtime(str(sfile)), 4)
+            if sfile.exists:
+                srctime = round(sfile.mtime, 4)
+            else:
+                raise ValueError('no source:', src)
         except OSError:
             raise ValueError('no source:', src)
         try:
-            dsttime = round(os.path.getmtime(str(dfile)), 4)
+            if dfile.exists:
+                dsttime = round(dfile.mtime, 4)
+            else:
+                self.logger.debug('%s not found', dst)
+                return False
         except OSError:
             self.logger.debug('%s not found', dst)
             return False
@@ -152,18 +166,17 @@ This would map each py file in src to a pyc file in build:
         """Recursively check the files in both src and dst for their
 modification times, using checkpair above.
 """
-        dirs = [os.curdir]
+        dirs = [src]
         while dirs:
             cdir = dirs.pop(0)
-            for fname in os.listdir(str(normjoin(src, cdir))):
-                sname = normjoin(src, cdir, fname)
-                dname = normjoin(dst, cdir, fname)
-                if self.exclusion.match(fname):
+            bdir = cdir - src
+            for sname in cdir:
+                dname = dst + (sname - src)
+                if self.exclusion.match(sname):
                     continue
-                if os.path.isdir(str(sname)):
-                    self.logger.debug('adding %s to fifo',
-                                      normjoin(cdir, fname))
-                    dirs.append(str(normjoin(cdir, fname)))
+                if sname.isdir:
+                    self.logger.debug('adding %s to fifo', sname)
+                    dirs.append(sname)
                 else:
                     self.logger.debug('checking %s with %s', sname, dname)
                     result = self.checkpair(sname, dname)
@@ -176,19 +189,19 @@ modification times, using checkpair above.
 class BasenameMapper(FileMapper):
     """Remove the last file extension including the dot."""
     def map(self, item):
-        return os.path.splitext(str(item))[0]
+        return item.delext()
 
 
 class MergeMapper(FileMapper):
     """Take only the base name, not subpaths."""
     def map(self, item):
-        return os.path.basename(str(item))
+        return item.basename
 
 
 class IdentityMapper(FileMapper):
     """Map to just the destdir value."""
     def map(self, item):
-        return ''  # just use destdir
+        return Path('.')  # just use destdir
 
 sequencetypes = (list, tuple, Iterator,
                  type(iter([])), type((None for i in ())))
@@ -229,8 +242,10 @@ subclasses."""
                         pass
                 return times
             maxval = float('inf')
-            latest_src = reduce(max, get_times(srcs), 0)
-            earliest_dst = reduce(min, get_times(dsts), maxval)
+            latest_src = reduce(max, [f.mtime for f in srcs if f.exists], 0)
+            earliest_dst = reduce(min, [f.mtime for f in dsts if f.exists], maxval)
+            print self.__class__.__name__ + '.latest_src =', latest_src
+            print self.__class__.__name__ + '.earliest_dst =', earliest_dst
             if earliest_dst == maxval:  # empty list case
                 self.logger.debug('%s /> %s', klsname, False)
                 return False
@@ -239,5 +254,3 @@ subclasses."""
             return result
         else:
             raise RuntimeError('call uptodate()')
-            #return self.uptodate()
-

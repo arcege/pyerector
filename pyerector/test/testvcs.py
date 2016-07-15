@@ -20,6 +20,7 @@ except ValueError:
 
 PyVersionCheck()
 
+from pyerector.path import Path
 from pyerector.variables import Variable
 from pyerector.vcs import VCS, load_plugins
 from pyerector.variables import V
@@ -36,11 +37,11 @@ class TestVCS(TestCase):
         }
         load_plugins()
         super(TestVCS, cls).setUpClass()
-        cls.nodir = os.path.join(cls.dir, 'novcs')
-        cls.hgdir = os.path.join(cls.dir, 'mercurial')
-        cls.gitdir = os.path.join(cls.dir, 'git')
-        cls.svnadmdir = os.path.join(cls.dir, 'svnrepos')
-        cls.svndir = os.path.join(cls.dir, 'subversion')
+        cls.nodir = cls.dir + 'novcs'
+        cls.hgdir = cls.dir + 'mercurial'
+        cls.gitdir = cls.dir + 'git'
+        cls.svnadmdir = cls.dir + 'svnrepos'
+        cls.svndir = cls.dir + 'subversion'
         # assume we have the tools
         cls.havehg = cls.havegit = cls.havesvn = True
         # checking Mercurial (hg)
@@ -109,29 +110,29 @@ class TestVCS(TestCase):
 
     def testvcs_check_novcs(self):
         # set to temp directory with no version control
-        V['basedir'] = self.nodir
+        V['basedir'] = Path(self.nodir)
         vcs = VCS()
         self.assertEqual(vcs.name, 'none')
         self.assertIsNone(vcs.directory)
 
     def testvcs_check_mercurial(self):
         if self.havehg:
-            V['basedir'] = self.hgdir
+            V['basedir'] = Path(self.hgdir)
             self.assertEqual(VCS().name, 'mercurial')
 
     def testvcs_check_git(self):
         if self.havegit:
-            V['basedir'] = self.gitdir
+            V['basedir'] = Path(self.gitdir)
             self.assertEqual(VCS().name, 'git')
 
     def testvcs_check_subversion(self):
         if self.havesvn:
-            V['basedir'] = self.svndir
+            V['basedir'] = Path(self.svndir)
             self.assertEqual(VCS().name, 'subversion')
 
     def testvcs_info_mercurial(self):
         if self.havehg:
-            V['basedir'] = self.hgdir
+            V['basedir'] = Path(self.hgdir)
             VCS(rootdir=self.hgdir)
             self.assertEqual(Variable('hg.version').value, '000000000000')
             self.assertEqual(Variable('hg.branch').value, 'default')
@@ -142,7 +143,7 @@ class TestVCS(TestCase):
 
     def testvcs_info_git(self):
         if self.havegit:
-            V['basedir'] = self.gitdir
+            V['basedir'] = Path(self.gitdir)
             VCS(rootdir=self.gitdir)
             self.assertEqual(Variable('git.version').value, '')
             self.assertEqual(Variable('git.branch').value, '')
@@ -153,7 +154,7 @@ class TestVCS(TestCase):
     def testcvs_info_svn(self):
         if self.havesvn:
             # string format used by SVN
-            V['basedir'] = self.svndir
+            V['basedir'] = Path(self.svndir)
             VCS(rootdir=self.svndir)
             self.assertEqual(Variable('svn.version').value, '0')
             self.assertEqual(Variable('svn.branch').value, '')

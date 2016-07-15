@@ -19,6 +19,7 @@ except ValueError:
 
 PyVersionCheck()
 
+from pyerector.path import Path
 from pyerector.helper import normjoin
 from pyerector.iterators import FileList
 from pyerector.tasks import *
@@ -30,33 +31,43 @@ class TestChmod(TestCase):
         return os.path.stat.S_IMODE(os.stat(filename).st_mode)
 
     def testsimple(self):
-        fname = normjoin(self.dir, 'testsimple1.txt')
-        open(fname, 'w')
-        os.chmod(fname, 0)  # no permissions to start
-        Chmod('testsimple1.txt')()
-        self.assertEqual(self.getmode(fname), 438)
+        fname = Path(self.dir, 'testsimple1.txt')
+        fname.open('w')  # create the file
+        fname.chmod(0)  # no permissions to start
+        self.assertTrue(fname.isfile)
+        Chmod(fname)()
+        self.assertEqual(fname.mode, 0)
 
     def testchange(self):
         if self.platform == 'win':  # Broken OS
             return
-        fname = normjoin(self.dir, 'testchange1.txt')
-        open(fname, 'w')
-        oldmode = self.getmode(fname)
-        Chmod('testchange1.txt', mode=int('555', 8))()
-        self.assertEqual(self.getmode(fname), int('555', 8))
-        Chmod('testchange1.txt', mode=oldmode)()
-        self.assertEqual(self.getmode(fname), oldmode)
+        newmode = int('555', 8)
+        fname = Path(self.dir, 'testchange1.txt')
+        fname.open('w')
+        fname.chmod(0)
+        oldmode = fname.mode
+        self.assertEqual(oldmode, 0)
+        Chmod(fname, mode=newmode)()
+        fname.refresh()
+        self.assertEqual(fname.mode, newmode)
+        Chmod(fname, mode=oldmode)()
+        fname.refresh()
+        self.assertEqual(fname.mode, oldmode)
 
     def testmultiple(self):
-        files = FileList(
-            'testmultiple1', 'testmultiple2', 'testmultiple3',
-        )
+        files = [
+            Path(self.dir, fname) for fname in
+                ('testmultple1', 'testmultiple2',
+                 'testmultiple3')
+        ]
+        newmode = int('666', 8)
         for fname in files:
-            open(normjoin(self.dir, fname), 'w')
-            os.chmod(normjoin(self.dir, fname), 0)
-        Chmod('testmultiple1', 'testmultiple2', 'testmultiple3')()
+            fname.open('w')
+            fname.chmod(0)
+        Chmod(*tuple(files), mode=newmode)()
         for fname in files:
-            self.assertEqual(self.getmode(normjoin(self.dir, fname)), int('666', 8))
+            fname.refresh()
+            self.assertEqual(fname.mode, newmode)
 
 
 class TestContainer(TestCase):
@@ -67,20 +78,20 @@ class TestCopy(TestCase):
     def setUp(self):
         self.src = 'src'
         self.dest = 'dest'
-        self.savedir = os.getcwd()
-        os.chdir(self.dir)
-        self.fullsrc = os.path.join(self.dir, self.src)
-        self.fulldest = os.path.join(self.dir, self.dest)
-        os.mkdir(self.fullsrc)
-        os.mkdir(self.fulldest)
-        open(os.path.join(self.dir, 'a'), 'w').write('hi\n')
-        open(os.path.join(self.dir, 'b'), 'w').write('bye\n')
-        open(os.path.join(self.dir, 'c'), 'w').write('xyzzy\n')
+        self.savedir = Path.cwd()
+        self.dir.chdir()
+        self.fullsrc = self.dir + self.src
+        self.fulldest = self.dir + self.dest
+        self.fullsrc.mkdir()
+        self.fulldest.mkdir()
+        (self.dir + 'a').open('w').write('hi\n')
+        (self.dir + 'b').open('w').write('bye\n')
+        (self.dir + 'c').open('w').write('xyzzy\n')
     def tearDown(self):
         import shutil
-        os.chdir(self.savedir)
-        shutil.rmtree(self.fullsrc)
-        shutil.rmtree(self.fulldest)
+        self.savedir.chdir()
+        self.fullsrc.remove()
+        self.fulldest.remove()
 
     def testfile2dir(self):
         src = normjoin('a')
