@@ -40,7 +40,6 @@ class TestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        logger.debug('%s.setupClass()', cls.__name__)
         cls.dir = Path(tempfile.mkdtemp())
         try:
             cls.oldconfigbasedir = V['basedir']
@@ -49,6 +48,7 @@ class TestCase(unittest.TestCase):
         V['basedir'] = cls.dir
         if cls.platform not in ('win', 'lin', 'mac'):
             cls.platform = None
+        logger.debug('%s.setupClass(); dir=%s', cls.__name__, cls.dir)
 
     @classmethod
     def tearDownClass(cls):

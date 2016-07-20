@@ -36,7 +36,7 @@ class TestChmod(TestCase):
         fname.chmod(0)  # no permissions to start
         self.assertTrue(fname.isfile)
         Chmod(fname)()
-        self.assertEqual(fname.mode, 0)
+        self.assertEqual(fname.mode, int('666', 8))
 
     def testchange(self):
         if self.platform == 'win':  # Broken OS
