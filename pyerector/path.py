@@ -96,15 +96,13 @@ and operations."""
 
     def _join(self):
         """Return a normalized pathname string, evaluating variables and joining subpaths."""
-        from .variables import Variable
-        c = []
-        for i in self.components:
+        def evalvars(i):
+            from .variables import Variable
             while isinstance(i, Variable):
                 i = i.value
-            else:
-                c.append(i)
+            return i
         d = []
-        for i in c:
+        for i in [evalvars(i) for i in self.components]:
             if isinstance(i, Path):
                 d.extend(i.components)
             else:
@@ -173,19 +171,23 @@ and operations."""
     @property
     def mtime(self):
         """Float of the file's modification time, or None if no entry."""
+        self.__getstat(self._join())
         return self.stat and self.stat[os.path.stat.ST_MTIME] or None
     @property
     def atime(self):
         """Float of the file's access time, or None if no entry."""
+        self.__getstat(self._join())
         return self.stat and self.stat[os.path.stat.ST_ATIME] or None
     @property
     def ctime(self):
         """Float of the file's change time or None if no entry."""
+        self.__getstat(self._join())
         return self.stat and self.stat[os.path.stat.ST_CTIME] or None
 
     @property
     def mode(self):
         """Return permission bits or None if no entry."""
+        self.__getstat(self._join())
         if self.stat:
             return os.path.stat.S_IMODE(self.stat[os.path.stat.ST_MODE])
         else:
@@ -344,7 +346,7 @@ create it, if it is not a file, return an exception."""
     def utime(self, atime, mtime):
         if not self.exists:
             raise TypeError('expecting file')
-        os.uname(self.value, (atime, mtime))
+        os.utime(self.value, (atime, mtime))
         self.refresh()
 
     # file operations
