@@ -57,7 +57,6 @@ fileonly=True, exclude=()."""
         if noglob or not self.checkglobpatt(candidate):
             return super(FileIterator, self).adjust(candidate)
         else:
-            print 'basedir =', repr(basedir), 'candidate =', repr(candidate)
             if isinstance(basedir, Path):
                 glist = basedir.glob(candidate)
             else:
@@ -244,8 +243,6 @@ subclasses."""
             maxval = float('inf')
             latest_src = reduce(max, [f.mtime for f in srcs if f.exists], 0)
             earliest_dst = reduce(min, [f.mtime for f in dsts if f.exists], maxval)
-            print self.__class__.__name__ + '.latest_src =', latest_src
-            print self.__class__.__name__ + '.earliest_dst =', earliest_dst
             if earliest_dst == maxval:  # empty list case
                 self.logger.debug('%s /> %s', klsname, False)
                 return False
