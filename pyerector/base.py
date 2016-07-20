@@ -68,9 +68,7 @@ handling.
         if kwargs:
             for key in kwargs:
                 setattr(self, key, kwargs[key])
-        if basedir is None:
-            V['basedir'] = Path(curdir)
-        else:
+        if basedir is not None:
             V['basedir'] = Path(basedir)
 
     def get_files(self, files=None):
