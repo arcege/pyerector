@@ -445,6 +445,7 @@ then prepend the directory's contents to the pool (not the curset).
             self.logger.debug('candidate = %s', repr(candidate))
             if self.check_candidate(candidate):
                 break
+        assert isinstance(candidate, (Path, str, tuple)), candidate
         return self.post_process_candidate(candidate)
 
     def getnextset(self):
@@ -492,16 +493,16 @@ then prepend the directory's contents to the pool (not the curset).
     # text based
     def post_process_candidate(self, candidate):
         return candidate
+
     def adjust(self, candidate):
         return [Path(candidate)]
+
     def check_candidate(self, candidate):
         pattern = self.get_kwarg('pattern', str)
         if not pattern:
             return True
-        elif candidate.match(pattern):
-            return True
         else:
-            return False
+            return candidate.match(pattern)
 
 
 class Mapper(Iterator):

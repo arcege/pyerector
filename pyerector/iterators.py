@@ -67,9 +67,14 @@ fileonly=True, exclude=()."""
 
     def post_process_candidate(self, candidate):
         basedir = V['basedir']
+        if not isinstance(basedir, Path):
+            basedir = Path(basedir)
         recurse = self.get_kwarg('recurse', bool)
         fileonly = self.get_kwarg('fileonly', bool)
-        c = basedir + candidate
+        if isinstance(candidate, tuple):  # for a Mapper
+            c = (basedir + candidate[0], basedir + candidate[1])
+        else:
+            c = basedir + candidate
         #print 'candidate', repr(c)
         if recurse and c.isdir:
             self._prepend([(i - basedir) for i in c])

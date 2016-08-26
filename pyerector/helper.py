@@ -40,7 +40,7 @@ def normjoin(*args):
     """Join and normalize the arguments into a pathname."""
     if not args:
         args = ('',)
-    return os.path.normpath(os.path.join(*tuple([str(f) for f in args])))
+    return Path(*args)
 
 
 class Exclusions(set):
