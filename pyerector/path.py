@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2015 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2016 Michael P. Reilly. All rights reserved.
 """A unified file system object class - the purpose of this is
 to avoid having to stringify values being passed to explicit calls
 to os.* and os.path.* functions."""

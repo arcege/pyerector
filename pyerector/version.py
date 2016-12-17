@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2015 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2016 Michael P. Reilly. All rights reserved.
 """Hold the version control information about the product.
 The build replaces the %..% tokens with proper values.
 The constants (HG_* and RELEASE_*) at the end are for backward compatibility.

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2015 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2016 Michael P. Reilly. All rights reserved.
 """Need an easy way to map a class name (string) to the class.  The
 metaclass here will use a global registry for the mapping.
 """

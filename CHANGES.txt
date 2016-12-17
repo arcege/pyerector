@@ -194,6 +194,7 @@ v1.2.5.1 2015-01-10
   -- Add new targets "install" and "force".
   -- Update Copyright dates.
 
-v1.2.6 2015-XX-XX
+v1.2.6 2016-12-16
   -- Make Version instance displayable.
+  -- Update Copyright dates.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2015 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2016 Michael P. Reilly. All rights reserved.
 """Package: pyerector.api
 While this module is mostly empty, it gives access to the routines that
 a PyErector developer would need most: Abort, Error, Iterator, Mapper,

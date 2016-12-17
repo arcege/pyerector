@@ -58,4 +58,4 @@ Please visit the `project site <https://bitbucket.org/Arcege/pyerector/wiki/>`_
 for documentation.
 
 ----
-Copyright (C) 2010-2015 Michael P. Reilly.  All rights reserved.
+Copyright (C) 2010-2016 Michael P. Reilly.  All rights reserved.

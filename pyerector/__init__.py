@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2015 Michael P. Reilly. All rights reserved.
+# Copyright @ 2012-2016 Michael P. Reilly. All rights reserved.
 """Package: pyerector
 A framework to build products based on tasks and targets.  The thought
 is, distutils/setuptools is to Maven as PyErector is to Ant.  The former
