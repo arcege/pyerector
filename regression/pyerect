@@ -1,0 +1,71 @@
+#!/usr/bin/python
+
+import os
+import sys
+if 'PYERECTOR_PATH' in os.environ and \
+        os.path.isdir(os.environ['PYERECTOR_PATH']):
+    for i, p in enumerate(sys.path):
+        if p.find('pyerector') != -1:
+            sys.path[i] = os.environ['PYERECTOR_PATH']
+import release
+from pyerector import *
+
+#from pyerector.tasks import Symlink
+# try to use ../build/pyerector-{relno}/pyerector
+bname = '%s-%s' % (release.product, release.number)
+builddir = os.path.join(os.pardir, 'build', bname, 'pyerector')
+if os.path.isdir(builddir):
+    libdir = os.path.realpath(builddir)
+else:
+    import pyerector
+    libdir = os.path.dirname(pyerector.__file__)
+    del pyerector
+
+
+class Clean(Target):
+    def run(self):
+        bdir = Path(V['basedir'])
+        for sdir in bdir:
+            fname = (bdir + sdir + 'pyerector')
+            if fname.islink:
+               fname.remove()
+
+class Init(Target):
+    def run(self):
+        bdir = Path(V['basedir'])
+        for sdirname in bdir:
+            sdir = bdir + sdirname
+            fname = sdir + 'pyerector'
+            if sdir.isdir and not fname.islink:
+                fname.makelink(libdir)
+                #os.symlink(libdir, fname)
+                #Symlink(fname, dest=libdir)
+
+class Regression(Target):
+    dependencies = (Init,)
+    """Regression testing."""
+    def run(self):
+        import os
+        subtasks = []
+        bdir = Path(V['basedir'])
+        for sdir in bdir:
+            if sdir.isdir and \
+               (sdir + 'pyerect').isfile:
+                subtasks.append(
+                    Echo('Calling %s/pyerect', sdir)
+                )
+                subtasks.append(
+                    SubPyErector('all', wdir=sdir,
+                        env={'PYTHONPATH': libdir})
+                )
+        tasks = Parallel(*tuple(subtasks))
+        if callable(tasks):
+            tasks()
+        else:
+            tasks.run(self, None, None, None)
+
+Test.dependencies = ()
+All.dependencies = (Clean, Regression,)
+Default.dependencies = (Regression,)
+
+PyErector()
