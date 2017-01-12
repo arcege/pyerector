@@ -36,7 +36,7 @@ class TestPath(TestCase):
         import tempfile
         self.tdir = tempfile.mkdtemp()
         self.tpath = Path(self.tdir)
-    def cleanUp(self):
+    def tearDown(self):
         import shutil
         shutil.rmtree(self.tdir)
 
