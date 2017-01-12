@@ -19,8 +19,24 @@ class Subversion(VCS_Base):
     prog = 'svn'
     directory = '.svn'
 
+    def find_dotsvn(self):
+        from ..path import Path
+        if isinstance(self.rootdir, Path):
+            dir = self.rootdir.abs
+        else:
+            dir = Path(self.rootdir).abs
+        while dir != os.sep and dir != os.curdir:
+            if (dir + '.svn').isdir:
+                return dir
+            dir = dir.dirname
+        else:
+            return None
+
     def current_info(self):
         """Retrieve information from the workarea."""
+        dotsvn = self.find_dotsvn()
+        if dotsvn is None:
+            return
         proc = Subcommand(
             (self.prog, 'info', self.rootdir),
             wait=True,

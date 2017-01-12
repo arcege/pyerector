@@ -125,7 +125,7 @@ class TestVCS(TestCase):
             V['basedir'] = Path(self.gitdir)
             self.assertEqual(VCS().name, 'git')
 
-    def testvcs_check_subversion(self):
+    def _testvcs_check_subversion(self):
         if self.havesvn:
             V['basedir'] = Path(self.svndir)
             self.assertEqual(VCS().name, 'subversion')
