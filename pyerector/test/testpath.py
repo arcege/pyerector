@@ -40,6 +40,14 @@ class TestPath(TestCase):
         import shutil
         shutil.rmtree(self.tdir)
 
+    def test_variables(self):
+        from ..variables import V
+        v = V('path_variables_a', 'foo')
+        p = Path('xyzzy', v, 'README')
+        self.assertEqual(p.value, 'xyzzy/foo/README')
+        v.value = 'bar'
+        self.assertEqual(p.value, 'xyzzy/bar/README')
+
     def test__init__(self):
         f = Path()
         self.assertFalse(f.has_variable)
