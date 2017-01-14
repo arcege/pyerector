@@ -62,6 +62,8 @@ and operations."""
         initial_slash = (components and components[0] == '')
         #print 'components =', components
         result = []
+        if components == ['', '']:
+            return components
         try:
             for c in components:
                 if isinstance(c, Variable):
@@ -74,13 +76,13 @@ and operations."""
                     result.append(c)
                 elif result:
                     result.pop()
-            if c[:2] == ['', '']:
-                del c[0]
         except Exception, e:
             getLogger('pyerector.execute').exception(e)
             raise
         else:
-            if initial_slash:
+            if initial_slash and result == []:
+                result.extend(['', ''])
+            elif initial_slash:
                 result.insert(0, '')
             #getLogger('pyerector.execute').debug('comp = %s; result = %s', components, result)
         return result

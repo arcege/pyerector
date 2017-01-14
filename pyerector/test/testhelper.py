@@ -61,10 +61,10 @@ class Testnormjoin(TestCase):
         self.assertEqual(normjoin('tmp'), 'tmp')
 
     def test_noarg(self):
-        self.assertEqual(normjoin(), os.curdir)
+        self.assertEqual(normjoin(), os.sep)
 
     def test_emptystr(self):
-        self.assertEqual(normjoin(''), os.curdir)
+        self.assertEqual(normjoin(''), os.sep)
 
     def test_pardir(self):
         self.assertEqual(
