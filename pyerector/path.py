@@ -76,7 +76,8 @@ and operations."""
                     result.append(c)
                 elif result:
                     result.pop()
-        except Exception, e:
+        except:
+            t, e, tb = sys.ec_info()
             getLogger('pyerector.execute').exception(e)
             raise
         else:

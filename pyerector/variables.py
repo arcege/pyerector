@@ -229,19 +229,23 @@ File contents are decoded by default as UTF-8."""
 
     @property
     def value(self):
+        import sys
         try:
             with open(str(self.filename), 'rt') as infile:
                 contents = self.decode(self.read(infile))
-        except IOError, e:
-            raise ValueError('%s: %s' % self.filename)
+        except IOError:
+            t, e, tb = sys.exc_info()
+            raise ValueError('%s: %s' % (self.filename, e))
         return contents
 
     @value.setter
     def value(self, value):
+        import sys
         try:
             with open(str(self.filename), 'wt') as outfile:
                 self.write(outfile, self.encode(value))
-        except IOError, e:
+        except IOError:
+            t, e, tb = sys.exc_info()
             raise ValueError('%s: %s' % self.filename, e)
 
     @value.deleter
