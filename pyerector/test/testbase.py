@@ -37,6 +37,20 @@ class TestIniter(TestCase):
         Initer()
         self.assertEqual(V['basedir'], self.dir)
 
+    def test__init_(self):
+        import logging
+        obj = Initer()
+        self.assertIsInstance(obj.logger, logging.Logger)
+        self.assertTrue(obj.fileonly)
+        self.assertEqual(obj.exclude, ())
+        self.assertEqual(obj.pattern, None)
+        self.assertEqual(obj.noglob, False)
+        self.assertEqual(obj.recurse, False)
+        self.assertFalse(hasattr(obj, 'args'))
+        obj = Initer(foo='bar')
+        self.assertTrue(hasattr(obj, 'foo'))
+        self.assertEqual(obj.foo, 'bar')
+
     def test_join(self):
         #"""Ensure that join() method returns proper values."""
         obj = Initer()
@@ -44,6 +58,31 @@ class TestIniter(TestCase):
                          Path(self.dir, 'foobar'))
         self.assertEqual(obj.join('xyzzy', 'foobar'),
                          Path(self.dir, 'xyzzy', 'foobar'))
+
+    def test_get_kwarg(self):
+        obj = Initer(was='my test', they='are here', howmany=8)
+        obj.kwargs = {'that': 'is so cool'}
+        obj.we = 'will rock you'
+        obj.wehave = None
+        self.assertEqual(obj.get_kwarg('wehave', str), None)
+        self.assertRaises(TypeError, obj.get_kwarg, 'was', int)
+        self.assertRaises(TypeError, obj.get_kwarg, 'wehave', str, noNone=True)
+        self.assertEqual(obj.they, 'are here')
+        self.assertEqual(obj.get_kwarg('that', str), 'is so cool')
+        self.assertEqual(obj.get_kwarg('that', str, noNone=True), 'is so cool')
+        self.assertEqual(obj.get_kwarg('that', (str, int)), 'is so cool')
+        self.assertEqual(obj.get_kwarg('howmany', int), 8)
+        self.assertRaises(TypeError, obj.get_kwarg, (str, bool))
+        self.assertRaises(TypeError, obj.get_kwarg, 'that', (int, bool))
+
+    def test_get_args(self):
+        obj = Initer('hi', 8, 'there', foo=True, whatever=None)
+        self.assertEqual(obj.args, ('hi', 8, 'there'))
+        self.assertEqual(obj.get_args('args'), ('hi', 8, 'there'))
+        obj = Initer(foo=(True,))
+        self.assertEqual(obj.get_args('foo'), (True,))
+        obj = Initer()
+        self.assertEqual(obj.get_args('foo'), ())
 
     def test_asserttype(self):
         obj = Initer()
