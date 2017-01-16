@@ -19,7 +19,7 @@ except ValueError:
 
 PyVersionCheck()
 
-from pyerector.config import Config
+from pyerector.config import Config, State, noop, noTimer
 from pyerector.variables import V
 
 
@@ -36,9 +36,63 @@ class TestConfig(TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter('always', DeprecationWarning)
             self.assertEqual(V['basedir'], c.basedir)
-            assert len(w) == 1
-            assert issubclass(w[-1].category, DeprecationWarning)
-            assert "deprecated" in str(w[-1].message)
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+            self.assertIn("deprecated", str(w[-1].message))
+
+    def test_property_set(self):
+        c = Config()
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always', DeprecationWarning)
+            c.testset = 'foobar'
+            self.assertEqual(V['testset'], c.testset)
+            self.assertEqual(len(w), 2)
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+            self.assertIn("deprecated", str(w[-1].message))
+
+class TestState(TestCase):
+    def test__init_(self):
+        s = State()
+        self.assertFalse(s.state)
+        s = State(True)
+        self.assertTrue(s.state)
+        s = State(False)
+        self.assertFalse(s.state)
+
+    def test__bool_(self):
+        s = State()
+        self.assertFalse(s)
+        s = State(True)
+        self.assertTrue(s)
+
+    def test_on(self):
+        s = State()
+        self.assertFalse(s)
+        s.on()
+        self.assertTrue(s)
+        s = State(True)
+        self.assertTrue(s)
+        s.on()
+        self.assertTrue(s)
+
+    def test_off(self):
+        s = State(True)
+        self.assertTrue(s)
+        s.off()
+        self.assertFalse(s)
+        s = State()
+        self.assertFalse(s)
+        s.off()
+        self.assertFalse(s)
+
+class TestGlobals(TestCase):
+    def test_noop(self):
+        self.assertIsInstance(noop, State)
+        self.assertFalse(noop)  # default value
+
+    def test_noTimer(self):
+        self.assertIsInstance(noTimer, State)
+        self.assertFalse(noTimer)  # default value
 
 if __name__ == '__main__':
     import logging, unittest
