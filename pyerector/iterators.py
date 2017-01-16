@@ -49,21 +49,21 @@ Default parameters: pattern=None, noglob=False, recurse=False,
 fileonly=True, exclude=()."""
     def adjust(self, candidate):
         basedir = V['basedir']
+        if isinstance(basedir, str):
+            basedir = Path(basedir)
         noglob = self.get_kwarg('noglob', bool)
         if isinstance(candidate, Iterator):
             return list(candidate)
         elif not isinstance(candidate, (Path, str)):
             raise TypeError('%s is not a string' % repr(candidate))
+        elif isinstance(candidate, str):
+            candidate = Path(candidate)
         if noglob or not self.checkglobpatt(candidate):
             return super(FileIterator, self).adjust(candidate)
         else:
-            if isinstance(basedir, Path):
-                glist = basedir.glob(candidate)
-            else:
-                glist = glob.glob(candidate)
+            glist = basedir.glob(candidate.value)
             self.logger.debug('glob(%s) = %s', candidate, glist)
             return [(c - basedir) for c in glist]
-            #return [(c - basedir) for c in basedir.glob(candidate)]
 
     def post_process_candidate(self, candidate):
         basedir = V['basedir']
