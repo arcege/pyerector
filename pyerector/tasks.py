@@ -55,6 +55,8 @@ class Container(Task):
     from os import curdir as root
     name = None
     files = ()
+    recurse = True
+    fileonly = False
     exclude = Exclusions(usedefaults=False)
 
     def run(self):
@@ -69,11 +71,16 @@ class Container(Task):
         self.preop(name, root, excludes)
         toadd = []
         queue = list(self.get_args('files'))
+        self.logger.debug('Container.run: files=%s', queue)
         while queue:
             entry = queue[0]
             del queue[0]
             try:
-                for fname in root.glob(entry):
+                if isinstance(entry, Iterator):
+                    sequence = iter(entry)
+                else:
+                    sequence = root.glob(entry)
+                for fname in sequence:
                     if excludes.match(fname):  # if true, ignore
                         pass
                     elif fname.islink or fname.isfile:
@@ -718,11 +725,12 @@ Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""
             raise ValueError('no such file or directory: %s' % name)
         else:
             for fname in toadd:
-                path = fname.replace(
-                    root + os.sep, ''
-                )
+                if isinstance(fname, Path):
+                    path = fname - root
+                else:
+                    path = Path(fname) - root
                 self.logger.debug('tar.add(%s, %s)', fname, path)
-                tfile.add(str(self.join(fname)), path)
+                tfile.add(str(self.join(fname)), str(path))
             tfile.close()
 
 
@@ -998,7 +1006,7 @@ Description: %(long_description)s
 Platform: UNKNOWN
 %(classifiers)s
 ''' % pkg_data
-        eggdir = root + 'EGG_INFO'
+        eggdir = root + 'EGG-INFO'
         try:
             eggdir.mkdir()
         except OSError:
