@@ -156,12 +156,10 @@ InitDirs.files = (
 )
 Compile.dependencies = (PreCompile,)
 
-filestodist = FileIterator(Path('build', distfile), recurse=True, fileonly=True,
-        exclude='EGG-INFO')
 Packaging.tasks = (
-    Zip(filestodist, name='dist/%s.zip' % distfile, root='build'),
-    Tar(filestodist, name='dist/%s.tgz' % distfile, root='build'),
-    Egg(filestodist, name='dist/%s.egg' % distfile, root=Path('build', distfile)),
+    Zip(Path('build', distfile), name='dist/%s.zip' % distfile, root='build', exclude=('EGG-INFO',)),
+    Tar(Path('build', distfile), name='dist/%s.tgz' % distfile, root='build', exclude=('EGG-INFO',)),
+    Egg(Path('build', distfile), name='dist/%s.egg' % distfile, root=Path('build', distfile), exclude=('EGG-INFO',)),
     HashGen(
         'dist/%s.egg' % distfile,
         'dist/%s.zip' % distfile,

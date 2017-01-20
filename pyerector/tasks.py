@@ -69,31 +69,38 @@ class Container(Task):
         self.logger.debug('Container.run(name=%s, root=%s, excludes=%s)',
                 repr(name), repr(root), repr(excludes))
         self.preop(name, root, excludes)
-        toadd = []
-        queue = list(self.get_args('files'))
+        toadd = set()
+        args = self.get_args('files')
+        queue = list(self.get_files(args))
         self.logger.debug('Container.run: files=%s', queue)
         while queue:
             entry = queue[0]
             del queue[0]
             try:
-                if isinstance(entry, Iterator):
-                    sequence = iter(entry)
+                if isinstance(entry, (Path, str)):
+                    self._check_path(Path(entry), toadd, excludes, queue)
                 else:
-                    sequence = root.glob(entry)
-                for fname in sequence:
-                    if excludes.match(fname):  # if true, ignore
-                        pass
-                    elif fname.islink or fname.isfile:
-                        toadd.append(fname)
-                    elif fname.isdir:
-                        fnames = list(fname)
-                        queue.extend(fnames)
+                    if isinstance(entry, Iterator):
+                        sequence = iter(entry)
+                    else:
+                        sequence = root.glob(entry)
+                    for fname in sequence:
+                        self._check_path(Path(fname), toadd, excludes, queue)
             except TypeError:
                 pass
-        #verbose('toadd =', toadd)
+        toadd = sorted(toadd)  # covert set to a list and sort
         self.manifest(name, root, toadd)
         self.contain(name, root, toadd)
         self.postop(name, root, toadd)
+
+    @staticmethod
+    def _check_path(fname, toadd, excludes, queue):
+        if excludes.match(fname):  # if true, ignore
+            pass
+        elif fname.islink or fname.isfile:
+            toadd.add(fname)
+        elif fname.isdir:
+            queue.extend(fname)  # expand directory listing
 
     def preop(self, name, root, excludes):
         """To be overridden."""
