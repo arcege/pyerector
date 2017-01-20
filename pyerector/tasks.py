@@ -128,7 +128,7 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
         """Copy files to a destination directory."""
         dest = self.get_kwarg('dest', (Path, str), noNone=False)
         files = self.get_args('files')
-        excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
+        excludes = self.get_kwarg('exclude', (str, Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
@@ -166,7 +166,7 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
         """Copy a tree to a destination."""
         srcdir = self.join(self.get_kwarg('srcdir', (Path, str), noNone=True))
         dstdir = self.join(self.get_kwarg('dstdir', (Path, str), noNone=True))
-        excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
+        excludes = self.get_kwarg('exclude', (str, Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
         if not srcdir.exists:
@@ -293,7 +293,7 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
         """Generate files with checksums inside."""
         from hashlib import md5, sha1
         files = self.get_files(self.get_args('files'))
-        hashs = self.get_kwarg('hashs', tuple)
+        hashs = self.get_kwarg('hashs', (list, set, tuple))
         self.logger.debug('files = %s; hashs = %s', files, hashs)
         fmaps = []
         if 'md5' in hashs:
@@ -352,12 +352,13 @@ Java(jar=<JAR>, java_home=<$JAVA_HOME>, classpath=(), properties=[])"""
         """Call java."""
         from os import environ
         from os.path import pathsep
-        jar = self.get_kwarg('jar', str, noNone=True)
+        jar = self.get_kwarg('jar', (Path, str), noNone=True)
         if self.properties:
             sysprop = ['-D%s=%s' % x for x in self.properties]
         else:
             sysprop = ()
-        cmd = (self.java_prog,) + tuple(sysprop) + ('-jar', jar,) + \
+        cmd = (self.java_prog,) + tuple(sysprop) + \
+            ('-jar', str(jar),) + \
             tuple([str(s) for s in self.args])
         env = environ.copy()
         if self.classpath:
@@ -459,7 +460,7 @@ Remove(*files)"""
         """Remove a file or directory tree."""
         files = self.get_args('files')
         noglob = self.get_kwarg('noglob', bool)
-        excludes = self.get_kwarg('exclude', (Exclusions, list, tuple))
+        excludes = self.get_kwarg('exclude', (str, Exclusions, list, tuple))
         if isinstance(files, Iterator):
             pass
         elif len(files) == 1 and isinstance(files, Iterator):
@@ -485,9 +486,9 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
     def run(self):
         """Replace the shebang string with a specific pathname."""
         self.logger.info('starting Shebang')
-        program = self.get_kwarg('program', str, noNone=True)
+        program = self.get_kwarg('program', (Path, str), noNone=True)
         srcs = self.get_files(self.get_args('files'))
-        dest = self.get_kwarg('dest', str)
+        dest = self.get_kwarg('dest', (Path, str))
         try:
             from io import BytesIO as StringIO
         except ImportError:
@@ -528,9 +529,9 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
 
     def run(self):
         """Spawn a command."""
-        infile = self.get_kwarg('infile', str)
-        outfile = self.get_kwarg('outfile', str)
-        errfile = self.get_kwarg('errfile', str)
+        infile = self.get_kwarg('infile', (Path, str))
+        outfile = self.get_kwarg('outfile', (Path, str))
+        errfile = self.get_kwarg('errfile', (Path, str))
         infile = infile and self.join(infile) or None
         outfile = outfile and self.join(outfile) or None
         errfile = errfile and self.join(errfile) or None
@@ -566,7 +567,7 @@ class SshEngine(Task):
         else:
             return host
     def gencmd(self):
-        idfile = self.get_kwarg('identfile', str)
+        idfile = self.get_kwarg('identfile', (Path, str))
         if idfile:
             identfile = ('-i', str(idfile))
         else:
@@ -610,7 +611,7 @@ Scp(*files, dest=<dir>, host=<hostname>, user=<username>, identfile=<filename>,
         return self.join(filename)
     def run(self):
         recurse = self.get_kwarg('recurse', bool)
-        dest = self.get_kwarg('dest', str, noNone=True)
+        dest = self.get_kwarg('dest', (Path, str), noNone=True)
         down = self.get_kwarg('down', bool)
         files = self.get_args('files')
         if down:
@@ -655,7 +656,7 @@ Adds PYERECTOR_PREFIX environment variable."""
     def run(self):
         """Call a PyErector program in a different directory."""
         targets = self.get_args('targets')
-        prog = self.get_kwarg('prog', str)
+        prog = self.get_kwarg('prog', (Path, str))
         # we explicitly add './' to prevent searching PATH
         options = []
         logger = logging.getLogger('pyerector')
@@ -778,7 +779,8 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
         tokens = re.compile(r'(%s)' % patt, re.MULTILINE)
         self.logger.debug('patt = %s', str(tokens.pattern))
         files = self.get_args('files')
-        mapper = FileMapper(files, destdir=self.get_kwarg('dest', str),
+        mapper = FileMapper(files,
+                            destdir=self.get_kwarg('dest', (Path, str)),
                             iteratorclass=StaticIterator)
         for (sname, dname) in mapper:
             realcontents = self.join(sname).open('rt').read()
@@ -840,9 +842,8 @@ class Uncontainer(Task):
 
     def run(self):
         """Extract members from the container."""
-        name = self.get_kwarg('name', str, noNone=True)
-        root = self.get_kwarg('root', str)
-        self.asserttype(root, (Path, str), 'root')
+        name = self.get_kwarg('name', (Path, str), noNone=True)
+        root = self.get_kwarg('root', (Path, str))
         files = self.get_args('files')
         try:
             contfile = self.get_file(name)
@@ -891,7 +892,7 @@ Untar(*files, name=<tarfilename>, root=None)"""
         """Extract members from the container."""
         for fileinfo in fileset:
             self.logger.debug('tar.extract(%s)', fileinfo.name)
-            contfile.extract(fileinfo, path=(root or ""))
+            contfile.extract(fileinfo, path=(str(root) or ""))
 
 
 class Unzip(Uncontainer):

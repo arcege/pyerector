@@ -21,7 +21,7 @@ class PyCopy(Target):
         ),
         Echo('release %s-%s', release.product, release.number),
         Tokenize(
-            normjoin('build', distfile, 'pyerector', 'version.py'),
+            Path('build', distfile, 'pyerector', 'version.py'),
             tokenmap=VariableSet(
                 Variable('%release.product%', release.product),
                 Variable('%release.number%', release.number),
@@ -38,17 +38,17 @@ class PreCompile(Target):
     tasks = Parallel(
         PyCompile(
             FileIterator(
-                normjoin('build', distfile, 'pyerector'),
-                normjoin('build', distfile, 'pyerector', 'py2'),
-                normjoin('build', distfile, 'pyerector', 'vcs'),
+                Path('build', distfile, 'pyerector'),
+                Path('build', distfile, 'pyerector', 'py2'),
+                Path('build', distfile, 'pyerector', 'vcs'),
                 pattern='*.py'),
             version='2'
         ),
         PyCompile(
             FileIterator(
-                normjoin('build', distfile, 'pyerector'),
-                normjoin('build', distfile, 'pyerector', 'py3'),
-                normjoin('build', distfile, 'pyerector', 'vcs'),
+                Path('build', distfile, 'pyerector'),
+                Path('build', distfile, 'pyerector', 'py3'),
+                Path('build', distfile, 'pyerector', 'vcs'),
                 pattern='*.py'),
             version='3'
         ),
@@ -68,7 +68,7 @@ pyerector.pth."""
         if not V('force').value == '':
             return False
         from site import getusersitepackages
-        fname = normjoin(getusersitepackages(), dst)
+        fname = Path(getusersitepackages(), dst)
         try:
             line = open(fname).readlines()[-1].strip()
         except IOError:
@@ -96,14 +96,12 @@ class Install(Target):
     def run(self):
         import site
         userdir = site.getusersitepackages()
-        destdir = normjoin(userdir, distfile)
+        destdir = Path(userdir, distfile)
         Remove(destdir)()
         Mkdir.mkdir(destdir)
-        CopyTree(srcdir=normjoin('build', distfile),
+        CopyTree(srcdir=Path('build', distfile),
                  dstdir=destdir)()
-        open(normjoin(userdir, 'pyerector.pth'), 'wt').write(
-                '%s\n' % distfile
-        )
+        Path(userdir, 'pyerector.pth').open().write('%s\n' % distfile)
         Echo()('Installed to %s', userdir)
 
 
@@ -111,19 +109,20 @@ class Install(Target):
 class Cleantest(Target):
     """Clean the test directory."""
     tasks = (
-        Remove(files=('testdir',)),
+        Remove('testdir'),
     )
 
+
+regression_env = {'PYERECTOR_PATH': V['basedir']}
 
 class Realclean(Target):
     """Clean up the cruft (including pyc) files."""
     exclude = Exclusions(usedefaults=False)
     tasks = (
-        SubPyErector('clean', wdir='regression',
-            env={'PYERECTOR_PATH': V['basedir']}),
+        SubPyErector('clean', wdir='regression', env=regression_env),
         Remove(
-            DirList(os.curdir, pattern='*.pyc', exclude=exclude, fileonly=True),
-            DirList(os.curdir, pattern='__pycache__', exclude=exclude, fileonly=True),
+            DirList(Path(), pattern='*.pyc', exclude=exclude, fileonly=True),
+            DirList(Path(), pattern='__pycache__', exclude=exclude, fileonly=True),
             exclude=exclude,
         ),
     )
@@ -133,33 +132,40 @@ class Realclean(Target):
 class Regression(Target):
     """Run regression tests."""
     tasks = (
-        SubPyErector('all', wdir='regression',
-            env={'PYERECTOR_PATH': V['basedir']}),
+        SubPyErector('all', wdir='regression', env=regression_env),
     )
 
 class Localtest(Target):
     """Ensure the packaging looks correct."""
     tasks = Parallel(
-        Untar(root='testdir/tar', name='dist/%s.tgz' % distfile),
-        Unzip(root='testdir/zip', name='dist/%s.zip' % distfile),
-        Unzip(root='testdir/egg', name='dist/%s.egg' % distfile),
+        Untar(root=Path('testdir', 'tar'),
+              name=Path('dist', '%s.tgz' % distfile)),
+        Unzip(root=Path('testdir', 'zip'),
+              name=Path('dist', '%s.zip' % distfile)),
+        Unzip(root=Path('testdir', 'egg'),
+              name=Path('dist', '%s.egg' % distfile)),
     )
     dependencies = (Dist,)
 
 Testonly.tasks = (Unittest,)
 Test.dependencies = Test.dependencies + (Localtest, Regression)
-Clean.files = ('build', 'dist', 'MANIFEST')
+Clean.files = ('build', 'dist')
 Clean.dependencies = (Cleantest,)
 InitDirs.files = (
-    Path('build', distfile),
-    'dist', 'testdir/egg', 'testdir/zip', 'testdir/tar'
+    Path('build', distfile), 'dist',
+    Path('testdir', 'egg'), Path('testdir', 'zip'), Path('testdir', 'tar'),
 )
 Compile.dependencies = (PreCompile,)
 
 Packaging.tasks = (
-    Zip(Path('build', distfile), name='dist/%s.zip' % distfile, root='build', exclude=('EGG-INFO',)),
-    Tar(Path('build', distfile), name='dist/%s.tgz' % distfile, root='build', exclude=('EGG-INFO',)),
-    Egg(Path('build', distfile), name='dist/%s.egg' % distfile, root=Path('build', distfile), exclude=('EGG-INFO',)),
+    Parallel(
+        Zip(Path('build', distfile), name='dist/%s.zip' % distfile,
+            root='build', exclude=('EGG-INFO',)),
+        Tar(Path('build', distfile), name='dist/%s.tgz' % distfile,
+            root='build', exclude=('EGG-INFO',)),
+        Egg(Path('build', distfile), name='dist/%s.egg' % distfile,
+            root=Path('build', distfile), exclude=('EGG-INFO',)),
+    ),
     HashGen(
         'dist/%s.egg' % distfile,
         'dist/%s.zip' % distfile,
