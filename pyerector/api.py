@@ -14,7 +14,7 @@ XXX Future development may see more things moved here from pyerector.
 # have already been imported by 'pyerector'.
 
 from .exception import Abort, Error
-from .args import ArgumentHandler, ArgumentKeyword, ArgumentList, ArgumentType
+from .args import Arguments
 from .execute import get_current_stack, PyThread
 from .variables import V, Variable, VariableSet
 from .helper import Exclusions, normjoin, Subcommand, Timer
@@ -22,8 +22,8 @@ from .base import Initer, Iterator, Mapper, Target, Task
 from .vcs.base import DVCS_Base, VCS_Base
 
 __all__ = [
-    'Abort', 'ArgumentHandler', 'ArgumentKeyword', 'ArgumentList',
-    'ArgumentType', 'Error', 'DVCS_Base', 'get_current_stack', 'Iterator',
-    'Mapper', 'PyThread', 'Subcommand', 'Target', 'Task', 'VCS_Base',
+    'Abort', 'Arguments', 'Error', 'DVCS_Base', 'get_current_stack',
+    'Iterator', 'Mapper', 'PyThread', 'Subcommand', 'Target', 'Task',
+    'VCS_Base',
 ]
 
