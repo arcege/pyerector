@@ -8,10 +8,11 @@ import shutil
 import sys
 
 from .exception import Error
+from .args import Arguments
 from .path import Path
 from .helper import Exclusions, Subcommand, DISPLAY
 from .config import noTimer
-from .base import Task, Mapper, Iterator
+from .base import Initer, Task, Mapper, Iterator
 from .iterators import BasenameMapper, IdentityMapper, FileMapper, \
                        FileIterator, StaticIterator
 from .variables import V, VariableSet
@@ -40,7 +41,7 @@ Chmod(*files, mode=0666)"""
     def run(self):
         """Change the permissions on the files."""
         mode = self.get_kwarg('mode', int)
-        for fname in self.get_files():
+        for fname in self.get_files(self.get_args('files')):
             self.asserttype(fname, (Path, str), 'files')
             self.logger.info('chmod(%s, %o)', fname, mode)
             p = self.join(fname)
@@ -124,11 +125,21 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
     dest = None
     noglob = False
 
+    arguments = Arguments(
+        Arguments.List('files', types=(Path, str)),
+        Arguments.Keyword('dest', types=(Path, str)),
+    ) + Initer.basearguments
+
     def run(self):
         """Copy files to a destination directory."""
-        dest = self.get_kwarg('dest', (Path, str), noNone=False)
-        files = self.get_args('files')
-        excludes = self.get_kwarg('exclude', (str, Exclusions, tuple, list))
+        if self.has_arguments:
+            dest = self.args.dest
+            files = self.args.files
+            excludes = self.args.exclude
+        else:
+            dest = self.get_kwarg('dest', (Path, str), noNone=False)
+            files = self.get_args('files')
+            excludes = self.get_kwarg('exclude', (str, Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
@@ -973,13 +984,11 @@ Egg(*files, name=<eggfilename>, root=os.curdir, exclude=(defaults))"""
 
     def do_file_dummy(self, rootdir, toadd, fname):
         fn = rootdir + fname
-        if not fn.exists:
-            fn.open().write(os.linesep)
+        fn.open('wt').write(os.linesep)
         self.add_path(toadd, fn)
     def do_file_top_level(self, rootdir, toadd, name):
         fn = rootdir + 'top_level.txt'
-        if not fn.exists:
-            fn.open().write(str(name) + os.linesep)
+        fn.open('wt').write(str(name) + os.linesep)
         self.add_path(toadd, fn)
     def do_file_sources(self, rootdir, toadd, root):
         fn = rootdir + 'SOURCES.txt'
