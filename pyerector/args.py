@@ -43,7 +43,7 @@ If append==False, then replace the positional arguments, otherwise, append."""
         assert isinstance(other, ArgumentSet)
         if append:
             self.list += other.list
-        else:
+        elif other.list:
             self.list = other.list[:]
         self.map.update(other.map)
 
@@ -53,21 +53,34 @@ class Arguments(object):
 """
 
     def __init__(self, *arglist):
-        self.typelist = None
-        self.typemap = {}
-        self.arglist = None
-        self.argmap = {}
+        self.list = None
+        self.map = {}
         for arg in arglist:
             if isinstance(arg, Arguments.List):
-                if self.typelist is not None:
+                if self.list is not None:
                     raise TypeError('Only one instance of Arguments.List allowed')
-                self.typelist = arg
+                elif arg.name in self.map:
+                    raise TypeError('only one instance with the name %s allowed' % arg.name)
+                self.list = arg
+                self.map[arg.name] = arg
             elif isinstance(arg, Arguments.Keyword):
-                if arg.name in self.typemap:
-                    raise TypeError('only one instance of Arguments.Keyword with %s allowed' % arg.name)
-                self.typemap[arg.name] = arg
-            elif not isinstanace(arg, Arguments.Type):
+                if arg.name in self.map:
+                    raise TypeError('only one instance with the name %s allowed' % arg.name)
+                self.map[arg.name] = arg
+            elif not isinstance(arg, Arguments.Type):
                 raise TypeError('Must supply instance of Argument')
+
+    def __add__(self, other):
+        """Add two Arguments instances together, the left taking precedence;
+the merge is performed based on the argument name."""
+        # we take a copy of the other so self takes precedence
+        map = other.map.copy()
+        map.update(self.map)
+        # handle corner case
+        if self.list is not None and other.list is not None and \
+           self.list != other.list:
+            del map[other.list.name]
+        return self.__class__(*map.values())
 
     def process(self, args, kwargs):
         """Create a instance of ArgumentSet based on the values passed;
@@ -77,19 +90,23 @@ assigned as necessary."""
         assert isinstance(kwargs, dict)
         arglist = ()
         argmap = {}
-        if self.typelist is not None and args:
-            arglist = self.typelist.process(args)
-        elif self.typelist is None and args:
+        if self.list is not None and args:
+            arglist = self.list.process(args)
+            # we also add to the map:
+            #List('name') === Keyword('name', type=tuple), with magic
+            argmap[self.list.name] = arglist
+        elif self.list is None and args:
             raise ValueError('not expecting positional arguments')
+        # fill in the rest
+        for name in self.map:
+            if isinstance(self.map[name], Arguments.Keyword):
+                argmap[name] = self.map[name].process(None)
         for name in kwargs:
-            if name in self.typemap:
-                argtype = self.typemap[name]
+            if name in self.map:
+                argtype = self.map[name]
                 argmap[name] = argtype.process(kwargs[name])
             else:
                 raise ValueError('not a valid keyword: %s' % name)
-        # fill in the rest
-        for name in self.typemap:
-            argmap[name] = self.typemap[name].process(None)
         return ArgumentSet(arglist, argmap)
 
     class Type(object):
@@ -128,6 +145,7 @@ assigned as necessary."""
         def check_type(self, value):
             """Raise an exception is one of the values in the list are not one
     of the types given."""
+            assert isinstance(value, tuple)
             for v in value:
                 super(Arguments.List, self).check_type(v)
 
