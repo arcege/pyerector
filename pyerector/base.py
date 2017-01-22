@@ -20,6 +20,7 @@ if version[0] > '2':  # python 3+
 else:
     from .py2.base import Base
 from .helper import Exclusions, normjoin, Timer, DISPLAY
+from .args import Arguments
 from .path import Path
 from .execute import get_current_stack, PyThread
 from .register import registry
@@ -41,6 +42,14 @@ handling.
 """
     config = Config()  # for backward compatibility only
     # values to propagate to an iterator
+    basearguments = Arguments(
+        Arguments.Keyword('pattern'),
+        Arguments.Keyword('noglob', default=False, types=bool),
+        Arguments.Keyword('recurse', default=False, types=bool),
+        Arguments.Keyword('fileonly', default=True, types=bool),
+        Arguments.Keyword('exclude', default=(), types=(tuple, list, set, Exclusions, str)),
+    )
+    # the arguments attribute should be set by Tasks subclasses, not in the ancesters
     pattern = None
     noglob = False
     recurse = False
@@ -63,11 +72,17 @@ handling.
             curdir = os.curdir
         else:
             del kwargs['curdir']
-        if args:
-            self.args = args
-        if kwargs:
-            for key in kwargs:
-                setattr(self, key, kwargs[key])
+        self.has_arguments = (
+            hasattr(self, 'arguments') and isinstance(self.arguments, Arguments)
+        )
+        if self.has_arguments:
+            self.args = self.arguments.process(args, kwargs)
+        else:
+            if args:
+                self.args = args
+            if kwargs:
+                for key in kwargs:
+                    setattr(self, key, kwargs[key])
         if basedir is not None:
             V['basedir'] = Path(basedir)
 
@@ -130,10 +145,13 @@ the Iterator instance.
             if not isinstance(value, typeval):
                 raise TypeError(value, text)
 
-    def get_kwarg(self, name, typeval, noNone=False):
+    def get_kwarg(self, name, typeval=None, noNone=False):
         """Return a item in saved kwargs or an attribute of the name name.
 If noNone, then raise ValueError if the value is None.
 """
+        if self.has_arguments:
+            return self.args[name]
+        # old scheme
         if hasattr(self, 'kwargs') and name in getattr(self, 'kwargs'):
             value = getattr(self, 'kwargs')[name]
         else:
@@ -147,7 +165,11 @@ If noNone, then raise ValueError if the value is None.
 
     def get_args(self, name):
         """Return the saved argument list or an attribute of the name."""
-        if hasattr(self, 'args') and getattr(self, 'args'):
+        if self.has_arguments and name is not None:
+            return Iterator(self.arguments[name])
+        elif self.has_arguments:
+            return Iterator(self.arguments)  # as a sequence
+        elif hasattr(self, 'args') and getattr(self, 'args'):
             value = getattr(self, 'args')
         elif hasattr(self, name) and getattr(self, name):
             value = getattr(self, name)
@@ -336,7 +358,10 @@ run() method is meant to be overridden.
         stack = get_current_stack()
         stack.push(self)  # push me onto the execution stack
         try:
-            self.handle_args(args, kwargs)
+            if self.has_arguments:
+                args = self.arguments.process(args, kwargs, existing=self.args)
+            else:
+                self.handle_args(args, kwargs)
             if noop:
                 self.logger.warning('Calling %s(*%s, **%s)',
                                     myname, args, kwargs)
