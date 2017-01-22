@@ -1,0 +1,176 @@
+#!/usr/bin/python
+# Copyright @ 2012 Michael P. Reilly. All rights reserved.
+
+import os
+from pyerector import *
+from pyerector.api import Target
+import release
+
+distfile = '%s-%s' % (release.product, release.number)
+
+
+class PyCopy(Target):
+    tasks = (
+        CopyTree(srcdir='pyerector',
+                 dstdir=Path('build', distfile, 'pyerector'),
+                 exclude=['test']
+        ),
+        Copy('release.py', 'setup.py',
+             'README.txt', 'LICENSE.txt', 'CHANGES.txt',
+             dest=Path('build', distfile)
+        ),
+        Echo('release %s-%s', release.product, release.number),
+        Tokenize(
+            Path('build', distfile, 'pyerector', 'version.py'),
+            tokenmap=VariableSet(
+                Variable('%release.product%', release.product),
+                Variable('%release.number%', release.number),
+                Variable('%hg.version%', Variable('hg.version')),
+                Variable('%hg.branch%', Variable('hg.branch')),
+                Variable('%hg.tags%', Variable('hg.tags')),
+            )
+        )
+    )
+
+
+class PreCompile(Target):
+    dependencies = (PyCopy,)
+    tasks = Parallel(
+        PyCompile(
+            FileIterator(
+                Path('build', distfile, 'pyerector'),
+                Path('build', distfile, 'pyerector', 'py2'),
+                Path('build', distfile, 'pyerector', 'vcs'),
+                pattern='*.py'),
+            version='2'
+        ),
+        PyCompile(
+            FileIterator(
+                Path('build', distfile, 'pyerector'),
+                Path('build', distfile, 'pyerector', 'py3'),
+                Path('build', distfile, 'pyerector', 'vcs'),
+                pattern='*.py'),
+            version='3'
+        ),
+    )
+
+
+class Force(Target):
+    """Perform operations even when they would fail."""
+    def run(self):
+        V('force', True)
+
+
+class Installed(IdentityMapper):
+    """This only compares the version string against the value in
+pyerector.pth."""
+    def checkpair(self, src, dst):
+        if not V('force').value == '':
+            return False
+        from site import getusersitepackages
+        fname = Path(getusersitepackages(), dst)
+        try:
+            line = open(fname).readlines()[-1].strip()
+        except IOError:
+            self.logger.debug('Could not open %s', fname)
+            return False
+        else:
+            p = line.find('/')
+            if p != -1:
+                versstr = line[:p]
+            else:
+                versstr = line
+            if versstr == src:
+                self.logger.warn('%s is already installed', versstr)
+                return True
+            elif versstr > src:
+                self.logger.warn('A newer version is already installed [%s]' % versstr)
+                return True
+            else:
+                return False
+
+class Install(Target):
+    """Deploy to python user site-packages structure."""
+    uptodates = (Installed(distfile, destdir='pyerector.pth'),)
+    dependencies = (Dist,)
+    def run(self):
+        import site
+        userdir = site.getusersitepackages()
+        destdir = Path(userdir, distfile)
+        Remove(destdir)()
+        Mkdir.mkdir(destdir)
+        CopyTree(srcdir=Path('build', distfile),
+                 dstdir=destdir)()
+        Path(userdir, 'pyerector.pth').open().write('%s\n' % distfile)
+        Echo()('Installed to %s', userdir)
+
+
+
+class Cleantest(Target):
+    """Clean the test directory."""
+    tasks = (
+        Remove('testdir'),
+    )
+
+
+regression_env = {'PYERECTOR_PATH': V['basedir']}
+
+class Realclean(Target):
+    """Clean up the cruft (including pyc) files."""
+    exclude = Exclusions(usedefaults=False)
+    tasks = (
+        SubPyErector('clean', wdir='regression', env=regression_env),
+        Remove(
+            DirList(Path(), pattern='*.pyc', exclude=exclude, fileonly=True),
+            DirList(Path(), pattern='__pycache__', exclude=exclude, fileonly=True),
+            exclude=exclude,
+        ),
+    )
+    dependencies = (Clean,)
+
+
+class Regression(Target):
+    """Run regression tests."""
+    tasks = (
+        SubPyErector('all', wdir='regression', env=regression_env),
+    )
+
+class Localtest(Target):
+    """Ensure the packaging looks correct."""
+    tasks = Parallel(
+        Untar(root=Path('testdir', 'tar'),
+              name=Path('dist', '%s.tgz' % distfile)),
+        Unzip(root=Path('testdir', 'zip'),
+              name=Path('dist', '%s.zip' % distfile)),
+        Unzip(root=Path('testdir', 'egg'),
+              name=Path('dist', '%s.egg' % distfile)),
+    )
+    dependencies = (Dist,)
+
+Testonly.tasks = (Unittest,)
+Test.dependencies = Test.dependencies + (Localtest, Regression)
+Clean.files = ('build', 'dist')
+Clean.dependencies = (Cleantest,)
+InitDirs.files = (
+    Path('build', distfile), 'dist',
+    Path('testdir', 'egg'), Path('testdir', 'zip'), Path('testdir', 'tar'),
+)
+Compile.dependencies = (PreCompile,)
+
+Packaging.tasks = (
+    Parallel(
+        Zip(Path('build', distfile), name='dist/%s.zip' % distfile,
+            root='build', exclude=('EGG-INFO',)),
+        Tar(Path('build', distfile), name='dist/%s.tgz' % distfile,
+            root='build', exclude=('EGG-INFO',)),
+        Egg(Path('build', distfile), name='dist/%s.egg' % distfile,
+            root=Path('build', distfile), exclude=('EGG-INFO',)),
+    ),
+    HashGen(
+        'dist/%s.egg' % distfile,
+        'dist/%s.zip' % distfile,
+        'dist/%s.tgz' % distfile,
+    ),
+)
+
+PyErector()
