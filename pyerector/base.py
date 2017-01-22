@@ -150,7 +150,7 @@ the Iterator instance.
 If noNone, then raise ValueError if the value is None.
 """
         if self.has_arguments:
-            return self.arguments[name]
+            return self.args[name]
         # old scheme
         if hasattr(self, 'kwargs') and name in getattr(self, 'kwargs'):
             value = getattr(self, 'kwargs')[name]
