@@ -359,8 +359,7 @@ run() method is meant to be overridden.
         stack.push(self)  # push me onto the execution stack
         try:
             if self.has_arguments:
-                args = self.arguments.process(args, kwargs)
-                self.args.combine(args)
+                args = self.arguments.process(args, kwargs, existing=self.args)
             else:
                 self.handle_args(args, kwargs)
             if noop:

@@ -37,16 +37,6 @@ or a dict."""
         else:
             raise TypeError('expecting int or str')
 
-    def combine(self, other, append=False):
-        """Add the values from one ArgumentSet instance to this one.
-If append==False, then replace the positional arguments, otherwise, append."""
-        assert isinstance(other, ArgumentSet)
-        if append:
-            self.list += other.list
-        elif other.list:
-            self.list = other.list[:]
-        self.map.update(other.map)
-
 class Arguments(object):
     """Gather a list of ArgumenType instances and process Python function
  arguments (*args, **kwargs) based on the what is passed to the class instance.
@@ -82,15 +72,20 @@ the merge is performed based on the argument name."""
             del map[other.list.name]
         return self.__class__(*map.values())
 
-    def process(self, args, kwargs):
+    def process(self, args, kwargs, existing=None):
         """Create a instance of ArgumentSet based on the values passed;
 Exceptions raised on invalid data types or invalid keywords; defaults are
 assigned as necessary."""
         assert isinstance(args, tuple)
         assert isinstance(kwargs, dict)
-        arglist = ()
-        argmap = {}
-        if self.list is not None and args:
+        if existing is not None:
+            assert isinstance(existing, ArgumentSet)
+            arglist = existing.list
+            argmap = existing.map.copy()
+        else:
+            arglist = ()
+            argmap = {}
+        if self.list is not None:
             arglist = self.list.process(args)
             # we also add to the map:
             #List('name') === Keyword('name', type=tuple), with magic
@@ -112,20 +107,32 @@ assigned as necessary."""
     class Type(object):
         """Allow processing of an argument with a given name and a defined type.
     Reject values that do not match the type or types."""
-        def __init__(self, name, types=str):
+        def __init__(self, name, types=str, cast=None):
             self.name = name
-            self.types = types
             if isinstance(types, (list, tuple)):
+                self.types = tuple(types)
                 names = []
                 for t in types:
                     if not isinstance(t, type):
                         raise TypeError('Must supply type for %s' % name)
                     names.append(t.__name__)
                 self.typenames = ', '.join(names)
+            elif not isinstance(types, type):
+                raise TypeError('Must supply type for %s' % name)
             else:
-                if not isinstance(types, type):
-                    raise TypeError('Must supply type for %s' % name)
+                self.types = types
                 self.typenames = types.__name__
+            if cast is not None and not isinstance(cast, type):
+                raise TypeError('Must supply cast type for %s' % name)
+            elif cast is None:
+                if isinstance(self.types, tuple):
+                    cast = self.types[0]
+                else:
+                    cast = self.types
+            elif (isinstance(self.types, tuple) and cast not in self.types) or \
+                 (isinstance(self.types, type) and cast != self.types):
+                raise ValueError('Cast must be one of types for %s' % name)
+            self.cast = cast
 
         def process(self, value):
             """Validate the data type and process the value."""
@@ -134,7 +141,10 @@ assigned as necessary."""
 
         def process_value(self, value):
             """Process the value, default is no change."""
-            return value
+            if self.cast is None:
+                return value
+            else:
+                return self.cast(value)
 
         def check_type(self, value):
             """Raise an exception if the value is not one of the types given."""
@@ -148,6 +158,11 @@ assigned as necessary."""
             assert isinstance(value, tuple)
             for v in value:
                 super(Arguments.List, self).check_type(v)
+        def process_value(self, value):
+            results = []
+            for v in value:
+                results.append(super(Arguments.List, self).process_value(v))
+            return tuple(results)
 
     class Keyword(Type):
         def __init__(self, name, types=str, default=None, noNone=False):
@@ -173,5 +188,5 @@ assigned as necessary."""
             elif value is None and self.noNone:
                 raise ValueError('None given for %s when noNone is expected' % self.name)
             else:
-                return value
+                return super(Arguments.Keyword, self).process_value(value)
 

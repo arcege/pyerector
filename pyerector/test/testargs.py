@@ -74,8 +74,8 @@ class TestArguments(TestCase):
         h = Arguments()
         a = h.process((), {})
         self.assertIsInstance(a, ArgumentSet)
-        self.assertEqual(a.list, ())
-        self.assertEqual(a.map, {})
+        self.assertItemsEqual(a.list, ())
+        self.assertItemsEqual(a.map, {})
         with self.assertRaises(ValueError):
             h.process(('foo',), {})  # not expecting positional arguments
             h.process((), {'foo': 'a'})  # not a valid keyword
@@ -86,11 +86,11 @@ class TestArguments(TestCase):
             Arguments.Keyword('ni'),
         )
         a = h.process((), {})
-        self.assertEqual(a.list, ())
-        self.assertEqual(a.map, {'ni': None, 'foo': 5, 'bar': ()})
+        self.assertItemsEqual(a.list, ())
+        self.assertItemsEqual(a.map, {'ni': None, 'foo': 5, 'bar': (), 'xyzzy': ()})
         a1 = h.process(('foo',), {})
         self.assertNotEqual(a, a1)
-        self.assertEqual(a1.list, ('foo',))
+        self.assertItemsEqual(a1.list, ('foo',))
         self.assertItemsEqual(a1.map, {'ni': None, 'foo': 5, 'bar': (), 'xyzzy': ('foo',)})
         del a1
         with self.assertRaises(TypeError):
@@ -98,8 +98,11 @@ class TestArguments(TestCase):
             h.process((), {'ni': 5})
             h.process((), {'bar': 'far'})
         a = h.process(('a', '', 'c'), {'bar': ('8', 9, '10')})
-        self.assertEqual(a.list, ('a', '', 'c'))
-        self.assertEqual(a.map['bar'], ('8', 9, '10'))
+        self.assertItemsEqual(a.list, ('a', '', 'c'))
+        self.assertItemsEqual(a.map['bar'], ('8', 9, '10'))
+        b = h.process(('d', 'e'), {'ni': 'arcege'}, existing=a)
+        self.assertItemsEqual(b.list, ('d', 'e'))
+        self.assertItemsEqual(b.map, {'ni': 'arcege', 'bar': ('8', '9', '10'), 'foo': 5, 'xyzzy': ('d', 'e')})
 
 class TestArguments_Type(TestCase):
     def test_init_(self):
@@ -107,15 +110,24 @@ class TestArguments_Type(TestCase):
         self.assertEqual(t.name, 'foobar')
         self.assertEqual(t.types, str)
         self.assertEqual(t.typenames, 'str')
+        self.assertEqual(t.cast, str)
         t = Arguments.Type('', types=int)
         self.assertEqual(t.types, int)
         self.assertEqual(t.typenames, 'int')
+        self.assertEqual(t.cast, int)
         t = Arguments.Type('', types=(str, int))
         self.assertEqual(t.types, (str, int))
         self.assertEqual(t.typenames, 'str, int')
         with self.assertRaises(TypeError):
             Arguments.Type('', types='str')  # must pass type or sequence of types
             Arguments.Type('', types=(str, 'int'))
+            Arguments.Type('', cast='str')
+        with self.assertRaises(ValueError):
+            Arguments.Type('', cast=int)  # must be one of types
+        t = Arguments.Type('', types=(float, int, str))  # implicit casting as float
+        self.assertEqual(t.cast, float)
+        t = Arguments.Type('', types=(int, float, str), cast=float)
+        self.assertEqual(t.cast, float)
 
     def testprocess_value(self):
         t = Arguments.Type('foobar')
@@ -224,22 +236,4 @@ class TestArgumentSet(TestCase):
         self.assertEqual(a['b'], [])
         with self.assertRaises(TypeError):
             a[5.4]
-
-    def testcombine(self):
-        a = ArgumentSet((), {})
-        b = ArgumentSet((), {})
-        a.combine(b)
-        self.assertEqual(a.list, ())
-        self.assertEqual(a.map, {})
-        b = ArgumentSet((4, 5, 6), {'a': 20, 'c': 10})
-        a.combine(b)
-        self.assertEqual(a.list, (4, 5, 6))
-        self.assertEqual(a.map, {'a': 20, 'c': 10})
-        a = ArgumentSet((1, 2, 3), {'a': 5, 'b': 6})
-        a.combine(b)
-        self.assertEqual(a.list, (4, 5, 6))
-        self.assertEqual(a.map, {'a': 20, 'b': 6, 'c': 10})
-        a = ArgumentSet((1, 2, 3), {'a': 5, 'b': 6})
-        a.combine(b, append=True)
-        self.assertEqual(a.list, (1, 2, 3, 4, 5, 6))
 
