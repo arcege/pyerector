@@ -38,10 +38,20 @@ Chmod(*files, mode=0666)"""
     files = ()
     mode = int('666', 8)  # gets around Python 2.x vs 3.x octal issue
 
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
+        Arguments.Keyword('mode', types=int, default=int('666', 8), cast=int),
+    )
+
     def run(self):
         """Change the permissions on the files."""
-        mode = self.get_kwarg('mode', int)
-        for fname in self.get_files(self.get_args('files')):
+        if self.has_arguments:
+            files = self.get_files()
+            mode = self.args.mode
+        else:
+            files = self.get_files(self.get_args('files'))
+            mode = self.get_kwarg('mode', int)
+        for fname in files:
             self.asserttype(fname, (Path, str), 'files')
             self.logger.info('chmod(%s, %o)', fname, mode)
             p = self.join(fname)
@@ -60,19 +70,31 @@ class Container(Task):
     fileonly = False
     exclude = Exclusions(usedefaults=False)
 
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
+        Arguments.Keyword('name', types=(Path, str), noNone=True),
+        Arguments.Keyword('root', types=(Path, str), default=os.curdir, cast=Path),
+    ) + Initer.basearguments
+
     def run(self):
         """Gather filenames and put them into the container."""
-        name = self.get_kwarg('name', (Path, str), noNone=True)
-        root = self.join(self.get_kwarg('root', (Path, str)))
-        excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
+        if self.has_arguments:
+            files = self.get_files()
+            name = self.args.name
+            root = self.args.root
+            excludes = self.args.exclude
+        else:
+            files = self.get_files(self.get_args('files'))
+            name = self.get_kwarg('name', (Path, str), noNone=True)
+            root = self.join(self.get_kwarg('root', (Path, str)))
+            excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
         self.logger.debug('Container.run(name=%s, root=%s, excludes=%s)',
                 repr(name), repr(root), repr(excludes))
         self.preop(name, root, excludes)
         toadd = set()
-        args = self.get_args('files')
-        queue = list(self.get_files(args))
+        queue = list(files)
         self.logger.debug('Container.run: files=%s', queue)
         while queue:
             entry = queue[0]
@@ -133,6 +155,7 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
     def run(self):
         """Copy files to a destination directory."""
         if self.has_arguments:
+            self.logger.debug('Copy.run: args=%s', self.args)
             dest = self.args.dest
             files = self.args.files
             excludes = self.args.exclude
@@ -140,6 +163,7 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
             dest = self.get_kwarg('dest', (Path, str), noNone=False)
             files = self.get_args('files')
             excludes = self.get_kwarg('exclude', (str, Exclusions, tuple, list))
+        self.logger.debug('Copy.run: files=%s; dest=%s', repr(files), repr(dest))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
@@ -173,11 +197,22 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
     exclude = Exclusions()
     excludes = exclude  # deprecated
 
+    arguments = Arguments(
+        Arguments.Keyword('srcdir', types=(Path, str), noNone=True, cast=Path),
+        Arguments.Keyword('dstdir', types=(Path, str), noNone=True, cast=Path),
+        Arguments.Keyword('exclude', types=(Exclusions, tuple, list, str)),
+    )
+
     def run(self):
         """Copy a tree to a destination."""
-        srcdir = self.join(self.get_kwarg('srcdir', (Path, str), noNone=True))
-        dstdir = self.join(self.get_kwarg('dstdir', (Path, str), noNone=True))
-        excludes = self.get_kwarg('exclude', (str, Exclusions, tuple, list))
+        if self.has_arguments:
+            srcdir = self.args.srcdir
+            dstdir = self.args.dstdir
+            excludes = self.args.exclude
+        else:
+            srcdir = self.join(self.get_kwarg('srcdir', (Path, str), noNone=True))
+            dstdir = self.join(self.get_kwarg('dstdir', (Path, str), noNone=True))
+            excludes = self.get_kwarg('exclude', (str, Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
         if not srcdir.exists:
@@ -279,9 +314,14 @@ def Decode(data):
     source = None
     dest = None
 
+    arguments = Arguments(
+        Arguments.Keyword('source'),
+        Arguments.Keyword('dest'),
+    )
+
     def run(self):
         """Encode a string."""
-        V(self.dest).value = self.encode(V(self.source).value)
+        V(self.args.dest).value = self.encode(V(self.args.source).value)
 
     @staticmethod
     def encode(data):
@@ -300,11 +340,21 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
     files = ()
     hashs = ('md5', 'sha1')
 
+    def cast(value):
+        if isinstance(value, (list, tuple, set)):
+            return tuple(value)
+        else:
+            return str(value)
+    arguments = Arguments(
+        Arguments.List('files'),
+        Arguments.Keyword('hashs', types=(tuple, str), default=('md5', 'sha1'), cast=cast),
+    )
+
     def run(self):
         """Generate files with checksums inside."""
         from hashlib import md5, sha1
-        files = self.get_files(self.get_args('files'))
-        hashs = self.get_kwarg('hashs', (list, set, tuple))
+        files = self.get_files()
+        hashs = self.args.hashs
         self.logger.debug('files = %s; hashs = %s', files, hashs)
         fmaps = []
         if 'md5' in hashs:
@@ -320,6 +370,7 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
                 hashval = hashfunc()
                 sname = self.join(sname)
                 dname = self.join(dname)
+                self.logger.debug('HashGen.run: checkpair(%s, %s) = %s', sname, dname, fmap.checkpair(sname, dname))
                 if sname.isfile and not fmap.checkpair(sname, dname):
                     hashval.update(sname.open('rb').read())
                     self.logger.debug('writing %s', dname)
@@ -388,9 +439,13 @@ Mkdir(*files)"""
     files = ()
     noglob = True
 
+    arguments = Arguments(
+        Arguments.List('files', types=(Path, str, Iterator), cast=FileIterator),
+    ) + Initer.basearguments
+
     def run(self):
         """Make directories."""
-        files = self.get_files(self.get_args('files'))
+        files = self.get_files()
         self.logger.debug('files = %s: %s', repr(files), vars(files))
         for arg in files:
             self.logger.debug('arg = %s', repr(arg))
@@ -421,21 +476,30 @@ class PyCompile(Task):
 constructor arguments:
 PyCompile(*files, dest=<DIR>, version='2')"""
     files = ()
-    dest = None
     version = '2'
+
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
+        Arguments.Keyword('version', default='2'),
+    )
 
     def run(self):
         """Compile Python source files."""
         import py_compile
-        fileset = self.get_files(self.get_args('files'))
-        if self.version[:1] == sys.version[:1]:  # compile inline
+        if self.has_arguments:
+            fileset = self.get_files()
+            version = self.args.version
+        else:
+            fileset = self.get_files(self.get_args('files'))
+            version = self.version
+        if version[:1] == sys.version[:1]:  # compile inline
             for fname in fileset:
                 self.logger.debug('py_compile.compile(%s)', fname)
                 py_compile.compile(str(self.join(fname)))
         else:
-            if self.version[:1] == '2':
+            if version[:1] == '2':
                 cmd = 'python2'
-            elif self.version[:1] == '3':
+            elif version[:1] == '3':
                 cmd = 'python3'
             else:
                 cmd = 'python'
@@ -467,11 +531,18 @@ Remove(*files)"""
     noglob = False
     exclude = None
 
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
+    ) + Initer.basearguments
+
     def run(self):
         """Remove a file or directory tree."""
-        files = self.get_args('files')
-        noglob = self.get_kwarg('noglob', bool)
-        excludes = self.get_kwarg('exclude', (str, Exclusions, list, tuple))
+        if self.has_arguments:
+            files = self.get_files()
+        else:
+            files = self.get_args('files')
+            noglob = self.get_kwarg('noglob', bool)
+            excludes = self.get_kwarg('exclude', (str, Exclusions, list, tuple))
         if isinstance(files, Iterator):
             pass
         elif len(files) == 1 and isinstance(files, Iterator):
@@ -491,15 +562,25 @@ constructor arguments:
 Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
     files = ()
     dest = None
-    token = '#!'
     program = None
+    token = '#!'
 
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
+        Arguments.Keyword('dest', types=(Path, str), cast=Path),
+        Arguments.Keyword('program', types=(Path, str), noNone=True),
+    )
     def run(self):
         """Replace the shebang string with a specific pathname."""
         self.logger.info('starting Shebang')
-        program = self.get_kwarg('program', (Path, str), noNone=True)
-        srcs = self.get_files(self.get_args('files'))
-        dest = self.get_kwarg('dest', (Path, str))
+        if self.has_arguments:
+            program = self.args.program
+            srcs = self.get_files()
+            dest = self.args.dest
+        else:
+            program = self.get_kwarg('program', (Path, str), noNone=True)
+            srcs = self.get_files(self.get_args('files'))
+            dest = self.get_kwarg('dest', (Path, str))
         try:
             from io import BytesIO as StringIO
         except ImportError:
@@ -538,16 +619,31 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
     errfile = None
     env = {}
 
+    arguments = Arguments(
+        Arguments.List('cmd', types=(tuple, list), cast=tuple),
+        Arguments.Keyword('infile', types=(Path, str)),
+        Arguments.Keyword('outfile', types=(Path, str)),
+        Arguments.Keyword('errfile', types=(Path, str)),
+        Arguments.Keyword('env', types=(tuple, dict), default={}, cast=dict),
+    )
+
     def run(self):
         """Spawn a command."""
-        infile = self.get_kwarg('infile', (Path, str))
-        outfile = self.get_kwarg('outfile', (Path, str))
-        errfile = self.get_kwarg('errfile', (Path, str))
-        infile = infile and self.join(infile) or None
-        outfile = outfile and self.join(outfile) or None
-        errfile = errfile and self.join(errfile) or None
-        env = self.get_kwarg('env', dict)
-        cmd = self.get_args('cmd')
+        if self.has_arguments:
+            cmd = self.args.cmd
+            infile = self.args.infile
+            outfile = self.args.outfile
+            errfile = self.args.errfile
+            env = self.args.env
+        else:
+            infile = self.get_kwarg('infile', (Path, str))
+            outfile = self.get_kwarg('outfile', (Path, str))
+            errfile = self.get_kwarg('errfile', (Path, str))
+            infile = infile and self.join(infile) or None
+            outfile = outfile and self.join(outfile) or None
+            errfile = errfile and self.join(errfile) or None
+            env = self.get_kwarg('env', dict)
+            cmd = self.get_args('cmd')
         proc = Subcommand(cmd, env=env,
                           stdin=infile, stdout=outfile, stderr=errfile,
                           )
@@ -664,10 +760,25 @@ Adds PYERECTOR_PREFIX environment variable."""
     wdir = None
     env = {}
 
+    arguments = Arguments(
+        Arguments.List('targets'),
+        Arguments.Keyword('prog', types=(Path, str), default=Path('pyerect'), cast=Path),
+        Arguments.Keyword('wdir', types=(Path, str), cast=Path),
+        Arguments.Keyword('env', types=(tuple, dict), default={}, cast=dict),
+    )
+
     def run(self):
         """Call a PyErector program in a different directory."""
-        targets = self.get_args('targets')
-        prog = self.get_kwarg('prog', (Path, str))
+        if self.has_arguments:
+            targets = self.args.targets
+            prog = self.args.prog
+            wdir = self.args.wdir
+            env = self.args.env
+        else:
+            targets = self.get_args('targets')
+            prog = self.get_kwarg('prog', (Path, str))
+            env = self.get_kwarg('env', dict)
+            wdir = self.get_kwarg('wdir', (Path, str))
         # we explicitly add './' to prevent searching PATH
         options = []
         logger = logging.getLogger('pyerector')
@@ -679,9 +790,8 @@ Adds PYERECTOR_PREFIX environment variable."""
             options.append('--quiet')
         if noTimer:
             options.append('--timer')
-        cmd = (os.path.join('.', str(prog)),) + tuple(options) + tuple(targets)
-        env = self.get_kwarg('env', dict)
-        wdir = self.get_kwarg('wdir', (Path, str))
+        relprog = Path() + prog.basename
+        cmd = (str(relprog),) + tuple(options) + targets
         from os import environ
         evname = 'PYERECTOR_PREFIX'
         nevname = Path(wdir).basename
@@ -704,10 +814,22 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
     files = ()
     dest = None
     exclude = None
+
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
+        Arguments.Keyword('dest', types=(Path, str), cast=Path),
+        Arguments.Keyword('exclude', types=(Exclusions, tuple, list, set, str)),
+    ) + Initer.basearguments
+
     def run(self):
-        dest = Path(self.get_kwarg('dest', (Path, str)))
-        files = self.get_args('files')
-        excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
+        if self.has_arguments:
+            files = self.get_files()
+            dest = self.args.dest
+            excludes = self.args.excludes
+        else:
+            dest = Path(self.get_kwarg('dest', (Path, str)))
+            files = self.get_args('files')
+            excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
         if not isinstance(excludes, Exclusions):
             excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
@@ -762,14 +884,27 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
     dest = None
     tokenmap = VariableSet()
 
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
+        Arguments.Keyword('dest', types=(Path, str), cast=Path),
+        Arguments.Keyword('tokenmap', types=VariableSet, default=VariableSet()),
+    )
+
     def update_tokenmap(self):
         """To be overridden."""
 
     def run(self):
         """Replace tokens found in tokenmap with their associated values."""
-        tokenmap = self.get_kwarg('tokenmap', VariableSet)
-        if not isinstance(tokenmap, VariableSet):
-            raise TypeError('tokenmap must be a VariableSet instance')
+        if self.has_arguments:
+            files = self.get_files()
+            dest = self.args.dest
+            tokenmap = self.args.tokenmap
+        else:
+            files = self.get_args('files')
+            dest = self.get_kwarg('dest', (Path, str))
+            tokenmap = self.get_kwarg('tokenmap', VariableSet)
+            if not isinstance(tokenmap, VariableSet):
+                raise TypeError('tokenmap must be a VariableSet instance')
         self.update_tokenmap()
         import re
 
@@ -789,9 +924,7 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
         )
         tokens = re.compile(r'(%s)' % patt, re.MULTILINE)
         self.logger.debug('patt = %s', str(tokens.pattern))
-        files = self.get_args('files')
-        mapper = FileMapper(files,
-                            destdir=self.get_kwarg('dest', (Path, str)),
+        mapper = FileMapper(files, destdir=dest,
                             iteratorclass=StaticIterator)
         for (sname, dname) in mapper:
             try:
@@ -810,12 +943,22 @@ Touch(*files, dest=None)"""
     files = ()
     dest = None
 
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
+        Arguments.Keyword('dest', types=(Path, str), cast=Path),
+    )
+
     def run(self):
         from .helper import normjoin
         """Create files, unless they already exist."""
-        dest = Path(self.get_kwarg('dest', (Path, str)))
-        for fname in self.get_files(self.get_args('files')):
-            self.asserttype(fname, (Path, str), 'files')
+        if self.has_arguments:
+            files = self.get_files()
+            dest = self.args.dest
+        else:
+            files = self.get_files(self.get_args('files'))
+            dest = Path(self.get_kwarg('dest', (Path, str)))
+        for fname in files:
+            #self.asserttype(fname, (Path, str), 'files')
             if dest is not None:
                 fname = dest + fname
             self.logger.info('touch(%s)', fname)
@@ -828,16 +971,24 @@ Unittest(*modules, path=())"""
     modules = ()
     path = ()
 
+    arguments = Arguments(
+        Arguments.List('modules', types=(Path, str), cast=str),
+    )
+
     def run(self):
         """Call the 'unit-test.py' script in the package directory with
 serialized parameters as the first argument string."""
+        if self.has_arguments:
+            modules = self.args.modules
+        else:
+            modules = tuple(self.get_args('modules'))
         bdir = Path(__file__).dirname
         sfile = bdir + 'unit-test.py'
         if not sfile.exists:
             raise Error(self, 'unable to find unittest helper program')
         # create a parameter file with a serialized set of the arguments
         params = repr({
-            'modules': tuple(self.get_args('modules')),
+            'modules': modules,
             'path': self.path,
             'verbose': bool(self.logger.isEnabledFor(logging.INFO)),
             'quiet': bool(self.logger.isEnabledFor(logging.ERROR)),
@@ -854,11 +1005,22 @@ class Uncontainer(Task):
     root = None
     files = ()
 
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
+        Arguments.Keyword('name', types=(Path, str), noNone=True),
+        Arguments.Keyword('root', types=(Path, str)),
+    )
+
     def run(self):
         """Extract members from the container."""
-        name = self.get_kwarg('name', (Path, str), noNone=True)
-        root = self.get_kwarg('root', (Path, str))
-        files = self.get_args('files')
+        if self.has_arguments:
+            files = self.get_files()
+            name = self.args.name
+            root = self.args.root
+        else:
+            name = self.get_kwarg('name', (Path, str), noNone=True)
+            root = self.get_kwarg('root', (Path, str))
+            files = self.get_args('files')
         try:
             contfile = self.get_file(name)
         except IOError:
