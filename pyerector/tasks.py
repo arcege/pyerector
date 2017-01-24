@@ -794,7 +794,10 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
                             destdir=self.get_kwarg('dest', (Path, str)),
                             iteratorclass=StaticIterator)
         for (sname, dname) in mapper:
-            realcontents = self.join(sname).open('rt').read()
+            try:
+                realcontents = self.join(sname).open('rt').read()
+            except TypeError, e:
+                raise Error('%s: %s' % (sname, e))
             alteredcontents = tokens.sub(repltoken, realcontents)
             if alteredcontents != realcontents:
                 self.join(dname).open('wt').write(alteredcontents)
