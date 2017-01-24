@@ -20,6 +20,7 @@ if version[0] > '2':  # python 3+
 else:
     from .py2.base import Base
 from .helper import Exclusions, normjoin, Timer, DISPLAY
+from .args import Arguments
 from .path import Path
 from .execute import get_current_stack, PyThread
 from .register import registry
@@ -41,6 +42,14 @@ handling.
 """
     config = Config()  # for backward compatibility only
     # values to propagate to an iterator
+    basearguments = Arguments(
+        Arguments.Keyword('pattern'),
+        Arguments.Keyword('noglob', default=False, types=bool),
+        Arguments.Keyword('recurse', default=False, types=bool),
+        Arguments.Keyword('fileonly', default=True, types=bool),
+        Arguments.Keyword('exclude', default=(), types=(tuple, list, set, Exclusions, str)),
+    )
+    # the arguments attribute should be set by Tasks subclasses, not in the ancesters
     pattern = None
     noglob = False
     recurse = False
@@ -63,30 +72,51 @@ handling.
             curdir = os.curdir
         else:
             del kwargs['curdir']
-        if args:
-            self.args = args
-        if kwargs:
-            for key in kwargs:
-                setattr(self, key, kwargs[key])
+        self.has_arguments = (
+            hasattr(self, 'arguments') and isinstance(self.arguments, Arguments)
+        )
+        #self.has_arguments = False
+        if self.has_arguments:
+            self.baseargs = self.arguments.process(args, kwargs)
+        else:
+            if args:
+                self.args = args
+            if kwargs:
+                for key in kwargs:
+                    setattr(self, key, kwargs[key])
         if basedir is not None:
             V['basedir'] = Path(basedir)
 
-    def get_files(self, files=None):
+    def get_files(self, files=None, arg='files'):
         """Return an Iterator of either a given sequence or the "files"
 member.  Iterator attributes define in the class will be propagated to
 the Iterator instance.
 """
         # propagate 'noglob' keyword to the interator
-        noglob = self.get_kwarg('noglob', bool)
-        recurse = self.get_kwarg('recurse', bool)
-        fileonly = self.get_kwarg('fileonly', bool)
-        pattern = self.get_kwarg('pattern', str)
-        exclude = self.get_kwarg('exclude', (Exclusions, tuple))
-        if files is None:
-            try:
-                files = getattr(self, 'files')
-            except AttributeError:
-                files = ()
+        if self.has_arguments:
+            if files is None:
+                files = self.args[arg]
+            try: noglob = self.args.noglob
+            except: noglob = False
+            try: recurse = self.args.recurse
+            except: recurse = False
+            try: fileonly = self.args.fileonly
+            except: fileonly = True
+            try: pattern = self.args.pattern
+            except: pattern = None
+            try: exclude = self.args.exclude
+            except: exclude = ()
+        else:
+            if files is None:
+                try:
+                    files = getattr(self, arg)
+                except AttributeError:
+                    files = ()
+            noglob = self.get_kwarg('noglob', bool)
+            recurse = self.get_kwarg('recurse', bool)
+            fileonly = self.get_kwarg('fileonly', bool)
+            pattern = self.get_kwarg('pattern', str)
+            exclude = self.get_kwarg('exclude', (Exclusions, tuple))
         if isinstance(files, Iterator):
             return files
         else:
@@ -130,10 +160,13 @@ the Iterator instance.
             if not isinstance(value, typeval):
                 raise TypeError(value, text)
 
-    def get_kwarg(self, name, typeval, noNone=False):
+    def get_kwarg(self, name, typeval=None, noNone=False):
         """Return a item in saved kwargs or an attribute of the name name.
 If noNone, then raise ValueError if the value is None.
 """
+        if self.has_arguments:
+            return self.args[name]
+        # old scheme
         if hasattr(self, 'kwargs') and name in getattr(self, 'kwargs'):
             value = getattr(self, 'kwargs')[name]
         else:
@@ -147,7 +180,11 @@ If noNone, then raise ValueError if the value is None.
 
     def get_args(self, name):
         """Return the saved argument list or an attribute of the name."""
-        if hasattr(self, 'args') and getattr(self, 'args'):
+        if self.has_arguments and name is not None:
+            return Iterator(self.args[name])
+        elif self.has_arguments:
+            return Iterator(self.args)  # as a sequence
+        elif hasattr(self, 'args') and getattr(self, 'args'):
             value = getattr(self, 'args')
         elif hasattr(self, name) and getattr(self, name):
             value = getattr(self, name)
@@ -336,7 +373,10 @@ run() method is meant to be overridden.
         stack = get_current_stack()
         stack.push(self)  # push me onto the execution stack
         try:
-            self.handle_args(args, kwargs)
+            if self.has_arguments:
+                self.args = self.arguments.process(args, kwargs, existing=self.baseargs)
+            else:
+                self.handle_args(args, kwargs)
             if noop:
                 self.logger.warning('Calling %s(*%s, **%s)',
                                     myname, args, kwargs)
@@ -404,6 +444,12 @@ Examples:
             self.exclusion = Exclusions(exclude)
         elif isinstance(exclude, str):
             self.exclusion = Exclusions((exclude,))
+
+    def __repr__(self):
+        if hasattr(self, 'args') and isinstance(self.args, tuple):
+            return '<%s %s>' % (self.__class__.__name__, self.args)
+        else:
+            return '<%s ()>' % (self.__class__.__name__,)
 
     def __call__(self):
         """Iterators and Mappers do not get called as Targets, Tasks and
