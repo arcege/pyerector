@@ -126,7 +126,7 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
     noglob = False
 
     arguments = Arguments(
-        Arguments.List('files', types=(Path, str)),
+        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('dest', types=(Path, str)),
     ) + Initer.basearguments
 
