@@ -14,6 +14,9 @@ or a dict."""
         self.list = arglist
         self.map = argmap
 
+    def __repr__(self):
+        return '<%s %s>' % (self.__class__.__name__, self.map)
+
     def __getattr__(self, attr):
         if attr not in self.map:
             raise AttributeError(attr)
@@ -86,20 +89,25 @@ assigned as necessary."""
             arglist = ()
             argmap = {}
         if self.list is not None:
-            arglist = self.list.process(args)
+            a = self.list.process(args)
+            if a != ():
+                arglist = a
             # we also add to the map:
             #List('name') === Keyword('name', type=tuple), with magic
             argmap[self.list.name] = arglist
         elif self.list is None and args:
             raise ValueError('not expecting positional arguments')
-        # fill in the rest
+        # fill in the default values
         for name in self.map:
-            if isinstance(self.map[name], Arguments.Keyword):
-                argmap[name] = self.map[name].process(None)
+            if isinstance(self.map[name], Arguments.Keyword) and \
+               name not in argmap:
+                argmap[name] = self.map[name].default
         for name in kwargs:
             if name in self.map:
                 argtype = self.map[name]
-                argmap[name] = argtype.process(kwargs[name])
+                value = argtype.process(kwargs[name])
+                if value != argtype.default and argmap[name] == argtype.default:
+                    argmap[name] = argtype.process(kwargs[name])
             else:
                 raise ValueError('not a valid keyword: %s' % name)
         return ArgumentSet(arglist, argmap)
@@ -122,16 +130,11 @@ assigned as necessary."""
             else:
                 self.types = types
                 self.typenames = types.__name__
-            if cast is not None and not isinstance(cast, type):
-                raise TypeError('Must supply cast type for %s' % name)
-            elif cast is None:
-                if isinstance(self.types, tuple):
-                    cast = self.types[0]
-                else:
-                    cast = self.types
-            elif (isinstance(self.types, tuple) and cast not in self.types) or \
-                 (isinstance(self.types, type) and cast != self.types):
-                raise ValueError('Cast must be one of types for %s' % name)
+            if cast is None or callable(cast) or isinstance(cast, type):
+                pass
+            elif cast is not None and not isinstance(cast, type) and \
+               not callable(cast):
+                raise TypeError('Cast for %s must be type or callable' % name)
             self.cast = cast
 
         def process(self, value):
@@ -165,8 +168,8 @@ assigned as necessary."""
             return tuple(results)
 
     class Keyword(Type):
-        def __init__(self, name, types=str, default=None, noNone=False):
-            super(Arguments.Keyword, self).__init__(name=name, types=types)
+        def __init__(self, name, types=str, cast=None, default=None, noNone=False):
+            super(Arguments.Keyword, self).__init__(name=name, types=types, cast=cast)
             if default is not None:
                 super(Arguments.Keyword, self).check_type(default)
             self.default = default

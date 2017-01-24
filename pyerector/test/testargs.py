@@ -110,11 +110,11 @@ class TestArguments_Type(TestCase):
         self.assertEqual(t.name, 'foobar')
         self.assertEqual(t.types, str)
         self.assertEqual(t.typenames, 'str')
-        self.assertEqual(t.cast, str)
+        self.assertIsNone(t.cast)
         t = Arguments.Type('', types=int)
         self.assertEqual(t.types, int)
         self.assertEqual(t.typenames, 'int')
-        self.assertEqual(t.cast, int)
+        self.assertIsNone(t.cast)
         t = Arguments.Type('', types=(str, int))
         self.assertEqual(t.types, (str, int))
         self.assertEqual(t.typenames, 'str, int')
@@ -122,16 +122,15 @@ class TestArguments_Type(TestCase):
             Arguments.Type('', types='str')  # must pass type or sequence of types
             Arguments.Type('', types=(str, 'int'))
             Arguments.Type('', cast='str')
-        with self.assertRaises(ValueError):
-            Arguments.Type('', cast=int)  # must be one of types
-        t = Arguments.Type('', types=(float, int, str))  # implicit casting as float
-        self.assertEqual(t.cast, float)
+        t = Arguments.Type('', types=(float, int, str))
+        self.assertEqual(t.cast, None)
         t = Arguments.Type('', types=(int, float, str), cast=float)
         self.assertEqual(t.cast, float)
 
     def testprocess_value(self):
         t = Arguments.Type('foobar')
         self.assertEqual(t.process('foobar'), 'foobar')
+        t = Arguments.Type('', types=(str, int))
 
     def testcheck_type(self):
         t = Arguments.Type('')
