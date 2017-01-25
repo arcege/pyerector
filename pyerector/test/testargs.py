@@ -186,10 +186,10 @@ class TestArgumentsKeyword(TestCase):
         k = Arguments.Keyword('name', default='foo')
         self.assertEqual(k.process_value(None), 'foo')
 
-class TestArgumentsExclusion(TestCase):
+class TestArgumentsExclusions(TestCase):
     def test_init_(self):
         from pyerector.helper import Exclusions
-        e = Arguments.Exclusion('name')
+        e = Arguments.Exclusions('name')
         self.assertEqual(e.types, (Exclusions, tuple, list, set, str))
         self.assertTrue(e.usedefaults)
         a = e.process('test*')
@@ -203,7 +203,7 @@ class TestArgumentsExclusion(TestCase):
         self.assertFalse(a.match('foo.py'))
         self.assertTrue(a.match('foo.pl'))
         self.assertTrue(a.match('bar.pm'))
-        e = Arguments.Exclusion('name', usedefaults=False)
+        e = Arguments.Exclusions('name', usedefaults=False)
         self.assertFalse(e.usedefaults)
         a = e.process('test*')
         self.assertFalse(a.match('foo.py'))
@@ -211,7 +211,7 @@ class TestArgumentsExclusion(TestCase):
         self.assertFalse(a.match('foo.pyc'))
 
     def testcheck_type(self):
-        e = Arguments.Exclusion('')
+        e = Arguments.Exclusions('')
         self.assertIsNone(e.check_type(None))
         self.assertIsNone(e.check_type(''))
         self.assertIsNone(e.check_type(set()))
@@ -220,7 +220,7 @@ class TestArgumentsExclusion(TestCase):
 
     def testprocess_value(self):
         from pyerector.helper import Exclusions
-        e = Arguments.Exclusion('')
+        e = Arguments.Exclusions('')
         a = e.process_value('')
         self.assertIsInstance(a, Exclusions)
         self.assertItemsEqual(a, ('',))

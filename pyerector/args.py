@@ -5,7 +5,7 @@ __all__ = [
     'Arguments',
 ]
 
-from .helper import Exclusions
+import pyerector.helper
 
 class ArgumentSet(object):
     """Access the arguments as either an iterable or an object (attributes)
@@ -201,22 +201,22 @@ assigned as necessary."""
             else:
                 return super(Arguments.Keyword, self).process_value(value)
 
-    class Exclusion(Type):
+    class Exclusions(Type):
         def __init__(self, name, usedefaults=True):
             from .path import Path
-            types = (Exclusions, tuple, list, set, str)
-            self.default = Exclusions()
-            super(Arguments.Exclusion, self).__init__(name, types=types)
+            types = (pyerector.helper.Exclusions, tuple, list, set, str)
+            self.default = pyerector.helper.Exclusions()
+            super(Arguments.Exclusions, self).__init__(name, types=types)
             self.usedefaults = usedefaults
 
         def check_type(self, value):
-            if value is None or isinstance(value, Exclusions):
+            if value is None or isinstance(value, pyerector.helper.Exclusions):
                 return
             elif isinstance(value, str):
-                super(Arguments.Exclusion, self).check_type(value)
+                super(Arguments.Exclusions, self).check_type(value)
             elif isinstance(value, (tuple, list, set)):
                 for v in value:
-                    super(Arguments.Exclusion, self).check_type(v)
+                    super(Arguments.Exclusions, self).check_type(v)
             else:
                 raise TypeError('Value for %s requires %s' % (self.name, self.typenames))
 
@@ -224,6 +224,6 @@ assigned as necessary."""
             if value is None:
                 value = set()
             else:
-                value = super(Arguments.Exclusion, self).process_value(value)
-            return Exclusions(value, usedefaults=self.usedefaults)
+                value = super(Arguments.Exclusions, self).process_value(value)
+            return pyerector.helper.Exclusions(value, usedefaults=self.usedefaults)
 

@@ -200,7 +200,7 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
     arguments = Arguments(
         Arguments.Keyword('srcdir', types=(Path, str), noNone=True, cast=Path),
         Arguments.Keyword('dstdir', types=(Path, str), noNone=True, cast=Path),
-        Arguments.Exclusion('exclude'),
+        Arguments.Exclusions('exclude'),
     )
 
     def run(self):
@@ -818,7 +818,7 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('dest', types=(Path, str), cast=Path),
-        Arguments.Exclusion('exclude'),
+        Arguments.Exclusions('exclude'),
     ) + Initer.basearguments
 
     def run(self):
