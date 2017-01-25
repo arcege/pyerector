@@ -62,7 +62,7 @@ task."""
         elif not isinstance(items, (str, set, tuple, list, type(None))):
             raise TypeError('Exclusions: expecting str, set, tuple or list')
         if isinstance(items, str):  # proper casting
-            items = (str,)
+            items = (items,)
         if items:
             initialset = set(items)
         else:
