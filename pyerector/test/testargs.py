@@ -186,6 +186,48 @@ class TestArgumentsKeyword(TestCase):
         k = Arguments.Keyword('name', default='foo')
         self.assertEqual(k.process_value(None), 'foo')
 
+class TestArgumentsExclusion(TestCase):
+    def test_init_(self):
+        from pyerector.helper import Exclusions
+        e = Arguments.Exclusion('name')
+        self.assertEqual(e.types, (Exclusions, tuple, list, set, str))
+        self.assertTrue(e.usedefaults)
+        a = e.process('test*')
+        self.assertIsInstance(a, Exclusions)
+        self.assertItemsEqual(a, ('test*',))
+        self.assertTrue(a.usedefaults)
+        self.assertFalse(a.match('foo.py'))
+        self.assertTrue(a.match('testfoo'))
+        self.assertTrue(a.match('foo.pyc'))
+        a = e.process('*.p[lm]')
+        self.assertFalse(a.match('foo.py'))
+        self.assertTrue(a.match('foo.pl'))
+        self.assertTrue(a.match('bar.pm'))
+        e = Arguments.Exclusion('name', usedefaults=False)
+        self.assertFalse(e.usedefaults)
+        a = e.process('test*')
+        self.assertFalse(a.match('foo.py'))
+        self.assertTrue(a.match('testfoo'))
+        self.assertFalse(a.match('foo.pyc'))
+
+    def testcheck_type(self):
+        e = Arguments.Exclusion('')
+        self.assertIsNone(e.check_type(None))
+        self.assertIsNone(e.check_type(''))
+        self.assertIsNone(e.check_type(set()))
+        with self.assertRaises(TypeError):
+            e.check_type(5)
+
+    def testprocess_value(self):
+        from pyerector.helper import Exclusions
+        e = Arguments.Exclusion('')
+        a = e.process_value('')
+        self.assertIsInstance(a, Exclusions)
+        self.assertItemsEqual(a, ('',))
+        a = e.process_value(None)
+        self.assertEqual(len(a), 0)
+        self.assertItemsEqual(a, ())
+
 class TestArgumentSet(TestCase):
     def test_init_(self):
         t, k = (), {}

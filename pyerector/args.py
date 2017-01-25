@@ -5,6 +5,8 @@ __all__ = [
     'Arguments',
 ]
 
+from .helper import Exclusions
+
 class ArgumentSet(object):
     """Access the arguments as either an iterable or an object (attributes)
 or a dict."""
@@ -49,19 +51,15 @@ class Arguments(object):
         self.list = None
         self.map = {}
         for arg in arglist:
-            if isinstance(arg, Arguments.List):
+            if not isinstance(arg, Arguments.Type):
+                raise TypeError('Must supply instance of Argument')
+            elif arg.name in self.map:
+                raise TypeError('only one instance with the name %s allowed' % arg.name)
+            elif isinstance(arg, Arguments.List):
                 if self.list is not None:
                     raise TypeError('Only one instance of Arguments.List allowed')
-                elif arg.name in self.map:
-                    raise TypeError('only one instance with the name %s allowed' % arg.name)
                 self.list = arg
-                self.map[arg.name] = arg
-            elif isinstance(arg, Arguments.Keyword):
-                if arg.name in self.map:
-                    raise TypeError('only one instance with the name %s allowed' % arg.name)
-                self.map[arg.name] = arg
-            elif not isinstance(arg, Arguments.Type):
-                raise TypeError('Must supply instance of Argument')
+            self.map[arg.name] = arg
 
     def __add__(self, other):
         """Add two Arguments instances together, the left taking precedence;
@@ -192,4 +190,29 @@ assigned as necessary."""
                 raise ValueError('None given for %s when noNone is expected' % self.name)
             else:
                 return super(Arguments.Keyword, self).process_value(value)
+
+    class Exclusion(Type):
+        def __init__(self, name, usedefaults=True):
+            from .path import Path
+            types = (Exclusions, tuple, list, set, str)
+            super(Arguments.Exclusion, self).__init__(name, types=types)
+            self.usedefaults = usedefaults
+
+        def check_type(self, value):
+            if value is None or isinstance(value, Exclusions):
+                return
+            elif isinstance(value, str):
+                super(Arguments.Exclusion, self).check_type(value)
+            elif isinstance(value, (tuple, list, set)):
+                for v in value:
+                    super(Arguments.Exclusion, self).check_type(v)
+            else:
+                raise TypeError('Value for %s requires %s' % (self.name, self.typenames))
+
+        def process_value(self, value):
+            if value is None:
+                value = set()
+            else:
+                value = super(Arguments.Exclusion, self).process_value(value)
+            return Exclusions(value, usedefaults=self.usedefaults)
 
