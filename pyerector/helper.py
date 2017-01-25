@@ -70,6 +70,9 @@ task."""
         self.usedefaults = usedefaults
         super(Exclusions, self).__init__(initialset)
 
+    def copy(self):
+        return self.__class__(self)
+
     def match(self, string):
         """Return true if the given string matches one of the patterns
 in the set."""
