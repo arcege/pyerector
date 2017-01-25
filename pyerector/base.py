@@ -47,7 +47,7 @@ handling.
         Arguments.Keyword('noglob', default=False, types=bool),
         Arguments.Keyword('recurse', default=False, types=bool),
         Arguments.Keyword('fileonly', default=True, types=bool),
-        Arguments.Keyword('exclude', default=(), types=(tuple, list, set, Exclusions, str)),
+        Arguments.Exclusion('exclude'),
     )
     # the arguments attribute should be set by Tasks subclasses, not in the ancesters
     pattern = None
