@@ -97,9 +97,19 @@ assigned as necessary."""
             raise ValueError('not expecting positional arguments')
         # fill in the default values
         for name in self.map:
-            if isinstance(self.map[name], Arguments.Keyword) and \
-               name not in argmap:
-                argmap[name] = self.map[name].default
+            if name not in argmap:
+                o = self.map[name]
+                if hasattr(o, 'default'):
+                    from .path import Path
+                    if isinstance(o.default, Path):
+                        v = o.default
+                    elif hasattr(o.default, 'copy') and callable(o.default.copy):
+                        v = o.default.copy()
+                    else:
+                        v = o.default
+                else:
+                    v = None
+                argmap[name] = v
         for name in kwargs:
             if name in self.map:
                 argtype = self.map[name]
@@ -195,6 +205,7 @@ assigned as necessary."""
         def __init__(self, name, usedefaults=True):
             from .path import Path
             types = (Exclusions, tuple, list, set, str)
+            self.default = Exclusions()
             super(Arguments.Exclusion, self).__init__(name, types=types)
             self.usedefaults = usedefaults
 
