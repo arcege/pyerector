@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# Copyright @ 2012-2017 Michael P. Reilly. All rights reserved.
+# Copyright @ 2017 Michael P. Reilly. All rights reserved.
 
 __all__ = [
     'Arguments',

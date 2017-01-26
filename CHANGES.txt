@@ -198,3 +198,9 @@ v1.2.6 2016-12-16
   -- Make Version instance displayable.
   -- Update Copyright dates.
 
+v1.3.0 2017-01-26
+  -- Integrate to using Path (most) everywhere.
+  -- Make Version instance displayable.
+  -- Update pypi homepage value to bitbucket
+  -- Add EncodeVar task
+  -- Add a filename property to FileVariable and change how value property is handled.
