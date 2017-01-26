@@ -35,9 +35,6 @@ class Chmod(Task):
     """Change file permissions.
 constructor arguments:
 Chmod(*files, mode=0666)"""
-    files = ()
-    mode = int('666', 8)  # gets around Python 2.x vs 3.x octal issue
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('mode', types=int, default=int('666', 8), cast=int),
@@ -45,12 +42,8 @@ Chmod(*files, mode=0666)"""
 
     def run(self):
         """Change the permissions on the files."""
-        if self.has_arguments:
-            files = self.get_files()
-            mode = self.args.mode
-        else:
-            files = self.get_files(self.get_args('files'))
-            mode = self.get_kwarg('mode', int)
+        files = self.get_files()
+        mode = self.args.mode
         for fname in files:
             self.asserttype(fname, (Path, str), 'files')
             self.logger.info('chmod(%s, %o)', fname, mode)
@@ -62,14 +55,6 @@ Chmod(*files, mode=0666)"""
 
 class Container(Task):
     """An internal task for subclassing standard classes Tar and Zip."""
-    appname = None
-    from os import curdir as root
-    name = None
-    files = ()
-    recurse = True
-    fileonly = False
-    exclude = Exclusions(usedefaults=False)
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('name', types=(Path, str), noNone=True),
@@ -78,18 +63,10 @@ class Container(Task):
 
     def run(self):
         """Gather filenames and put them into the container."""
-        if self.has_arguments:
-            files = self.get_files()
-            name = self.args.name
-            root = self.args.root
-            excludes = self.args.exclude
-        else:
-            files = self.get_files(self.get_args('files'))
-            name = self.get_kwarg('name', (Path, str), noNone=True)
-            root = self.join(self.get_kwarg('root', (Path, str)))
-            excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
-        if not isinstance(excludes, Exclusions):
-            excludes = Exclusions(excludes)
+        files = self.get_files()
+        name = self.args.name
+        root = self.args.root
+        excludes = self.args.exclude
         self.logger.debug('Container.run(name=%s, root=%s, excludes=%s)',
                 repr(name), repr(root), repr(excludes))
         self.preop(name, root, excludes)
@@ -143,10 +120,6 @@ class Copy(Task):
 files.
 constructor arguments:
 Copy(*files, dest=<destdir>, exclude=<defaults>)"""
-    files = ()
-    dest = None
-    noglob = False
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('dest', types=(Path, str)),
@@ -154,18 +127,11 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
 
     def run(self):
         """Copy files to a destination directory."""
-        if self.has_arguments:
-            self.logger.debug('Copy.run: args=%s', self.args)
-            dest = self.args.dest
-            files = self.args.files
-            excludes = self.args.exclude
-        else:
-            dest = self.get_kwarg('dest', (Path, str), noNone=False)
-            files = self.get_args('files')
-            excludes = self.get_kwarg('exclude', (str, Exclusions, tuple, list))
+        self.logger.debug('Copy.run: args=%s', self.args)
+        dest = self.args.dest
+        files = self.args.files
+        excludes = self.args.exclude
         self.logger.debug('Copy.run: files=%s; dest=%s', repr(files), repr(dest))
-        if not isinstance(excludes, Exclusions):
-            excludes = Exclusions(excludes)
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
         elif len(files) == 1 and dest is not None and not os.path.isdir(str(dest)):
@@ -192,11 +158,6 @@ class CopyTree(Task):
     """Copy directory tree. Exclude standard hidden files.
 constructor arguments:
 CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
-    srcdir = None
-    dstdir = None
-    exclude = Exclusions()
-    excludes = exclude  # deprecated
-
     arguments = Arguments(
         Arguments.Keyword('srcdir', types=(Path, str), noNone=True, cast=Path),
         Arguments.Keyword('dstdir', types=(Path, str), noNone=True, cast=Path),
@@ -205,16 +166,9 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
 
     def run(self):
         """Copy a tree to a destination."""
-        if self.has_arguments:
-            srcdir = self.args.srcdir
-            dstdir = self.args.dstdir
-            excludes = self.args.exclude
-        else:
-            srcdir = self.join(self.get_kwarg('srcdir', (Path, str), noNone=True))
-            dstdir = self.join(self.get_kwarg('dstdir', (Path, str), noNone=True))
-            excludes = self.get_kwarg('exclude', (str, Exclusions, tuple, list))
-        if not isinstance(excludes, Exclusions):
-            excludes = Exclusions(excludes)
+        srcdir = self.args.srcdir
+        dstdir = self.args.dstdir
+        excludes = self.args.exclude
         if not srcdir.exists:
             raise OSError(2, "No such file or directory: " + srcdir)
         elif not srcdir.isdir:
@@ -311,9 +265,6 @@ def Decode(data):
         bdata = b64decode(data)
     return decompress(data)
 """
-    source = None
-    dest = None
-
     arguments = Arguments(
         Arguments.Keyword('source'),
         Arguments.Keyword('dest'),
@@ -337,9 +288,6 @@ For example, generates foobar.txt.md5 and foobar.txt.sha1 for the
 contents of foobar.txt.  By default, generates for both md5 and sha1.
 constructor arguments:
 HashGen(*files, hashs=('md5', 'sha1'))"""
-    files = ()
-    hashs = ('md5', 'sha1')
-
     def cast(value):
         if isinstance(value, (list, tuple, set)):
             return tuple(value)
@@ -436,9 +384,6 @@ class Mkdir(Task):
     """Recursively create directories.
 constructor arguments:
 Mkdir(*files)"""
-    files = ()
-    noglob = True
-
     arguments = Arguments(
         Arguments.List('files', types=(Path, str, Iterator), cast=FileIterator),
     ) + Initer.basearguments
@@ -475,9 +420,6 @@ class PyCompile(Task):
     """Compile Python source files.
 constructor arguments:
 PyCompile(*files, dest=<DIR>, version='2')"""
-    files = ()
-    version = '2'
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('version', default='2'),
@@ -486,12 +428,8 @@ PyCompile(*files, dest=<DIR>, version='2')"""
     def run(self):
         """Compile Python source files."""
         import py_compile
-        if self.has_arguments:
-            fileset = self.get_files()
-            version = self.args.version
-        else:
-            fileset = self.get_files(self.get_args('files'))
-            version = self.version
+        fileset = self.get_files()
+        version = self.args.version
         if version[:1] == sys.version[:1]:  # compile inline
             for fname in fileset:
                 self.logger.debug('py_compile.compile(%s)', fname)
@@ -527,22 +465,13 @@ class Remove(Task):
     """Remove a file or directory tree.
 constructor arguments:
 Remove(*files)"""
-    files = ()
-    noglob = False
-    exclude = None
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
     ) + Initer.basearguments
 
     def run(self):
         """Remove a file or directory tree."""
-        if self.has_arguments:
-            files = self.get_files()
-        else:
-            files = self.get_args('files')
-            noglob = self.get_kwarg('noglob', bool)
-            excludes = self.get_kwarg('exclude', (str, Exclusions, list, tuple))
+        files = self.get_files()
         if isinstance(files, Iterator):
             pass
         elif len(files) == 1 and isinstance(files, Iterator):
@@ -560,11 +489,7 @@ class Shebang(Copy):
     """Replace the shebang string with a specific pathname.
 constructor arguments:
 Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
-    files = ()
-    dest = None
-    program = None
     token = '#!'
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('dest', types=(Path, str), cast=Path),
@@ -573,14 +498,9 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
     def run(self):
         """Replace the shebang string with a specific pathname."""
         self.logger.info('starting Shebang')
-        if self.has_arguments:
-            program = self.args.program
-            srcs = self.get_files()
-            dest = self.args.dest
-        else:
-            program = self.get_kwarg('program', (Path, str), noNone=True)
-            srcs = self.get_files(self.get_args('files'))
-            dest = self.get_kwarg('dest', (Path, str))
+        program = self.args.program
+        srcs = self.get_files()
+        dest = self.args.dest
         try:
             from io import BytesIO as StringIO
         except ImportError:
@@ -613,12 +533,6 @@ class Spawn(Task):
     """Spawn a command.
 constructor arguments:
 Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
-    cmd = ()
-    infile = None
-    outfile = None
-    errfile = None
-    env = {}
-
     arguments = Arguments(
         Arguments.List('cmd', types=(tuple, list), cast=tuple),
         Arguments.Keyword('infile', types=(Path, str)),
@@ -629,21 +543,14 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
 
     def run(self):
         """Spawn a command."""
-        if self.has_arguments:
-            cmd = self.args.cmd
-            infile = self.args.infile
-            outfile = self.args.outfile
-            errfile = self.args.errfile
-            env = self.args.env
-        else:
-            infile = self.get_kwarg('infile', (Path, str))
-            outfile = self.get_kwarg('outfile', (Path, str))
-            errfile = self.get_kwarg('errfile', (Path, str))
-            infile = infile and self.join(infile) or None
-            outfile = outfile and self.join(outfile) or None
-            errfile = errfile and self.join(errfile) or None
-            env = self.get_kwarg('env', dict)
-            cmd = self.get_args('cmd')
+        cmd = self.args.cmd
+        infile = self.args.infile
+        outfile = self.args.outfile
+        errfile = self.args.errfile
+        env = self.args.env
+        infile = infile and self.join(infile) or None
+        outfile = outfile and self.join(outfile) or None
+        errfile = errfile and self.join(errfile) or None
         proc = Subcommand(cmd, env=env,
                           stdin=infile, stdout=outfile, stderr=errfile,
                           )
@@ -755,11 +662,6 @@ class SubPyErector(Task):
 constructor arguments:
 SubPyErector(*targets, wdir=None, prog='pyerect', env={})
 Adds PYERECTOR_PREFIX environment variable."""
-    targets = ()
-    prog = 'pyerect'
-    wdir = None
-    env = {}
-
     arguments = Arguments(
         Arguments.List('targets'),
         Arguments.Keyword('prog', types=(Path, str), default=Path('pyerect'), cast=Path),
@@ -769,16 +671,10 @@ Adds PYERECTOR_PREFIX environment variable."""
 
     def run(self):
         """Call a PyErector program in a different directory."""
-        if self.has_arguments:
-            targets = self.args.targets
-            prog = self.args.prog
-            wdir = self.args.wdir
-            env = self.args.env
-        else:
-            targets = self.get_args('targets')
-            prog = self.get_kwarg('prog', (Path, str))
-            env = self.get_kwarg('env', dict)
-            wdir = self.get_kwarg('wdir', (Path, str))
+        targets = self.args.targets
+        prog = self.args.prog
+        wdir = self.args.wdir
+        env = self.args.env
         # we explicitly add './' to prevent searching PATH
         options = []
         logger = logging.getLogger('pyerector')
@@ -811,10 +707,6 @@ class Symlink(Task):
     """Generate a symbolic link.
 constructor arguments:
 Symlink(*files, dest=<dest>, exclude=<defaults>)"""
-    files = ()
-    dest = None
-    exclude = None
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('dest', types=(Path, str), cast=Path),
@@ -822,16 +714,9 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
     ) + Initer.basearguments
 
     def run(self):
-        if self.has_arguments:
-            files = self.get_files()
-            dest = self.args.dest
-            excludes = self.args.excludes
-        else:
-            dest = Path(self.get_kwarg('dest', (Path, str)))
-            files = self.get_args('files')
-            excludes = self.get_kwarg('exclude', (Exclusions, tuple, list))
-        if not isinstance(excludes, Exclusions):
-            excludes = Exclusions(excludes)
+        files = self.get_files()
+        dest = self.args.dest
+        excludes = self.args.excludes
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
         elif len(files) == 1 and dest is not None and not dest.isdir:
@@ -880,10 +765,6 @@ class Tokenize(Task):
 each file.
 constructor arguments:
 Tokenize(*files, dest=None, tokenmap=VariableSet())"""
-    files = ()
-    dest = None
-    tokenmap = VariableSet()
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('dest', types=(Path, str), cast=Path),
@@ -895,16 +776,9 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
 
     def run(self):
         """Replace tokens found in tokenmap with their associated values."""
-        if self.has_arguments:
-            files = self.get_files()
-            dest = self.args.dest
-            tokenmap = self.args.tokenmap
-        else:
-            files = self.get_args('files')
-            dest = self.get_kwarg('dest', (Path, str))
-            tokenmap = self.get_kwarg('tokenmap', VariableSet)
-            if not isinstance(tokenmap, VariableSet):
-                raise TypeError('tokenmap must be a VariableSet instance')
+        files = self.get_files()
+        dest = self.args.dest
+        tokenmap = self.args.tokenmap
         self.update_tokenmap()
         import re
 
@@ -940,9 +814,6 @@ class Touch(Task):
     """Create file if it didn't exist already.
 constructor arguments:
 Touch(*files, dest=None)"""
-    files = ()
-    dest = None
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('dest', types=(Path, str), cast=Path),
@@ -951,12 +822,8 @@ Touch(*files, dest=None)"""
     def run(self):
         from .helper import normjoin
         """Create files, unless they already exist."""
-        if self.has_arguments:
-            files = self.get_files()
-            dest = self.args.dest
-        else:
-            files = self.get_files(self.get_args('files'))
-            dest = Path(self.get_kwarg('dest', (Path, str)))
+        files = self.get_files()
+        dest = self.args.dest
         for fname in files:
             #self.asserttype(fname, (Path, str), 'files')
             if dest is not None:
@@ -968,9 +835,7 @@ class Unittest(Task):
     """Call Python unit tests found.
 constructor arguments:
 Unittest(*modules, path=())"""
-    modules = ()
     path = ()
-
     arguments = Arguments(
         Arguments.List('modules', types=(Path, str), cast=str),
     )
@@ -978,10 +843,7 @@ Unittest(*modules, path=())"""
     def run(self):
         """Call the 'unit-test.py' script in the package directory with
 serialized parameters as the first argument string."""
-        if self.has_arguments:
-            modules = self.args.modules
-        else:
-            modules = tuple(self.get_args('modules'))
+        modules = self.args.modules
         bdir = Path(__file__).dirname
         sfile = bdir + 'unit-test.py'
         if not sfile.exists:
@@ -1001,10 +863,6 @@ serialized parameters as the first argument string."""
 
 class Uncontainer(Task):
     """Super-class for Untar and Unzip."""
-    name = None
-    root = None
-    files = ()
-
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('name', types=(Path, str), noNone=True),
@@ -1013,14 +871,9 @@ class Uncontainer(Task):
 
     def run(self):
         """Extract members from the container."""
-        if self.has_arguments:
-            files = self.get_files()
-            name = self.args.name
-            root = self.args.root
-        else:
-            name = self.get_kwarg('name', (Path, str), noNone=True)
-            root = self.get_kwarg('root', (Path, str))
-            files = self.get_args('files')
+        files = self.get_files()
+        name = self.args.name
+        root = self.args.root
         try:
             contfile = self.get_file(name)
         except IOError:
