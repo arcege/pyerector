@@ -534,7 +534,7 @@ class Spawn(Task):
 constructor arguments:
 Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
     arguments = Arguments(
-        Arguments.List('cmd', types=(tuple, list), cast=tuple),
+        Arguments.List('cmd', types=(Path, str), cast=str),
         Arguments.Keyword('infile', types=(Path, str)),
         Arguments.Keyword('outfile', types=(Path, str)),
         Arguments.Keyword('errfile', types=(Path, str)),
@@ -808,6 +808,8 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
             alteredcontents = tokens.sub(repltoken, realcontents)
             if alteredcontents != realcontents:
                 self.join(dname).open('wt').write(alteredcontents)
+            else:
+                self.logger.info("Tokenize: no change to %s", dname)
 
 
 class Touch(Task):

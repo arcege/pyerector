@@ -122,6 +122,8 @@ the Iterator instance.
         else:
             # import here to avoid recursive references
             from .iterators import FileIterator
+            if len(files) == 1 and isinstance(files[0], Iterator):
+                return files[0]
             fset = FileIterator(noglob=noglob, recurse=recurse,
                                 fileonly=fileonly, pattern=pattern,
                                 exclude=exclude)
