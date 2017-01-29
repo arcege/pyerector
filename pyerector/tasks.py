@@ -423,7 +423,7 @@ PyCompile(*files, dest=<DIR>, version='2')"""
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('version', default='2'),
-    )
+    ) + Initer.basearguments
 
     def run(self):
         """Compile Python source files."""
@@ -432,8 +432,10 @@ PyCompile(*files, dest=<DIR>, version='2')"""
         version = self.args.version
         if version[:1] == sys.version[:1]:  # compile inline
             for fname in fileset:
-                self.logger.debug('py_compile.compile(%s)', fname)
-                py_compile.compile(str(self.join(fname)))
+                if fname.isdir:
+                    self.compile_dir(self.join(fname))
+                else:
+                    self.compile_file(self.join(fname))
         else:
             if version[:1] == '2':
                 cmd = 'python2'
@@ -441,24 +443,46 @@ PyCompile(*files, dest=<DIR>, version='2')"""
                 cmd = 'python3'
             else:
                 cmd = 'python'
-            cmdp = (
-                cmd, '-c',
-                'import sys; from py_compile import compile; ' +
+            for s in fileset:
+                self.compile_file_ext(self.join(s), cmd)
+
+    def compile_file_ext(self, fname, python):
+        if fname.isdir:
+            files = tuple(fn for fn in fname if fn.isfile)
+            subdirs = tuple(fn for fn in fname if fn.isdir)
+        else:
+            files = (fname,)
+        cmd = (python, '-c', 'import sys; from py_compile import compile; ' +
                 '[compile(s) for s in sys.argv[1:]]'
-            ) + tuple([self.join(s) for s in fileset])
-            try:
-                proc = Subcommand(cmdp)
-            except Error:
-                exc = sys.exc_info()[1]
-                if exc.args[0] == 'ENOENT':
-                    self.logger.error('%s: Error with %s: %s',
-                        self.__class__.__name__, cmd, exc.args[1]
-                    )
-                else:
-                    raise
+        ) + files
+        try:
+            proc = Subcommand(cmd)
+        except Error:
+            ext = sys.exc_info()[1]
+            if exc.args[0] == 'ENOENT':
+                self.logger.error('%s: Error with %s: %s',
+                    self.__class__.__name__, cmd, exc.args[1]
+                )
             else:
-                if proc.returncode != 0:
-                    self.logger.info('could not compile files with %s', cmd)
+                raise
+        else:
+            if proc.returncode != 0:
+                raise Error('count not compile files with %s', cmd)
+        for fn in subdirs:
+            self.compile_file_ext(fn, python)
+
+    def compile_file(self, fname):
+        self.logger.debug('py_compile.compile(%s)', fname)
+        import py_compile
+        py_compile.compile(fname.value)
+
+    def compile_dir(self, dirname):
+        for fname in dirname:
+            if fname.isdir:
+                self.compile_dir(fname)
+            else:
+                self.compile_file(fname)
+
 
 
 class Remove(Task):
