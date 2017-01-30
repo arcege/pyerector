@@ -140,7 +140,6 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
             fmap = FileMapper(self.get_files(files), destdir=dest)
         self.logger.debug('Copy.fmap = %s', vars(fmap))
         for (sname, dname) in fmap:
-            #self.logger.error( repr( (sname, dname) ) )
             self.logger.debug('sname = %s; dname = %s', sname, dname)
             srcfile = self.join(sname)
             dstfile = self.join(dname)
@@ -452,6 +451,7 @@ PyCompile(*files, dest=<DIR>, version='2')"""
             subdirs = tuple(fn for fn in fname if fn.isdir)
         else:
             files = (fname,)
+            subdirs = ()
         cmd = (python, '-c', 'import sys; from py_compile import compile; ' +
                 '[compile(s) for s in sys.argv[1:]]'
         ) + files
