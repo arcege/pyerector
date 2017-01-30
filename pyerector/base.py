@@ -105,7 +105,7 @@ the Iterator instance.
             try: pattern = self.args.pattern
             except: pattern = None
             try: exclude = self.args.exclude
-            except: exclude = ()
+            except: exclude = Exclusions()
         else:
             if files is None:
                 try:
@@ -117,25 +117,26 @@ the Iterator instance.
             fileonly = self.get_kwarg('fileonly', bool)
             pattern = self.get_kwarg('pattern', str)
             exclude = self.get_kwarg('exclude', (Exclusions, tuple))
+            if not isinstance(exclude, Exclusions):
+                exclude = Exclusions(exclude)
+        # import here to avoid recursive references
+        from .iterators import FileIterator
+        fset = FileIterator(noglob=noglob, recurse=recurse,
+                            fileonly=fileonly, pattern=pattern,
+                            exclude=exclude)
         if isinstance(files, Iterator):
-            return files
+            fset.append(files)
+        elif isinstance(files, tuple) and len(files) == 1 and \
+             isinstance(files[0], Iterator):
+            fset.append(files[0])
         else:
-            # import here to avoid recursive references
-            from .iterators import FileIterator
-            if len(files) == 1 and isinstance(files[0], Iterator):
-                return files[0]
-            fset = FileIterator(noglob=noglob, recurse=recurse,
-                                fileonly=fileonly, pattern=pattern,
-                                exclude=exclude)
             for entry in files:
-                if isinstance(entry, Iterator):
-                    fset.append(entry)
-                elif isinstance(entry, Path):
+                if isinstance(entry, (Path, Iterator)):
                     fset.append(entry)
                 else:
                     fset.append(Path(entry))
-            self.logger.debug('get_files(%s) = %s', files or "", fset)
-            return fset
+        self.logger.debug('get_files(%s) = %s', files or "", fset)
+        return fset
 
     def join(self, *path):
         """Normjoin the basedir and the path."""
