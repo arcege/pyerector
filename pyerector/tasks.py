@@ -129,28 +129,29 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
         """Copy files to a destination directory."""
         self.logger.debug('Copy.run: args=%s', self.args)
         dest = self.args.dest
-        files = self.args.files
+        files = self.get_files()
         excludes = self.args.exclude
         self.logger.debug('Copy.run: files=%s; dest=%s', repr(files), repr(dest))
-        if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
-            fmap = files[0]
-        elif len(files) == 1 and dest is not None and not os.path.isdir(str(dest)):
-            fmap = IdentityMapper(self.get_files(files), destdir=dest)
-        else:
-            fmap = FileMapper(self.get_files(files), destdir=dest)
+        fmap = FileMapper(files, destdir=dest, exclude=excludes)
         self.logger.debug('Copy.fmap = %s', vars(fmap))
         for (sname, dname) in fmap:
             self.logger.debug('sname = %s; dname = %s', sname, dname)
             srcfile = self.join(sname)
             dstfile = self.join(dname)
-            if not excludes.match(sname):
-                if dstfile.isfile and fmap.checkpair(srcfile, dstfile):
-                    self.logger.debug('uptodate: %s', dstfile)
-                else:
-                    self.logger.info('copy2(%s, %s)', sname, dname)
-                    srcfile.copy(dstfile)
+            if srcfile.isdir:
+                # remove whatever is there
+                if dstfile.exists and not dstfile.isdir:
+                    dstfile.remove()
+                # create the directory
+                if not dstfile.exists:
+                    dstfile.mkdir()
+            elif dstfile.isfile and fmap.checkpair(srcfile, dstfile):
+                self.logger.debug('uptodate: %s', dstfile)
             else:
-                self.logger.debug('ignoring %s to %s', sname, dname)
+                if not dstfile.dirname.isdir:
+                    dstfile.dirname.mkdir()
+                self.logger.info('copy2(%s, %s)', sname, dname)
+                srcfile.copy(dstfile)
 
 
 class CopyTree(Task):
