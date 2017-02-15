@@ -4,20 +4,11 @@
 files and directories.
 """
 
-import fnmatch
-import glob
-import os
-import re
-import sys
-from .helper import normjoin
-from .path import Path
-from .base import Iterator, Mapper
-from .variables import V
-
 try:
     reduce
 except NameError:
     try:
+        # pylint: disable=redefined-builtin
         from functools import reduce
     except NameError:
         # we shouldn't get here, but...
@@ -30,10 +21,14 @@ item, accumulating the result."""
                     accum = item
                 else:
                     accum = function(accum, item)
-            else:
-                if accum is None and initializer is not None:
-                    return initializer
+            if accum is None and initializer is not None:
+                return initializer
             return accum
+
+import re
+from .path import Path
+from .base import Iterator, Mapper
+from .variables import V
 
 __all__ = [
     'FileSet', 'StaticIterator', 'FileIterator', 'FileList', 'DirList',
@@ -72,12 +67,14 @@ fileonly=True, exclude=()."""
         recurse = self.get_kwarg('recurse', bool)
         fileonly = self.get_kwarg('fileonly', bool)
         if isinstance(candidate, tuple):  # for a Mapper
-            c = (basedir + candidate[0], basedir + candidate[1])
+            # pylint: disable=redefined-variable-type
+            cand = (basedir + candidate[0], basedir + candidate[1])
         else:
-            c = basedir + candidate
+            # pylint: disable=redefined-variable-type
+            cand = basedir + candidate
         #print 'candidate', repr(c)
-        if recurse and c.isdir:
-            self._prepend([(i - basedir) for i in c])
+        if recurse and cand.isdir:
+            self._prepend([(i - basedir) for i in cand])
             if fileonly:
                 candidate = FileIterator.next(self)
         return candidate
@@ -88,10 +85,10 @@ fileonly=True, exclude=()."""
         basedir = V['basedir']
         recurse = self.get_kwarg('recurse', bool)
         pattern = self.get_kwarg('pattern', str)
-        c = basedir + candidate
-        if recurse and c.isdir:
+        cand = basedir + candidate
+        if recurse and cand.isdir:
             return True
-        elif not pattern or c.match(pattern):
+        elif not pattern or cand.match(pattern):
             return True
         else:
             return False
@@ -139,9 +136,9 @@ This would map each py file in src to a pyc file in build:
 """
 
     def checkpair(self, src, dst):
+        """Return True if destination is newer than source."""
         sfile = self.join(src)
         dfile = self.join(dst)
-        """Return True if destination is newer than source."""
         if self.exclusion.match(sfile):
             return True
         try:
@@ -173,7 +170,6 @@ modification times, using checkpair above.
         dirs = [src]
         while dirs:
             cdir = dirs.pop(0)
-            bdir = cdir - src
             for sname in cdir:
                 dname = dst + (sname - src)
                 if self.exclusion.match(sname):
@@ -186,8 +182,7 @@ modification times, using checkpair above.
                     result = self.checkpair(sname, dname)
                     if not result:
                         return result
-        else:
-            return True
+        return True
 
 
 class BasenameMapper(FileMapper):
@@ -236,18 +231,10 @@ subclasses."""
             self.logger.debug('%s *> %s', klsname, False)
             return False
         elif srcs and dsts:
-            def get_times(lst, slf=self):
-                """Return the times as a list."""
-                times = []
-                for fname in lst:
-                    try:
-                        times.append(os.path.getmtime(str(self.join(fname))))
-                    except OSError:
-                        pass
-                return times
             maxval = float('inf')
             latest_src = reduce(max, [f.mtime for f in srcs if f.exists], 0)
-            earliest_dst = reduce(min, [f.mtime for f in dsts if f.exists], maxval)
+            earliest_dst = reduce(min, [f.mtime for f in dsts if f.exists],
+                                  maxval)
             if earliest_dst == maxval:  # empty list case
                 self.logger.debug('%s /> %s', klsname, False)
                 return False

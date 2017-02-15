@@ -16,10 +16,9 @@ Initialize the logging system, including setting up module specific
 formatters.  It does not change the root ('') logger.
 """
 
-import fnmatch
 import logging
 import os
-from sys import version, exc_info
+from sys import exc_info
 import traceback
 import warnings
 
@@ -56,12 +55,15 @@ task."""
 
     def __init__(self, items=(), usedefaults=True):
         if isinstance(items, Exclusions):
+            # pylint: disable=no-member
             if usedefaults != items.usedefaults:
+                # pylint: disable=no-member
                 usedefaults = items.usedefaults
             items = set(items)
         elif not isinstance(items, (str, set, tuple, list, type(None))):
             raise TypeError('Exclusions: expecting str, set, tuple or list')
         if isinstance(items, str):  # proper casting
+            # pylint: disable=redefined-variable-type
             items = (items,)
         if items:
             initialset = set(items)
@@ -77,12 +79,12 @@ task."""
         """Return true if the given string matches one of the patterns
 in the set."""
         # augment the possible matches with the defaults
-        if self.usedefaults == True:
-            matches = self | self.defaults
-        elif self.usedefaults == False:
-            matches = self | self.vcs_names
-        else:
+        if self.usedefaults is None:
             matches = self
+        elif self.usedefaults:
+            matches = self | self.defaults
+        else:
+            matches = self | self.vcs_names
         values = [v for v in matches if Path(string).match(v)]
         return len(values) > 0
 
@@ -102,6 +104,7 @@ in the set."""
         cls.defaults = set(items)
 
 
+# pylint: disable=too-many-instance-attributes
 class Subcommand(object):
     """Handles some of the subprocess details."""
     try:
@@ -111,6 +114,7 @@ class Subcommand(object):
         raise NotImplementedError("Earlier than Python 2.6 is unsupported")
     PIPE = subprocess.PIPE
 
+    # pylint: disable=too-many-arguments
     def __init__(self, cmd, wdir=os.curdir, env=None, wait=True,
                  stdin=None, stdout=None, stderr=None):
         if env is None:
@@ -135,7 +139,9 @@ class Subcommand(object):
 
     def __del__(self):
         #import traceback
-        logging.getLogger('pyerector.execute').debug('starting %s.__del__()', self.__class__.__name__)
+        logging.getLogger('pyerector.execute').debug(
+            'starting %s.__del__()', self.__class__.__name__
+        )
         self.close()
         if hasattr(self, 'returncode') and hasattr(self, 'proc') and \
                 self.returncode is None and self.proc is not None:
@@ -194,6 +200,21 @@ if applicable."""
         self.returncode = self.proc.wait()
         return self.returncode
 
+    def handle_pipe(self, afile, methodname, mode, alt=None):
+        """Return a file object based on what type the file argument is."""
+        if alt is not None and afile == alt:
+            return alt
+        elif hasattr(afile, methodname):
+            return afile
+        elif afile == self.PIPE:
+            return self.PIPE
+        elif isinstance(afile, Path):
+            return afile.open(mode)
+        elif hasattr(afile, 'lower'):
+            return open(str(afile), mode)
+        else:
+            return None
+
     def call_subprocess(self):
         """Call subprocess.Popen and handle the I/O."""
         from subprocess import Popen
@@ -201,44 +222,17 @@ if applicable."""
         # convert env to strings
         env = dict([(n, str(self.env[n])) for n in self.env])
         realenv.update(env)
-        if hasattr(self.infile, 'write'):
-            ifile = self.infile
-        elif self.infile == self.PIPE:
-            ifile = self.PIPE
-        elif isinstance(self.infile, Path):
-            ifile = self.infile.open()
-        elif hasattr(self.infile, 'lower'):
-            ifile = open(str(self.infile), 'r')
-        else:
-            ifile = None
-        if hasattr(self.outfile, 'read'):
-            ofile = self.outfile
-        elif self.outfile == self.PIPE:
-            ofile = self.PIPE
-        elif isinstance(self.outfile, Path):
-            ofile = self.outfile.open('w')
-        elif hasattr(self.outfile, 'lower'):
-            ofile = open(str(self.outfile), 'w')
-        else:
-            ofile = None
-        if self.errfile == self.outfile:
-            efile = ofile
-        elif hasattr(self.errfile, 'read'):
-            efile = self.errfile
-        elif self.errfile == self.PIPE:
-            efile = self.PIPE
-        elif isinstance(self.errfile, Path):
-            efile = self.errfile.open('w')
-        elif hasattr(self.errfile, 'lower'):
-            efile = open(str(self.errfile), 'w')
-        else:
-            efile = None
+        ifile = self.handle_pipe(self.infile, 'read', 'r')
+        ofile = self.handle_pipe(self.outfile, 'write', 'w')
+        efile = self.handle_pipe(self.errfile, 'write', 'w', alt=self.outfile)
         (self.stdin, self.stdout, self.stderr) = (ifile, ofile, efile)
         shellval = not isinstance(self.cmd, tuple)
         cmd = tuple(str(c) for c in self.cmd)
-        logging.getLogger('pyerector.execute').debug('Popen(%s, shell=%s, cwd=%s, stdin=%s, stdout=%s,'
-                      'stderr=%s, bufsize=0, env=%s)', cmd,
-                      shellval, repr(self.wdir), ifile, ofile, efile, env)
+        logging.getLogger('pyerector.execute').debug(
+            'Popen(%s, shell=%s, cwd=%s, stdin=%s, stdout=%s,'
+            'stderr=%s, bufsize=0, env=%s)', cmd,
+            shellval, repr(self.wdir), ifile, ofile, efile, env
+        )
         try:
             proc = Popen(cmd,
                          shell=shellval, cwd=str(self.wdir),
@@ -308,10 +302,11 @@ class Timer(object):
         return int(float(self))
 
 
+# pylint: disable=too-few-public-methods
 class Verbose(object):
-    import logging
-    # deprecated
     """Deprecated and should no longer be used."""
+    # deprecated
+    # pylint: disable=unused-argument
     def __init__(self, state=False, level=logging.INFO):
         self.level = level
 
@@ -323,7 +318,7 @@ class Verbose(object):
     @staticmethod
     def _getlevelnum(level):
         """Return the logging level based on its name."""
-        return Verbose.logging.getLevelName(level)
+        return logging.getLevelName(level)
 
     def __bool__(self):
         return self._getlogger().isEnabledFor(self.level)
@@ -369,12 +364,12 @@ the main threads (MainThread, PyErector)."""
                 message = '(%s[%x]) %s' % (name, ident, message)
         return message
 
-    def formatException(self, exc_info):
+    def formatException(self, exc_data):
         """Return similar to the default, but using exception.extract_tb
 instead of traceback.extract_tb; the former adds the class being called.
 """
         from .exception import extract_tb
-        etype, exception, tb = exc_info
+        etype, exception, tb = exc_data
         exc = traceback.format_exception_only(etype, exception)
         stack = traceback.format_list(extract_tb(tb))
         return ''.join(stack + exc)
@@ -384,12 +379,12 @@ class LogExecFormatter(LogFormatter):
     """Subclass of LogFormatter that shows the pyerector execution stack
 instead of python's.
 """
-    def formatException(self, exc_info):
+    def formatException(self, exc_data):
         """Extract the pyerector execution stack and return a string with
 that and the formatted exception.
 """
         stack = get_current_stack()
-        etype, exception = exc_info[:2]
+        etype, exception = exc_data[:2]
         lines = stack.extract() + \
                 traceback.format_exception_only(etype, exception)
         return ''.join(lines).rstrip()

@@ -16,9 +16,13 @@ XXX Future development may see more things moved here from pyerector.
 from .exception import Abort, Error
 from .args import Arguments
 from .execute import get_current_stack, PyThread
+# pylint: disable=unused-import
 from .variables import V, Variable, VariableSet
+# pylint: disable=unused-import
 from .helper import Exclusions, normjoin, Subcommand, Timer
+# pylint: disable=unused-import
 from .base import Initer, Iterator, Mapper, Target, Task
+# pylint: disable=unused-import
 from .vcs.base import DVCS_Base, VCS_Base
 
 __all__ = [

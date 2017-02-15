@@ -1,11 +1,24 @@
 #!/usr/bin/python
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
+"""Argument processing
+
+Example:
+    args = Arguments(
+        Arguments.List("files", types=str),
+        Arguments.Keyword("dest", types=str, default='.'),
+    )
+
+When parsed, an ArgumentSet instance is returned or either TypeError or
+ValueError is raised.  The ArgumentSet object acts as both a sequence and
+a dict.
+
+"""
+
+import pyerector.helper
 
 __all__ = [
     'Arguments',
 ]
-
-import pyerector.helper
 
 class ArgumentSet(object):
     """Access the arguments as either an iterable or an object (attributes)
@@ -24,10 +37,13 @@ or a dict."""
             raise AttributeError(attr)
         return self.map[attr]
     def items(self):
+        """Return keyword items, as dict.items()."""
         return self.map.items()
     def keys(self):
+        """Return keyword keys, as dict.keys()."""
         return self.map.keys()
     def values(self):
+        """Return keyword values, as dict.values()."""
         return self.map.values()
 
     def __iter__(self):
@@ -54,10 +70,14 @@ class Arguments(object):
             if not isinstance(arg, Arguments.Type):
                 raise TypeError('Must supply instance of Argument')
             elif arg.name in self.map:
-                raise TypeError('only one instance with the name %s allowed' % arg.name)
+                raise TypeError(
+                    'only one instance with the name %s allowed' % arg.name
+                )
             elif isinstance(arg, Arguments.List):
                 if self.list is not None:
-                    raise TypeError('Only one instance of Arguments.List allowed')
+                    raise TypeError(
+                        'Only one instance of Arguments.List allowed'
+                    )
                 self.list = arg
             self.map[arg.name] = arg
 
@@ -65,20 +85,17 @@ class Arguments(object):
         """Add two Arguments instances together, the left taking precedence;
 the merge is performed based on the argument name."""
         # we take a copy of the other so self takes precedence
-        map = other.map.copy()
-        map.update(self.map)
+        dmap = other.map.copy()
+        dmap.update(self.map)
         # handle corner case
         if self.list is not None and other.list is not None and \
            self.list != other.list:
-            del map[other.list.name]
-        return self.__class__(*map.values())
+            del dmap[other.list.name]
+        return self.__class__(*dmap.values())
 
-    def process(self, args, kwargs, existing=None):
-        """Create a instance of ArgumentSet based on the values passed;
-Exceptions raised on invalid data types or invalid keywords; defaults are
-assigned as necessary."""
-        assert isinstance(args, tuple)
-        assert isinstance(kwargs, dict)
+    def get_argmap(self, args, existing):
+        """Build up the initial working values, from the existing
+ArgumentSet object, or with nothing.  Map a List value to a name."""
         if existing is not None:
             assert isinstance(existing, ArgumentSet)
             arglist = existing.list
@@ -87,29 +104,39 @@ assigned as necessary."""
             arglist = ()
             argmap = {}
         if self.list is not None:
-            a = self.list.process(args)
-            if a != ():
-                arglist = a
+            arg = self.list.process(args)
+            if arg != ():
+                arglist = arg
             # we also add to the map:
-            #List('name') === Keyword('name', type=tuple), with magic
+            #List('name') === (Keyword('name', type=tuple), with magic)
             argmap[self.list.name] = arglist
         elif self.list is None and args:
             raise ValueError('not expecting positional arguments')
+        return arglist, argmap
+
+    def process(self, args, kwargs, existing=None):
+        """Create a instance of ArgumentSet based on the values passed;
+Exceptions raised on invalid data types or invalid keywords; defaults are
+assigned as necessary."""
+        assert isinstance(args, tuple)
+        assert isinstance(kwargs, dict)
+        arglist, argmap = self.get_argmap(args, existing)
         # fill in the default values
         for name in self.map:
             if name not in argmap:
-                o = self.map[name]
-                if hasattr(o, 'default'):
+                obj = self.map[name]
+                if hasattr(obj, 'default'):
                     from .path import Path
-                    if isinstance(o.default, Path):
-                        v = o.default
-                    elif hasattr(o.default, 'copy') and callable(o.default.copy):
-                        v = o.default.copy()
+                    if isinstance(obj.default, Path):
+                        val = obj.default
+                    elif hasattr(obj.default, 'copy') and \
+                         callable(obj.default.copy):
+                        val = obj.default.copy()
                     else:
-                        v = o.default
+                        val = obj.default
                 else:
-                    v = None
-                argmap[name] = v
+                    val = None
+                argmap[name] = val
         for name in kwargs:
             if name in self.map:
                 argtype = self.map[name]
@@ -128,14 +155,15 @@ assigned as necessary."""
             if isinstance(types, (list, tuple)):
                 self.types = tuple(types)
                 names = []
-                for t in types:
-                    if not isinstance(t, type):
+                for typ in types:
+                    if not isinstance(typ, type):
                         raise TypeError('Must supply type for %s' % name)
-                    names.append(t.__name__)
+                    names.append(typ.__name__)
                 self.typenames = ', '.join(names)
             elif not isinstance(types, type):
                 raise TypeError('Must supply type for %s' % name)
             else:
+                # pylint: disable=redefined-variable-type
                 self.types = types
                 self.typenames = types.__name__
             if cast is None or callable(cast) or isinstance(cast, type):
@@ -160,24 +188,31 @@ assigned as necessary."""
         def check_type(self, value):
             """Raise an exception if the value is not one of the types given."""
             if not isinstance(value, self.types):
-                raise TypeError('Value for %s requires %s' % (self.name, self.typenames))
+                raise TypeError(
+                    'Value for %s requires %s' % (self.name, self.typenames)
+                )
 
     class List(Type):
+        """Represent the ordered arguments (*args) passed."""
         def check_type(self, value):
             """Raise an exception is one of the values in the list are not one
     of the types given."""
             assert isinstance(value, tuple)
-            for v in value:
-                super(Arguments.List, self).check_type(v)
+            for val in value:
+                super(Arguments.List, self).check_type(val)
         def process_value(self, value):
             results = []
-            for v in value:
-                results.append(super(Arguments.List, self).process_value(v))
+            for val in value:
+                results.append(super(Arguments.List, self).process_value(val))
             return tuple(results)
 
     class Keyword(Type):
-        def __init__(self, name, types=str, cast=None, default=None, noNone=False):
-            super(Arguments.Keyword, self).__init__(name=name, types=types, cast=cast)
+        """Represent the keyword arguments passed."""
+        # pylint: disable=too-many-arguments
+        def __init__(self, name, types=str, cast=None, default=None,
+                     noNone=False):
+            super(Arguments.Keyword, self).__init__(name=name,
+                                                    types=types, cast=cast)
             if default is not None:
                 super(Arguments.Keyword, self).check_type(default)
             self.default = default
@@ -197,11 +232,14 @@ assigned as necessary."""
             if value is None and not self.noNone:
                 return self.default
             elif value is None and self.noNone:
-                raise ValueError('None given for %s when noNone is expected' % self.name)
+                raise ValueError(
+                    'None given for %s when noNone is expected' % self.name
+                )
             else:
                 return super(Arguments.Keyword, self).process_value(value)
 
     class Exclusions(Type):
+        """Represent an Exclusions argument."""
         def __init__(self, name, usedefaults=True):
             from .path import Path
             types = (pyerector.helper.Exclusions, tuple, list, set, str)
@@ -215,15 +253,17 @@ assigned as necessary."""
             elif isinstance(value, str):
                 super(Arguments.Exclusions, self).check_type(value)
             elif isinstance(value, (tuple, list, set)):
-                for v in value:
-                    super(Arguments.Exclusions, self).check_type(v)
+                for val in value:
+                    super(Arguments.Exclusions, self).check_type(val)
             else:
-                raise TypeError('Value for %s requires %s' % (self.name, self.typenames))
+                raise TypeError('Value for %s requires %s' % (self.name,
+                                                              self.typenames))
 
         def process_value(self, value):
             if value is None:
                 value = set()
             else:
                 value = super(Arguments.Exclusions, self).process_value(value)
-            return pyerector.helper.Exclusions(value, usedefaults=self.usedefaults)
+            return pyerector.helper.Exclusions(value,
+                                               usedefaults=self.usedefaults)
 

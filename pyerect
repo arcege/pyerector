@@ -147,6 +147,24 @@ class Localtest(Target):
     )
     dependencies = (Dist,)
 
+class Syntaxcheck(Target):
+    """Run syntax checks."""
+    def run(self):
+        from pyerector.api import Subcommand, Error
+        cmd = Subcommand(
+            ('pylint',
+             '--disable=locally-disabled',
+             V['basedir'] + Path('pyerector')
+            )
+        )
+        if cmd.returncode < 0:
+            raise Error('Syntaxcheck', '%s signal %d raised' %
+                            (str(self), abs(cmd.returncode)))
+        elif cmd.returncode == 1:
+            raise Error('Syntaxcheck', 'fatal check found')
+        elif cmd.returncode == 2:
+            raise Error('Syntaxcheck', 'error check found')
+
 Testonly.tasks = (Unittest,)
 Test.dependencies = Test.dependencies + (Localtest, Regression)
 Clean.files = ('build', 'dist')

@@ -22,6 +22,7 @@ __all__ = [
 ]
 
 
+# pylint: disable=too-few-public-methods
 class Config(object):
     """Deprecated, but still provide the same interface, but to variables."""
     def __getattr__(self, variable):
@@ -42,6 +43,7 @@ class State(object):
         return self.state
     __nonzero__ = __bool__
 
+    # pylint: disable=invalid-name
     def on(self):
         """Change state to True."""
         self.state = True

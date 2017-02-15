@@ -27,6 +27,7 @@ class Error(Exception):
 # basically reproducing the extract_tb call but with conditionally
 # prepending the class name to the function/method name if the class
 # is a subclass of Target or Task (handled externally)
+# pylint: disable=dangerous-default-value
 def extract_tb(tb, limit=None, last_object=[None], valid_classes=()):
     """Return a list of the traceback objects, just as
 traceback.extract_tb(), but the function/method name would be augmented
