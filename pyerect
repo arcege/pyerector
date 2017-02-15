@@ -12,7 +12,7 @@ distfile = '%s-%s' % (release.product, release.number)
 class PyCopy(Target):
     tasks = (
         CopyTree(srcdir='pyerector',
-                 dstdir=Path('build', distfile, 'pyerector'),
+                 dstdir=Path('build', distfile),
                  exclude=['test']
         ),
         Copy('release.py', 'setup.py',

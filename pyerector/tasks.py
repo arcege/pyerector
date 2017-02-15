@@ -173,23 +173,7 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
             raise OSError(2, "No such file or directory: " + srcdir)
         elif not srcdir.isdir:
             raise OSError(20, "Not a directory: " + srcdir)
-        copy_t = Copy(noglob=True, exclude=excludes)
-        mkdir_t = Mkdir()
-        dirs = [srcdir]
-        #print 'CopyTree.dirs =', dirs
-        while dirs:
-            tdir = dirs.pop(0)
-            if not excludes.match(tdir):
-                mkdir_t.mkdir(dstdir + (tdir - srcdir))
-                for fname in tdir:
-                    self.logger.debug('fname = %s', fname)
-                    if not excludes.match(fname):
-                        dpath = dstdir + (fname - srcdir)
-                        self.logger.debug('dpath = %s', dpath)
-                        if fname.isdir:
-                            dirs.append(fname)
-                        else:
-                            copy_t(fname, dest=dpath)
+        Copy(srcdir, dest=dstdir, noglob=True, exclude=excludes, fileonly=True, recurse=True)()
 
 
 class Download(Task):
