@@ -14,11 +14,15 @@ __all__ = [
 ]
 
 
+# pylint: disable=too-many-public-methods
 class Path(object):
     """Represent a file system pathname, with standard posix properties
 and operations."""
 
-    class TYPE:
+    # pylint: disable=no-init
+    # pylint: disable=too-few-public-methods
+    class TYPE(object):
+        """Types of types of file objects that Path represent."""
         DIR = 'dir'
         FILE = 'file'
         LINK = 'link'
@@ -32,23 +36,24 @@ and operations."""
         from .variables import Variable
         comps = []
         self.has_variable = False
-        for c in components:
-            if isinstance(c, Path):
-                if c.isabs:
-                    comps[:] = c.components[:]
+        for citem in components:
+            if isinstance(citem, Path):
+                if citem.isabs:
+                    comps[:] = citem.components[:]
                     continue
                 else:
-                    s = c.components[:]
-            elif isinstance(c, Variable):
-                s = (c,)
+                    subset = citem.components[:]
+            elif isinstance(citem, Variable):
+                subset = (citem,)
                 self.has_variable = True
             else:
-                s = self._normalize(self._split(c))
+                # pylint: disable=redefined-variable-type
+                subset = self._normalize(self._split(citem))
             # handle later as absolute
-            if s and s[0] == '':
-                comps = s[:]
+            if subset and subset[0] == '':
+                comps = subset[:]
             else:
-                comps.extend(s)
+                comps.extend(subset)
         if len(comps) == 0:
             self.components = [os.curdir]
         else:
@@ -58,6 +63,7 @@ and operations."""
     @staticmethod
     def _normalize(components):
         """Handle edge cases like absolute paths, ".." and variables."""
+        import sys
         from .variables import Variable
         initial_slash = (components and components[0] == '')
         #print 'components =', components
@@ -65,30 +71,29 @@ and operations."""
         if components == ['', '']:
             return components
         try:
-            for c in components:
-                if isinstance(c, Variable):
-                    result.append(c)
+            for citem in components:
+                if isinstance(citem, Variable):
+                    result.append(citem)
                     continue
-                elif c in ('', os.curdir):
+                elif citem in ('', os.curdir):
                     continue
-                if c != os.pardir or (not initial_slash and not result) or \
+                if citem != os.pardir or (not initial_slash and not result) or \
                    (result and result[-1] == os.pardir):
-                    result.append(c)
+                    result.append(citem)
                 elif result:
                     result.pop()
         except:
-            t, e, tb = sys.ec_info()
-            getLogger('pyerector.execute').exception(e)
+            getLogger('pyerector.execute').exception(sys.exc_info()[1])
             raise
         else:
             if initial_slash and result == []:
                 result.extend(['', ''])
             elif initial_slash:
                 result.insert(0, '')
-            #getLogger('pyerector.execute').debug('comp = %s; result = %s', components, result)
         return result
 
     def refresh(self):
+        """Update the stat cache."""
         self.__getstat(self._join())
 
     def __str__(self):
@@ -98,19 +103,21 @@ and operations."""
         return '<Path (%s) %s>' % (self.type, self.value)
 
     def _join(self):
-        """Return a normalized pathname string, evaluating variables and joining subpaths."""
+        """Return a normalized pathname string,
+evaluating variables and joining subpaths."""
         def evalvars(i):
+            """Evaluate a variable, recursively."""
             from .variables import Variable
             while isinstance(i, Variable):
                 i = i.value
             return i
-        d = []
+        components = []
         for i in [evalvars(i) for i in self.components]:
             if isinstance(i, Path):
-                d.extend(i.components)
+                components.extend(i.components)
             else:
-                d.append(i)
-        value = self.sep.join(d)
+                components.append(i)
+        value = self.sep.join(components)
         assert isinstance(value, str)
         return os.path.normpath(value)
 
@@ -122,8 +129,10 @@ and operations."""
     def __getstat(self, fname):
         """Load the stat data from the file (inode)."""
         try:
+            # pylint: disable=attribute-defined-outside-init
             self.stat = os.lstat(fname)
         except OSError:
+            # pylint: disable=attribute-defined-outside-init
             self.stat = None
 
     @property
@@ -278,10 +287,12 @@ if a regular file or link, return data size, if no entry, return 0."""
         return Path(os.path.relpath(str(other), str(self)))
 
     def addext(self, ext):
-        """Append an extension to the basename, returning a new Path instance."""
+        """Append an extension to the basename,
+returning a new Path instance."""
         return self.__class__(self.value + ext)
     def delext(self):
-        """Remove the extension of the basename, returning a new Path instance."""
+        """Remove the extension of the basename,
+returning a new Path instance."""
         return self.__class__(os.path.splitext(self.value)[0])
 
     def open(self, mode=None):
@@ -292,9 +303,9 @@ create it, if it is not a file, return an exception."""
                 mode = 'w'
             elif mode.startswith('r'):
                 raise TypeError('expecting file')
-            f = open(self.value, mode)
+            thisfile = open(self.value, mode)
             self.refresh()
-            return f
+            return thisfile
         elif self.isfile:
             if mode is None:
                 mode = 'r'
@@ -316,16 +327,19 @@ create it, if it is not a file, return an exception."""
             return False
 
     def glob(self, patt, ignorecase=False):
+        """Return sequence of files that match."""
         return [fn for fn in self if fn.match(patt, ignorecase=ignorecase)]
 
     # FS operations
 
     def chmod(self, mode):
+        """Change the permissions."""
         if self.exists:
             os.chmod(self.value, mode)
             self.refresh()
 
     def remove(self):
+        """Remove the file or directory."""
         if not self.exists:
             return
         elif self.isdir:
@@ -337,6 +351,7 @@ create it, if it is not a file, return an exception."""
         self.refresh()
 
     def rename(self, other):
+        """Rename the file. Return other as a Path."""
         if not self.exists:
             raise TypeError('expecting file')
         if isinstance(other, str):
@@ -347,6 +362,7 @@ create it, if it is not a file, return an exception."""
         return other
 
     def utime(self, atime, mtime):
+        """Set atime and mtime."""
         if not self.exists:
             raise TypeError('expecting file')
         os.utime(self.value, (atime, mtime))
@@ -355,17 +371,21 @@ create it, if it is not a file, return an exception."""
     # file operations
 
     def copy(self, dest):
+        """Copy contents of a file."""
         from shutil import copy2
-        getLogger('pyerector.execute').debug('%s.copy(%s)', repr(self), repr(dest))
+        getLogger('pyerector.execute').debug('%s.copy(%s)',
+                                             repr(self), repr(dest))
         copy2(self.value, dest.value)
 
     # directory operations
 
     @classmethod
     def cwd(cls):
+        """Return the process's current directory."""
         return cls(os.path.abspath(os.curdir))
 
     def chdir(self):
+        """Change the process to the directory.  Raise TypeError or OSError."""
         if not self.exists:
             import errno
             raise OSError(errno.ENOENT, self.value)
@@ -376,6 +396,7 @@ create it, if it is not a file, return an exception."""
         self.refresh()
 
     def mkdir(self):
+        """Create a directory or raise TypeError."""
         logger = getLogger('pyerector.execute')
         if not self.exists:
             # recurse upward
@@ -394,12 +415,14 @@ create it, if it is not a file, return an exception."""
     # symlink operations
 
     def readlink(self):
+        """Return the value of a symbolic link, or raise TypeError."""
         if self.islink:
             return Path(os.readlink(self.value))
         else:
             raise TypeError('expecting a symlink')
 
     def makelink(self, value):
+        """Create a symbolic link, aka ln -s. Raise TypeError on error."""
         if isinstance(value, Path):
             value = value.value
         if not self.exists:
@@ -413,6 +436,7 @@ create it, if it is not a file, return an exception."""
 
     # fifo/pipe operations
     def makepipe(self, mode=None):
+        """Generate a fifo pipe file."""
         if mode is None:
             mode = int('0666', 8)
         if not self.exists:

@@ -45,11 +45,11 @@ attribute is None, use that subclass as default."""
         default = None
         klasses = cls.registered()
         while srcdir.value not in ('', os.sep, os.curdir):
-            for c in klasses:
-                if c.directory is None:
-                    default = c
-                elif (srcdir + c.directory).isdir:
-                    return c
+            for icls in klasses:
+                if icls.directory is None:
+                    default = icls
+                elif (srcdir + icls.directory).isdir:
+                    return icls
             srcdir = srcdir.dirname
         return default
 

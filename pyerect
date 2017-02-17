@@ -154,6 +154,7 @@ class Syntaxcheck(Target):
         cmd = Subcommand(
             ('pylint',
              '--disable=locally-disabled',
+             '--ignore=test',
              V['basedir'] + Path('pyerector')
             )
         )

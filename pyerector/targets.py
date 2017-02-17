@@ -4,10 +4,9 @@
 
 from .register import registry
 from .base import Target, Iterator
-from .tasks import Mkdir, Remove, Unittest
+from .tasks import Mkdir, Remove
 from .iterators import StaticIterator
 from .variables import V
-from .vcs import VCS
 
 __all__ = [
     'All',
@@ -55,9 +54,10 @@ VariableCache."""
                                firstline(obj.__doc__))
             )
         for var in sorted(V):
-            self.logger.info('var %s = "%s"' % (var.name, var.value))
+            self.logger.info('var %s = "%s"', var.name, var.value)
 
 
+# pylint: disable=too-few-public-methods
 class Clean(Target):
     """Clean directories and files used by the build.
 Tasks: internal [Remove(files)]

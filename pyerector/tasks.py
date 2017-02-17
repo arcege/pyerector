@@ -10,17 +10,17 @@ import sys
 from .exception import Error
 from .args import Arguments
 from .path import Path
-from .helper import Exclusions, Subcommand, DISPLAY
+from .helper import Subcommand, DISPLAY
 from .config import noTimer
 from .base import Initer, Task, Mapper, Iterator
-from .iterators import BasenameMapper, IdentityMapper, FileMapper, \
-                       FileIterator, StaticIterator
+from .iterators import FileMapper, FileIterator, StaticIterator
 from .variables import V, VariableSet
 
 # Python 3.x removed the execfile function
 try:
     execfile
 except NameError:
+    # pylint: disable=redefined-builtin
     from .py3.execfile import execfile
 
 __all__ = [
@@ -43,12 +43,13 @@ Chmod(*files, mode=0666)"""
     def run(self):
         """Change the permissions on the files."""
         files = self.get_files()
+        # pylint: disable=no-member
         mode = self.args.mode
         for fname in files:
             self.asserttype(fname, (Path, str), 'files')
             self.logger.info('chmod(%s, %o)', fname, mode)
-            p = self.join(fname)
-            p.chmod(mode)
+            path = self.join(fname)
+            path.chmod(mode)
             if isinstance(fname, Path):
                 fname.refresh()
 
@@ -58,17 +59,21 @@ class Container(Task):
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
         Arguments.Keyword('name', types=(Path, str), noNone=True),
-        Arguments.Keyword('root', types=(Path, str), default=os.curdir, cast=Path),
+        Arguments.Keyword('root', types=(Path, str), default=os.curdir,
+                          cast=Path),
     ) + Initer.basearguments
 
     def run(self):
         """Gather filenames and put them into the container."""
         files = self.get_files()
+        # pylint: disable=no-member
         name = self.args.name
+        # pylint: disable=no-member
         root = self.args.root
+        # pylint: disable=no-member
         excludes = self.args.exclude
         self.logger.debug('Container.run(name=%s, root=%s, excludes=%s)',
-                repr(name), repr(root), repr(excludes))
+                          repr(name), repr(root), repr(excludes))
         self.preop(name, root, excludes)
         toadd = set()
         queue = list(files)
@@ -95,6 +100,8 @@ class Container(Task):
 
     @staticmethod
     def _check_path(fname, toadd, excludes, queue):
+        """Ignore excluded files, add directories to the queue, or to the
+toadd."""
         if excludes.match(fname):  # if true, ignore
             pass
         elif fname.islink or fname.isfile:
@@ -128,10 +135,13 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
     def run(self):
         """Copy files to a destination directory."""
         self.logger.debug('Copy.run: args=%s', self.args)
+        # pylint: disable=no-member
         dest = self.args.dest
         files = self.get_files()
+        # pylint: disable=no-member
         excludes = self.args.exclude
-        self.logger.debug('Copy.run: files=%s; dest=%s', repr(files), repr(dest))
+        self.logger.debug('Copy.run: files=%s; dest=%s',
+                          repr(files), repr(dest))
         fmap = FileMapper(files, destdir=dest, exclude=excludes)
         self.logger.debug('Copy.fmap = %s', vars(fmap))
         for (sname, dname) in fmap:
@@ -166,14 +176,17 @@ CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""
 
     def run(self):
         """Copy a tree to a destination."""
+        # pylint: disable=no-member
         srcdir = self.args.srcdir
+        # pylint: disable=no-member
         dstdir = self.args.dstdir
         excludes = self.args.exclude
         if not srcdir.exists:
             raise OSError(2, "No such file or directory: " + srcdir)
         elif not srcdir.isdir:
             raise OSError(20, "Not a directory: " + srcdir)
-        Copy(srcdir, dest=dstdir, noglob=True, exclude=excludes, fileonly=True, recurse=True)()
+        Copy(srcdir, dest=dstdir, noglob=True, exclude=excludes,
+             fileonly=True, recurse=True)()
 
 
 class Download(Task):
@@ -185,7 +198,6 @@ Download(*urls, destdir=DIR)"""
     def run(self):
         # this is unfinished, it requires a more generic Mapper class
         # than one is available now
-        raise NotImplementedError
         """
         import urllib
         from posixpath import basename
@@ -207,12 +219,14 @@ Download(*urls, destdir=DIR)"""
             urls = FileMapper(urls, destdir=dest)
         for url, fname in urls:
             path = urllib.splithost(urllib.splittype(url)[1])[1]
-            self.logger.debug('Download.path=%s; Download.fname=%s', path, fname)
+            self.logger.debug('Download.path=%s; Download.fname=%s',
+                              path, fname)
             try:
                 urllib.urlretrieve(url, filename=fname)
             except Exception, e:
                 raise Error(str(self), '%s: unable to retrieve %s' % (e, url))
         """
+        raise NotImplementedError
 
 
 class Echo(Task):
@@ -256,6 +270,7 @@ def Decode(data):
 
     def run(self):
         """Encode a string."""
+        # pylint: disable=no-member
         V(self.args.dest).value = self.encode(V(self.args.source).value)
 
     @staticmethod
@@ -272,20 +287,24 @@ For example, generates foobar.txt.md5 and foobar.txt.sha1 for the
 contents of foobar.txt.  By default, generates for both md5 and sha1.
 constructor arguments:
 HashGen(*files, hashs=('md5', 'sha1'))"""
+    # pylint: disable=no-self-argument
     def cast(value):
+        """Cast appropriately: a sequence to a tuple, otherwise as a str."""
         if isinstance(value, (list, tuple, set)):
             return tuple(value)
         else:
             return str(value)
     arguments = Arguments(
         Arguments.List('files'),
-        Arguments.Keyword('hashs', types=(tuple, str), default=('md5', 'sha1'), cast=cast),
+        Arguments.Keyword('hashs', types=(tuple, str), default=('md5', 'sha1'),
+                          cast=cast),
     )
 
     def run(self):
         """Generate files with checksums inside."""
         from hashlib import md5, sha1
         files = self.get_files()
+        # pylint: disable=no-member
         hashs = self.args.hashs
         self.logger.debug('files = %s; hashs = %s', files, hashs)
         fmaps = []
@@ -302,12 +321,13 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
                 hashval = hashfunc()
                 sname = self.join(sname)
                 dname = self.join(dname)
-                self.logger.debug('HashGen.run: checkpair(%s, %s) = %s', sname, dname, fmap.checkpair(sname, dname))
+                self.logger.debug('HashGen.run: checkpair(%s, %s) = %s',
+                                  sname, dname, fmap.checkpair(sname, dname))
                 if sname.isfile and not fmap.checkpair(sname, dname):
                     hashval.update(sname.open('rb').read())
                     self.logger.debug('writing %s', dname)
                     dname.open('wt').write(
-                            hashval.hexdigest() + '\n'
+                        hashval.hexdigest() + '\n'
                     )
 
 
@@ -361,7 +381,7 @@ Java(jar=<JAR>, java_home=<$JAVA_HOME>, classpath=(), properties=[])"""
         if proc.returncode:
             raise Error(self, '%s failed with returncode %d' %
                         (self.__class__.__name__.lower(), proc.returncode)
-                        )
+                       )
 
 
 class Mkdir(Task):
@@ -413,6 +433,7 @@ PyCompile(*files, dest=<DIR>, version='2')"""
         """Compile Python source files."""
         import py_compile
         fileset = self.get_files()
+        # pylint: disable=no-member
         version = self.args.version
         if version[:1] == sys.version[:1]:  # compile inline
             for fname in fileset:
@@ -427,10 +448,11 @@ PyCompile(*files, dest=<DIR>, version='2')"""
                 cmd = 'python3'
             else:
                 cmd = 'python'
-            for s in fileset:
-                self.compile_file_ext(self.join(s), cmd)
+            for item in fileset:
+                self.compile_file_ext(self.join(item), cmd)
 
     def compile_file_ext(self, fname, python):
+        """Compile a file or files in a directory."""
         if fname.isdir:
             files = tuple(fn for fn in fname if fn.isfile)
             subdirs = tuple(fn for fn in fname if fn.isdir)
@@ -438,30 +460,31 @@ PyCompile(*files, dest=<DIR>, version='2')"""
             files = (fname,)
             subdirs = ()
         cmd = (python, '-c', 'import sys; from py_compile import compile; ' +
-                '[compile(s) for s in sys.argv[1:]]'
-        ) + files
+               '[compile(s) for s in sys.argv[1:]]'
+              ) + files
         try:
             proc = Subcommand(cmd)
         except Error:
-            ext = sys.exc_info()[1]
+            exc = sys.exc_info()[1]
             if exc.args[0] == 'ENOENT':
                 self.logger.error('%s: Error with %s: %s',
-                    self.__class__.__name__, cmd, exc.args[1]
-                )
+                                  self.__class__.__name__, cmd, exc.args[1])
             else:
                 raise
         else:
             if proc.returncode != 0:
                 raise Error('count not compile files with %s', cmd)
-        for fn in subdirs:
-            self.compile_file_ext(fn, python)
+        for fname in subdirs:
+            self.compile_file_ext(fname, python)
 
     def compile_file(self, fname):
+        """Compile (pyc) a file."""
         self.logger.debug('py_compile.compile(%s)', fname)
         import py_compile
         py_compile.compile(fname.value)
 
     def compile_dir(self, dirname):
+        """Recurse through the directory tree."""
         for fname in dirname:
             if fname.isdir:
                 self.compile_dir(fname)
@@ -481,12 +504,6 @@ Remove(*files)"""
     def run(self):
         """Remove a file or directory tree."""
         files = self.get_files()
-        if isinstance(files, Iterator):
-            pass
-        elif len(files) == 1 and isinstance(files, Iterator):
-            files = files[0]
-        elif isinstance(files, (tuple, list)):
-            files = FileIterator(*tuple(files), noglob=noglob, exclude=excludes)
         for name in files:
             self.asserttype(name, (Path, str), 'files')
             fname = self.join(name)
@@ -507,19 +524,19 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
     def run(self):
         """Replace the shebang string with a specific pathname."""
         self.logger.info('starting Shebang')
+        # pylint: disable=no-member
         program = self.args.program
         srcs = self.get_files()
+        # pylint: disable=no-member
         dest = self.args.dest
         try:
             from io import BytesIO as StringIO
         except ImportError:
             from StringIO import StringIO
-        for fname in srcs:
-            if dest is None:
-                outfname = infname
-            else:
-                outfname = Path(dest, fname.basename)
-            inf = infile.open()
+        if dest is None:
+            dest = Path()
+        for sname, dname in FileMapper(srcs, destdir=dest):
+            inf = sname.open()
             outf = StringIO()
             first = inf.readline()
             if first.startswith(self.token):
@@ -534,7 +551,7 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
             shutil.copyfileobj(inf, outf)
             inf.close()
             outf.seek(0)
-            inf = outfname.open('w')
+            inf = dname.open('w')
             shutil.copyfileobj(outf, inf)
 
 
@@ -552,23 +569,28 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
 
     def run(self):
         """Spawn a command."""
+        # pylint: disable=no-member
         cmd = self.args.cmd
+        # pylint: disable=no-member
         infile = self.args.infile
+        # pylint: disable=no-member
         outfile = self.args.outfile
+        # pylint: disable=no-member
         errfile = self.args.errfile
+        # pylint: disable=no-member
         env = self.args.env
         infile = infile and self.join(infile) or None
         outfile = outfile and self.join(outfile) or None
         errfile = errfile and self.join(errfile) or None
         proc = Subcommand(cmd, env=env,
                           stdin=infile, stdout=outfile, stderr=errfile,
-                          )
+                         )
         if proc.returncode < 0:
             raise Error('Subcommand', '%s signal %d raised' %
-                            (str(self), abs(proc.returncode)))
+                        (str(self), abs(proc.returncode)))
         elif proc.returncode > 0:
             raise Error('Subcommand', '%s returned error = %d' %
-                            (str(self), proc.returncode))
+                        (str(self), proc.returncode))
 
 class SshEngine(Task):
     """Superclass for Scp and Ssh since there is the same basic logic."""
@@ -578,6 +600,7 @@ class SshEngine(Task):
     identfile = None
     @property
     def remhost(self):
+        """Return a user@host representation."""
         ruser = ''
         host = self.get_kwarg('host', str, noNone=True)
         user = self.get_kwarg('user', str)
@@ -590,6 +613,7 @@ class SshEngine(Task):
         else:
             return host
     def gencmd(self):
+        """Return a tuple with the command and arguments."""
         idfile = self.get_kwarg('identfile', (Path, str))
         if idfile:
             identfile = ('-i', str(idfile))
@@ -607,6 +631,7 @@ class SshEngine(Task):
             '-o', 'StrictHostkeyChecking=no',
         ) + identfile
     def _run(self, cmd):
+        """Backend method to call scp/scp."""
         self.logger.debug('ssh.cmd = %s', cmd)
         proc = Subcommand(cmd,
                           stdout=Subcommand.PIPE,
@@ -626,11 +651,13 @@ Scp(*files, dest=<dir>, host=<hostname>, user=<username>, identfile=<filename>,
     files = ()
     dest = None
     recurse = False
-    down=True
+    down = True
 
     def remfile(self, filename):
+        """Return the ssh/scp representation of a remote file."""
         return '%s:%s' % (self.remhost, filename)
     def lclfile(self, filename):
+        """Return the ssh/scp representation of a local file."""
         return self.join(filename)
     def run(self):
         recurse = self.get_kwarg('recurse', bool)
@@ -673,16 +700,21 @@ SubPyErector(*targets, wdir=None, prog='pyerect', env={})
 Adds PYERECTOR_PREFIX environment variable."""
     arguments = Arguments(
         Arguments.List('targets'),
-        Arguments.Keyword('prog', types=(Path, str), default=Path('pyerect'), cast=Path),
+        Arguments.Keyword('prog', types=(Path, str), default=Path('pyerect'),
+                          cast=Path),
         Arguments.Keyword('wdir', types=(Path, str), cast=Path),
         Arguments.Keyword('env', types=(tuple, dict), default={}, cast=dict),
     )
 
     def run(self):
         """Call a PyErector program in a different directory."""
+        # pylint: disable=no-member
         targets = self.args.targets
+        # pylint: disable=no-member
         prog = self.args.prog
+        # pylint: disable=no-member
         wdir = self.args.wdir
+        # pylint: disable=no-member
         env = self.args.env
         # we explicitly add './' to prevent searching PATH
         options = []
@@ -704,13 +736,13 @@ Adds PYERECTOR_PREFIX environment variable."""
             env[evname] = '%s: %s' % (environ[evname], str(nevname))
         else:
             env[evname] = str(nevname)
-        rc = Subcommand(cmd, wdir=wdir, env=env, wait=True)
-        if rc.returncode < 0:
+        proc = Subcommand(cmd, wdir=wdir, env=env, wait=True)
+        if proc.returncode < 0:
             raise Error('SubPyErector', '%s signal %d raised' %
-                            (str(self), abs(rc.returncode)))
-        elif rc.returncode > 0:
+                        (str(self), abs(proc.returncode)))
+        elif proc.returncode > 0:
             raise Error('SubPyErector', '%s returned error = %d' %
-                            (str(self), rc.returncode))
+                        (str(self), proc.returncode))
 
 class Symlink(Task):
     """Generate a symbolic link.
@@ -724,7 +756,9 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
 
     def run(self):
         files = self.get_files()
+        # pylint: disable=no-member
         dest = self.args.dest
+        # pylint: disable=no-member
         excludes = self.args.excludes
         if len(files) == 1 and dest is None and isinstance(files[0], Mapper):
             fmap = files[0]
@@ -736,7 +770,8 @@ Symlink(*files, dest=<dest>, exclude=<defaults>)"""
         else:
             raise Error('must supply dest to %s' % self)
         for (sname, dname) in fmap:
-            self.logger.debug('symlink.sname=%s; symlink.dname=%s', sname, dname)
+            self.logger.debug('symlink.sname=%s; symlink.dname=%s',
+                              sname, dname)
             srcfile = self.join(sname)
             dstfile = self.join(dname)
             if not excludes.match(sname):
@@ -786,7 +821,9 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
     def run(self):
         """Replace tokens found in tokenmap with their associated values."""
         files = self.get_files()
+        # pylint: disable=no-member
         dest = self.args.dest
+        # pylint: disable=no-member
         tokenmap = self.args.tokenmap
         self.update_tokenmap()
         import re
@@ -802,18 +839,17 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
             return string.replace('\\', r'\\').replace('.', r'\.')\
                          .replace('$', r'\$').replace('(', r'\(')\
                          .replace(')', r'\)').replace('|', r'\|')
-        patt = '|'.join(
-            [quote(k) for k in tokenmap]
+        tokens = re.compile(
+            r'(%s)' % '|'.join([quote(k) for k in tokenmap]),
+            re.MULTILINE
         )
-        tokens = re.compile(r'(%s)' % patt, re.MULTILINE)
-        self.logger.debug('patt = %s', str(tokens.pattern))
-        mapper = FileMapper(files, destdir=dest,
-                            iteratorclass=StaticIterator)
-        for (sname, dname) in mapper:
+        self.logger.debug('Tokenize.patt = %s', str(tokens.pattern))
+        for (sname, dname) in FileMapper(files, destdir=dest,
+                                         iteratorClass=StaticIterator):
             try:
                 realcontents = self.join(sname).open('rt').read()
-            except TypeError, e:
-                raise Error('%s: %s' % (sname, e))
+            except TypeError:
+                raise Error('%s: %s' % (sname, sys.exc_info()[1]))
             alteredcontents = tokens.sub(repltoken, realcontents)
             if alteredcontents != realcontents:
                 self.join(dname).open('wt').write(alteredcontents)
@@ -831,9 +867,9 @@ Touch(*files, dest=None)"""
     )
 
     def run(self):
-        from .helper import normjoin
         """Create files, unless they already exist."""
         files = self.get_files()
+        # pylint: disable=no-member
         dest = self.args.dest
         for fname in files:
             #self.asserttype(fname, (Path, str), 'files')
@@ -854,6 +890,7 @@ Unittest(*modules, path=())"""
     def run(self):
         """Call the 'unit-test.py' script in the package directory with
 serialized parameters as the first argument string."""
+        # pylint: disable=no-member
         modules = self.args.modules
         bdir = Path(__file__).dirname
         sfile = bdir + 'unit-test.py'
@@ -883,25 +920,32 @@ class Uncontainer(Task):
     def run(self):
         """Extract members from the container."""
         files = self.get_files()
+        # pylint: disable=no-member
         name = self.args.name
+        # pylint: disable=no-member
         root = self.args.root
         try:
+            # pylint: disable=assignment-from-none
             contfile = self.get_file(name)
         except IOError:
             raise ValueError('no such file or directory: %s' % name)
         else:
+            # pylint: disable=assignment-from-none
             fileset = self.retrieve_members(contfile, files)
             self.extract_members(contfile, fileset, root)
             contfile.close()
 
+    # pylint: disable=unused-argument,no-self-use
     def get_file(self, name):
         """To be overridden."""
         return None
 
+    # pylint: disable=unused-argument
     def extract_members(self, contfile, fileset, root):
         """To be overridden."""
 
     @staticmethod
+    # pylint: disable=unused-argument
     def retrieve_members(contfile, files):
         """To be overridden."""
         return None
@@ -973,7 +1017,7 @@ Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
         from zipfile import ZipFile
         try:
             self.logger.debug('Zip.contain(name=%s, root=%s, toadd=%s)',
-                    repr(name), repr(root), repr(toadd))
+                              repr(name), repr(root), repr(toadd))
             zfile = ZipFile(str(self.join(name)), 'w')
         except IOError:
             raise ValueError('no such file or directory: %s' % name)
@@ -992,9 +1036,9 @@ Egg(*files, name=<eggfilename>, root=os.curdir, exclude=(defaults))"""
         """Generate a manifest structure."""
         fname = Path(name).basename
         fname.delext()
-        p = str(fname).find('-')
-        if p != -1:
-            fname = Path(str(fname)[:p])
+        pos = str(fname).find('-')
+        if pos != -1:
+            fname = Path(str(fname)[:pos])
         eggdir = root + 'EGG-INFO'
         try:
             eggdir.mkdir()
@@ -1008,28 +1052,34 @@ Egg(*files, name=<eggfilename>, root=os.curdir, exclude=(defaults))"""
 
     @staticmethod
     def add_path(seq, path):
+        """Add a path if not in the sequence."""
         if path not in seq:
             seq.append(path)
 
     def do_file_dummy(self, rootdir, toadd, fname):
-        fn = rootdir + fname
-        fn.open('wt').write(os.linesep)
-        self.add_path(toadd, fn)
+        """Create an empty file."""
+        fname = rootdir + fname
+        fname.open('wt').write(os.linesep)
+        self.add_path(toadd, fname)
     def do_file_top_level(self, rootdir, toadd, name):
-        fn = rootdir + 'top_level.txt'
-        fn.open('wt').write(str(name) + os.linesep)
-        self.add_path(toadd, fn)
+        """Generate top_level.txt file."""
+        fname = rootdir + 'top_level.txt'
+        fname.open('wt').write(str(name) + os.linesep)
+        self.add_path(toadd, fname)
     def do_file_sources(self, rootdir, toadd, root):
-        fn = rootdir + 'SOURCES.txt'
-        with fn.open('wt') as f:
-            for s in sorted([s - root for s in toadd]):
-                if s.basename != 'EGG-INFO':
-                    f.write(str(s) + os.linesep)
-        self.add_path(toadd, fn)
+        """Generate SOURCES.txt files."""
+        fname = rootdir + 'SOURCES.txt'
+        with fname.open('wt') as fobj:
+            for sfname in sorted([s - root for s in toadd]):
+                if sfname.basename != 'EGG-INFO':
+                    fobj.write(str(sfname) + os.linesep)
+        self.add_path(toadd, fname)
+    # pylint: disable=unused-argument
     def do_file_pkginfo(self, rootdir, toadd, root):
-        fn = root + 'setup.py'
-        if fn.exists:
-            setupvalue = self.get_setup_py(fn)
+        """Generate the PKG-INFO file."""
+        fname = root + 'setup.py'
+        if fname.exists:
+            setupvalue = self.get_setup_py(fname)
         else:
             raise Error('Egg', 'unable to find a setup.py file')
         pkg_data = {
@@ -1065,8 +1115,8 @@ Platform: UNKNOWN
         fname.open('wt').write(pkg_info)
         if fname not in toadd:
             toadd.append(fname)
-        for fn in ('depenency_links.txt', 'zip-safe'):
-            fname = eggdir + fn
+        for fname in ('depenency_links.txt', 'zip-safe'):
+            fname = eggdir + fname
             fname.open('wt').write(os.linesep)
             if fname not in toadd:
                 toadd.append(fname)
@@ -1078,7 +1128,7 @@ Platform: UNKNOWN
         fname.open('wt').write(
             os.linesep.join(sorted(
                 [str(s - root) for s in toadd
-                    if s.basename != 'EGG-INFO']
+                 if s.basename != 'EGG-INFO']
             )) + os.linesep
         )
         if fname not in toadd:
@@ -1104,14 +1154,14 @@ def setup(**kwargs):
                 else:
                     backups[modname] = None
                 mod = sys.modules[modname] = imp.new_module(modname)
+                # pylint: disable=exec-used
                 exec(code, mod.__dict__, mod.__dict__)
             mod = {'__builtins__': __builtins__, 'myvalue': None}
             execfile(str(filename), mod, mod)
             for modname in ('setuptools', 'distutils'):
                 if sys.modules[modname].myvalue is not None:
                     return sys.modules[modname].myvalue
-            else:
-                return None
+            return None
         finally:
             for modname in backups:
                 if backups[modname] is None:

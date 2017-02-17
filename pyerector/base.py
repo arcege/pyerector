@@ -14,12 +14,14 @@ import threading
 try:
     reduce
 except NameError:
+    # pylint: disable=redefined-builtin
     from functools import reduce
 if version[0] > '2':  # python 3+
+    # pylint: disable=import-error,no-name-in-module
     from .py3.base import Base
 else:
     from .py2.base import Base
-from .helper import Exclusions, normjoin, Timer, DISPLAY
+from .helper import Exclusions, Timer, DISPLAY
 from .args import Arguments
 from .path import Path
 from .execute import get_current_stack, PyThread
@@ -49,7 +51,8 @@ handling.
         Arguments.Keyword('fileonly', default=True, types=bool),
         Arguments.Exclusions('exclude'),
     )
-    # the arguments attribute should be set by Tasks subclasses, not in the ancesters
+    # the arguments attribute should be set by Tasks subclasses,
+    # not in the ancesters
     pattern = None
     noglob = False
     recurse = False
@@ -67,11 +70,9 @@ handling.
         else:
             del kwargs['basedir']
         try:
-            curdir = kwargs['curdir']
-        except KeyError:
-            curdir = os.curdir
-        else:
             del kwargs['curdir']
+        except KeyError:
+            pass
         self.has_arguments = (
             hasattr(self, 'arguments') and isinstance(self.arguments, Arguments)
         )
@@ -87,6 +88,7 @@ handling.
         if basedir is not None:
             V['basedir'] = Path(basedir)
 
+    # pylint: disable=too-many-branches
     def get_files(self, files=None, arg='files'):
         """Return an Iterator of either a given sequence or the "files"
 member.  Iterator attributes define in the class will be propagated to
@@ -96,16 +98,26 @@ the Iterator instance.
         if self.has_arguments:
             if files is None:
                 files = self.args[arg]
-            try: noglob = self.args.noglob
-            except: noglob = False
-            try: recurse = self.args.recurse
-            except: recurse = False
-            try: fileonly = self.args.fileonly
-            except: fileonly = True
-            try: pattern = self.args.pattern
-            except: pattern = None
-            try: exclude = self.args.exclude
-            except: exclude = Exclusions()
+            try:
+                noglob = self.args.noglob
+            except AttributeError:
+                noglob = False
+            try:
+                recurse = self.args.recurse
+            except AttributeError:
+                recurse = False
+            try:
+                fileonly = self.args.fileonly
+            except AttributeError:
+                fileonly = True
+            try:
+                pattern = self.args.pattern
+            except AttributeError:
+                pattern = None
+            try:
+                exclude = self.args.exclude
+            except AttributeError:
+                exclude = Exclusions()
         else:
             if files is None:
                 try:
@@ -120,6 +132,7 @@ the Iterator instance.
             if not isinstance(exclude, Exclusions):
                 exclude = Exclusions(exclude)
         # import here to avoid recursive references
+        # pylint: disable=cyclic-import
         from .iterators import FileIterator
         fset = FileIterator(noglob=noglob, recurse=recurse,
                             fileonly=fileonly, pattern=pattern,
@@ -140,7 +153,8 @@ the Iterator instance.
 
     def join(self, *path):
         """Normjoin the basedir and the path."""
-        self.logger.debug('%s.join(V("basedir"[%s]), *%s)', self, V('basedir'), path)
+        self.logger.debug('%s.join(V("basedir"[%s]), *%s)',
+                          self, V('basedir'), path)
         return Path(V['basedir'], *path)
 
     def asserttype(self, value, typeval, valname):
@@ -238,12 +252,14 @@ normal (using getLogger('pyerector').exception()).
     def been_called(self):
         """Return if the Target has been called already."""
         with self._been_called_lock:  # class member
+            # pylint: disable=protected-access
             return not self.allow_reexec and self.__class__._been_called
 
     @been_called.setter
     def been_called(self, value):
         """Set if the Target has been called."""
         with self._been_called_lock:  # class member
+            # pylint: disable=protected-access
             self.__class__._been_called = value
 
     def __str__(self):
@@ -310,17 +326,11 @@ instances."""
         stack = get_current_stack()
         stack.push(self)  # push me onto the execution stack
         try:
-            # call uptodates
-            if self.uptodates:
-                self.logger.debug('calling %s.uptodates()', self)
-                if self.uptodates():
-                    self.verbose('uptodate.')
-                    return
+            if self.call_uptodates():
+                self.verbose('uptodate.')
+                return
 
-            # call dependencies
-            if self.dependencies:
-                self.logger.debug('calling %s.dependencies()', self)
-                self.dependencies()
+            self.call_dependencies()
 
             # call tasks, and run()
             with timer:
@@ -350,6 +360,19 @@ instances."""
         finally:
             stack.pop()
 
+    def call_uptodates(self):
+        """Run through the uptodates entries."""
+        if self.uptodates:
+            self.logger.debug('calling %s.uptodates()', self)
+            return self.uptodates()
+        return False
+
+    def call_dependencies(self):
+        """Run through the dependencies."""
+        if self.dependencies:
+            self.logger.debug('calling %s.dependencies()', self)
+            self.dependencies()
+
     def run(self):
         """To be overridden."""
 
@@ -377,7 +400,9 @@ run() method is meant to be overridden.
         stack.push(self)  # push me onto the execution stack
         try:
             if self.has_arguments:
-                self.args = self.arguments.process(args, kwargs, existing=self.baseargs)
+                self.args = self.arguments.process(
+                    args, kwargs, existing=self.baseargs
+                )
             else:
                 self.handle_args(args, kwargs)
             if noop:
@@ -415,6 +440,7 @@ run() method is meant to be overridden.
             else:
                 self.args = tuple(args)
         if kwargs:
+            # pylint: disable=attribute-defined-outside-init
             self.kwargs = dict(kwargs)
 
 
@@ -425,8 +451,9 @@ Examples:
  i = Iterator('src', 'test', pattern='*.py')
  j = Iterator('build', pattern='*.py', recurse=True)
  k = Iterator('conf', ['etc/build.properties', 'tmp/dummy'], i, j)
- tuple(k) == ('conf/foo.cfg', 'etc/build.properties', 'tmp/dummy', 'src/foo.py', 'test/testfoo.py',
-              'build/foo.py', 'build/test/testfoo.py')
+ tuple(k) == ('conf/foo.cfg', 'etc/build.properties', 'tmp/dummy',
+              'src/foo.py', 'test/testfoo.py', 'build/foo.py',
+              'build/test/testfoo.py')
 
  i = Iterator('src', pattern='*.py', recurse=True)
  j = Iterator(i, pattern='test*')
@@ -438,8 +465,8 @@ Examples:
         super(Iterator, self).__init__(*path, **kwargs)
         self.pool = None
         self.curset = None
-        exclude = self.get_kwarg('exclude',
-                                 (Exclusions, set, str, tuple, list, type(None))
+        exclude = self.get_kwarg(
+            'exclude', (Exclusions, set, str, tuple, list, type(None))
         )
         if isinstance(exclude, Exclusions):
             self.exclusion = exclude
@@ -447,6 +474,7 @@ Examples:
             self.exclusion = Exclusions(exclude)
         elif isinstance(exclude, str):
             self.exclusion = Exclusions((exclude,))
+        self.path = None
 
     def __repr__(self):
         if hasattr(self, 'args') and isinstance(self.args, tuple):
@@ -457,7 +485,7 @@ Examples:
     def __call__(self):
         """Iterators and Mappers do not get called as Targets, Tasks and
 Sequentials."""
-        raise NotImplemented
+        raise NotImplementedError
 
     def __iter__(self):
         # this is a list so we can modify it later, if necessary
@@ -498,6 +526,7 @@ then prepend the directory's contents to the pool (not the curset).
         return self.post_process_candidate(candidate)
 
     def getnextset(self):
+        """Set state to the next item in the set."""
         if not self.pool:
             self.logger.debug('nothing left')
             raise StopIteration
@@ -508,7 +537,7 @@ then prepend the directory's contents to the pool (not the curset).
         elif isinstance(item, (tuple, list)):
             items = [
                 i for subitems in [self.adjust(i) for i in item]
-                    for i in subitems
+                for i in subitems
             ]
         elif isinstance(item, (Path, str)):
             items = self.adjust(item)
@@ -540,13 +569,20 @@ then prepend the directory's contents to the pool (not the curset).
         self.logger.debug('adding to pool: %s', repr(item))
 
     # text based
+    # pylint: disable=no-self-use
     def post_process_candidate(self, candidate):
+        """Return the candidate. To be overridden."""
         return candidate
 
+    # pylint: disable=no-self-use
     def adjust(self, candidate):
+        """Return a list of the candidate as a Path object.
+To be overridden."""
         return [Path(candidate)]
 
     def check_candidate(self, candidate):
+        """Return true if the candidate matches the pattern or
+if there is no pattern.  To be overridden."""
         pattern = self.get_kwarg('pattern', str)
         if not pattern:
             return True
@@ -576,12 +612,13 @@ This would map each py file in src to a pyc file in build:
         super(Mapper, self).__init__(*files, **kwargs)
         mapper = self.get_kwarg('mapper', (callable, str))
         if mapper is None:  # identity mapper
-            self.mapper_func = lambda x: Path(x)
+            self.mapper_func = Path
         elif callable(mapper):
             self.mapper_func = mapper
         elif isinstance(mapper, str):
+            # pylint: disable=redefined-variable-type
             self.mapper_func = \
-                lambda name, mapstr = mapper: Path(mapstr % {'name': name})
+                lambda name, mapstr=mapper: Path(mapstr % {'name': name})
         else:
             raise TypeError('map must be string or callable', mapper)
 
@@ -601,13 +638,17 @@ This would map each py file in src to a pyc file in build:
             mapped = self.mapper_func(item)
         assert isinstance(mapped, (Path, str)), "mapper must return a str"
         result = self.map(mapped)
-        self.logger.debug('self.map(%s) = %s[%s]', mapped, repr(result), type(result))
+        self.logger.debug(
+            'self.map(%s) = %s[%s]', mapped, repr(result), type(result)
+        )
         mapped = result
-        assert isinstance(mapped, (Path, str)), 'map() must return a str or Path'
+        assert isinstance(mapped, (Path, str)), \
+            'map() must return a str or Path'
         result = destdir + mapped #normjoin(destdir, mapped)
         self.logger.debug('mapper yields (%s, %s)', item, result)
         return item, result
 
+    # pylint: disable=no-self-use
     def map(self, item):
         """Identity routine, one-to-one mapping."""
         if isinstance(item, Path):
@@ -636,6 +677,7 @@ dst is newer, then return True.
         self.logger.debug('%s.checkpair(%s, %s)', self, src, dst)
         return False
 
+    # pylint: disable=no-self-use,unused-argument
     def checktree(self, src, dst):
         """To be overridden."""
         return False
@@ -679,14 +721,14 @@ Otherwise log an exception and raise Abort error.
                 kobj = registry[name]
             except (KeyError, AssertionError):
                 logging.getLogger('pyerector').exception(
-                        'Cannot find %s', name
+                    'Cannot find %s', name
                 )
                 raise Abort
             else:
                 obj = kobj()
         else:
             logging.getLogger('pyerector.execute').exception(
-                    'could not retrieve %s', name
+                'could not retrieve %s', name
             )
             raise Abort
         return obj
@@ -710,7 +752,7 @@ Otherwise log an exception and raise Abort error.
         abortive = False
         for item in self:
             obj = self.retrieve(item)
-            self.logger.debug('Calling %s' % obj)
+            self.logger.debug('Calling %s', obj)
             if obj is None:  # do not process Variable instances
                 continue
             if isinstance(obj, Mapper):
@@ -724,11 +766,10 @@ Otherwise log an exception and raise Abort error.
             else:
                 if abortive and not result:
                     return False
-        else:
-            if abortive:
-                return True
-            else:  # this is just being explicit
-                return
+        if abortive:
+            return True
+        else:  # this is just being explicit
+            return
 
 
 class Parallel(Sequential):
@@ -742,7 +783,6 @@ class Parallel(Sequential):
             obj = self.retrieve(item)
             if obj is None:  # do not process Variable instances
                 continue
-            exgmsg = self.get_exception_message(obj, parent)
             thread = PyThread(
                 name=bname + str(obj),
                 target=obj,

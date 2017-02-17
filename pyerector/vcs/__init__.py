@@ -19,19 +19,20 @@ load them."""
     from sys import modules
     curdir = os.path.dirname(__file__)
     # only get the *.py files
-    names = [os.path.splitext(f)[0] for f in os.listdir(curdir)
-                if f.endswith('.py') and 
-                   f not in ('__init__.py', 'base.py')
+    names = [
+        os.path.splitext(f)[0] for f in os.listdir(curdir)
+        if f.endswith('.py') and
+        f not in ('__init__.py', 'base.py')
     ]
     try:
         from importlib import import_module
-        whereami = modules[__name__]
         for name in names:
             modname = '%s.%s' % (__name__, name)
             import_module(modname)
     except ImportError:
         __import__(__name__, fromlist=names)
 
+# pylint: disable=invalid-name
 def VCS(*args, **kwargs):
     """Determine the type of version control and return information
 about it.

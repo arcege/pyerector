@@ -20,17 +20,18 @@ class Subversion(VCS_Base):
     directory = '.svn'
 
     def find_dotsvn(self):
+        """Find the .svn directory."""
         from ..path import Path
         if isinstance(self.rootdir, Path):
-            dir = self.rootdir.abs
+            # pylint: disable=no-member
+            svndir = self.rootdir.abs
         else:
-            dir = Path(self.rootdir).abs
-        while dir != os.sep and dir != os.curdir:
-            if (dir + '.svn').isdir:
-                return dir
-            dir = dir.dirname
-        else:
-            return None
+            svndir = Path(self.rootdir).abs
+        while svndir != os.sep and svndir != os.curdir:
+            if (svndir + '.svn').isdir:
+                return svndir
+            svndir = svndir.dirname
+        return None
 
     def current_info(self):
         """Retrieve information from the workarea."""
@@ -47,32 +48,53 @@ class Subversion(VCS_Base):
         if proc.returncode == 0:
             for line in svnout.rstrip(os.linesep).split(os.linesep):
                 if line.startswith('Revision: '):
-                    pos = line.split(': ')
-                    Variable('svn.version', pos[1].strip())
+                    self.set_based_on_Revision(line)
                 elif line.startswith('URL: '):
-                    parts = line.split(': ')
-                    posb = parts[1].find('/branches/')
-                    post = parts[1].find('/tags/')
-                    if posb != -1:
-                        posbe = parts[1].find('/', posb+1) + 1
-                        posbn = parts[1].find('/', posbe+1)
-                        if posbn == -1:
-                            Variable('svn.branch', parts[1][posbe:])
-                        else:
-                            Variable('svn.branch', parts[1][posbe:posbn])
-                    elif post != -1:
-                        poste = parts[1].find('/', post+1) + 1
-                        postn = parts[1].find('/', poste+1)
-                        if postn == -1:
-                            Variable('svn.tags', parts[1][poste:])
-                        else:
-                            Variable('svn.tags', parts[1][poste:postn])
+                    self.set_based_on_URL(line)
                 elif line.startswith('Last Changed Author: '):
-                    parts = line.split(': ')
-                    Variable('svn.user', parts[1].strip())
+                    self.set_based_on_Author(line)
                 elif line.startswith('Last Changed Date: '):
-                    parts = line.split(': ')
-                    Variable('svn.date', parts[1].strip())
+                    self.set_based_on_Date(line)
+
+    @staticmethod
+    def set_based_on_Revision(line):
+        """Set the svn.version variable."""
+        pos = line.split(': ')
+        Variable('svn.version', pos[1].strip())
+
+    @staticmethod
+    def set_based_on_URL(line):
+        """Set either the svn.branch or svn.tags variables."""
+        parts = line.split(': ')
+        posb = parts[1].find('/branches/')
+        post = parts[1].find('/tags/')
+        if posb != -1:
+            posbe = parts[1].find('/', posb+1) + 1
+            posbn = parts[1].find('/', posbe+1)
+            if posbn == -1:
+                Variable('svn.branch', parts[1][posbe:])
+            else:
+                Variable('svn.branch', parts[1][posbe:posbn])
+        elif post != -1:
+            poste = parts[1].find('/', post+1) + 1
+            postn = parts[1].find('/', poste+1)
+            if postn == -1:
+                Variable('svn.tags', parts[1][poste:])
+            else:
+                Variable('svn.tags', parts[1][poste:postn])
+
+    @staticmethod
+    def set_based_on_Author(line):
+        """Set the svn.user variable."""
+        parts = line.split(': ')
+        Variable('svn.user', parts[1].strip())
+
+    @staticmethod
+    def set_based_on_Date(line):
+        """Set the svn.date variable."""
+        parts = line.split(': ')
+        Variable('svn.date', parts[1].strip())
+
 
 Subversion.register()
 

@@ -66,6 +66,7 @@ __all__ = [
 ]
 
 
+# pylint: disable=too-foo-public-methods
 class VariableCache(object):
     """Mimic part of the functionality of a dictionary, but keep things
 minimalistic.  And some functionality, like copy(), we don't want."""
@@ -104,7 +105,7 @@ minimalistic.  And some functionality, like copy(), we don't want."""
         if not isinstance(name, Variable):
             name = Variable(name)
         with self.lock:
-            logger = logging.getLogger('pyerector.execute')
+            #logger = logging.getLogger('pyerector.execute')
             # to prevent a really long string, just the first 25 characters
             #s = repr(value)
             #if len(s) > 25:
@@ -136,9 +137,11 @@ class Variable(str):
     """Create a persistent string with a mutable value."""
     cache = V
 
+    # pylint: disable=unused-argument
     def __new__(cls, name, value=None):
         return super(Variable, cls).__new__(cls, name)
 
+    # pylint: disable=unused-argument
     def __init__(self, name, value=None):
         super(Variable, self).__init__()
         if value is not None:
@@ -168,6 +171,7 @@ class Variable(str):
         return super(Variable, self).__str__()
 
     def retrieve_value(self):
+        """Return the cache value or an empty string."""
         try:
             return self.cache[self]
         except Error:
@@ -200,20 +204,29 @@ Setting to the value changes the filename, getting the value reads the file.
 File contents are decoded by default as UTF-8."""
     encoding = 'UTF-8'
 
-    def encode(self, data):
-        return data.encode(self.encoding)
+    # pylint: disable=arguments-differ
+    @classmethod
+    def encode(cls, data):
+        return data.encode(cls.encoding)
 
-    def decode(self, data):
-        return data.decode(self.encoding)
+    # pylint: disable=arguments-differ
+    @classmethod
+    def decode(cls, data):
+        return data.decode(cls.encoding)
 
-    def read(self, fileobj):
+    @staticmethod
+    def read(fileobj):
+        """Read data from the file object."""
         return fileobj.read()
 
-    def write(self, fileobj, data):
+    @staticmethod
+    def write(fileobj, data):
+        """Write data to the file object."""
         fileobj.write(data)
 
     @property
     def filename(self):
+        """The file that the variable represents."""
         try:
             return self.cache[self]
         except Error:
@@ -234,8 +247,7 @@ File contents are decoded by default as UTF-8."""
             with open(str(self.filename), 'rt') as infile:
                 contents = self.decode(self.read(infile))
         except IOError:
-            t, e, tb = sys.exc_info()
-            raise ValueError('%s: %s' % (self.filename, e))
+            raise ValueError('%s: %s' % (self.filename, sys.exc_info()[1]))
         return contents
 
     @value.setter
@@ -245,11 +257,11 @@ File contents are decoded by default as UTF-8."""
             with open(str(self.filename), 'wt') as outfile:
                 self.write(outfile, self.encode(value))
         except IOError:
-            t, e, tb = sys.exc_info()
-            raise ValueError('%s: %s' % self.filename, e)
+            raise ValueError('%s: %s' % (self.filename, sys.exc_info()[1]))
 
     @value.deleter
     def value(self):
+        import os
         try:
             os.remove(str(self.filename))
         except OSError:
@@ -259,6 +271,7 @@ File contents are decoded by default as UTF-8."""
 class VariableSet(dict):
     """A dictionary where all keys are variables and all values are the same
 as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
+    # pylint: disable=unused-argument
     def __new__(cls, *variables, **kwargs):
         # assign the variables in the initializer routine, not creater
         return super(VariableSet, cls).__new__(cls)
@@ -267,6 +280,8 @@ as the corresponding keys, i.e. {a: a, b: b, c: c, ...}"""
         super(VariableSet, self).__init__()
         for var in variables:
             self.add(var)
+        for kword in kwargs:
+            self.add(kwargs[kword])
 
     def add(self, var):
         """Add a new variable to the set."""

@@ -25,10 +25,6 @@ class Register(object):
         with self.lock:
             self.map[name] = cls
 
-    def __iter__(self):
-        with self.lock:
-            return self.map.iterkeys()
-
     def __contains__(self, name):
         with self.lock:
             return name in self.map

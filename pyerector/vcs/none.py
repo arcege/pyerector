@@ -3,7 +3,6 @@
 """No version control hooks."""
 
 from .base import VCS_Base
-from ..variables import Variable
 
 __all__ = [
     'NoVCS',

@@ -17,7 +17,7 @@ import threading
 from .exception import Abort, Error
 from .variables import V
 
-__all__  = [
+__all__ = [
     'get_current_stack',
     'PyThread',
 ]
@@ -133,7 +133,8 @@ are caught and displayed using getLogger('pyerector.execute').exception.
         self.exception = None
 
     def run(self):
-        import logging, sys
+        import logging
+        import sys
         logger = logging.getLogger('pyerector.execute')
         try:
             with self.limiter:

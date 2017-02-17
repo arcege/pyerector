@@ -7,6 +7,7 @@ Python 3.x."""
 
 from ..metaclass import IniterMetaClass
 
+# pylint: disable=too-few-public-methods
 class Base(object):
     """Baseclass with metaclass declaration."""
     __metaclass__ = IniterMetaClass

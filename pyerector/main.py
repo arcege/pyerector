@@ -32,7 +32,7 @@ class PyErector(object):
 calling tree, and starts the PyThread, which calls each target on the
 command-line.
 """
-    try: 
+    try:
         import argparse
         parser = argparse.ArgumentParser(
             description='PyErector build system; '
@@ -57,6 +57,7 @@ name of target to call or variable assignment, default target is "default"')
     except ImportError:
         argparse = None
         import optparse
+        # pylint: disable=redefined-variable-type
         parser = optparse.OptionParser(
             description='Pyerector build system; '
             'use the "help" target for more information')
@@ -119,6 +120,7 @@ or optparse, so handle both.
         self.process_options(args)
         # process the arguments
         all_targets = registry.get('Target')
+        # pylint: disable=no-member
         for name in args.targets:
             if '=' in name:  # variable assignment?
                 var, val = name.split('=', 1)
@@ -152,7 +154,7 @@ or optparse, so handle both.
         if args.version:
             if logging.getLogger().isEnabledFor(logging.INFO):
                 self.logger.log(logging.getLevelName('DISPLAY'),
-                                ('%s %s' % (Version.release, Version.version)))
+                                '%s %s', Version.release, Version.version)
             else:
                 self.logger.log(logging.getLevelName('DISPLAY'),
                                 Version.release)
@@ -206,6 +208,7 @@ Target, validate all Uptodate values and all Task values.
             # passed to the root thread from (this) PyErector thread
             self.returnstatus = 1
 
+# pylint: disable=invalid-name
 pymain = PyErector
 
 

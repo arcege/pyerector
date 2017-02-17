@@ -38,6 +38,7 @@ __all__ = [
 
 
 
+# pylint: disable=abstract-method
 class FileIterator(Iterator):
     """File-based subclass of Iterator.
 Default parameters: pattern=None, noglob=False, recurse=False,
@@ -105,6 +106,7 @@ fileonly=True, exclude=()."""
 
 
 # a helper classes to handle file/directory lists better
+# pylint: disable=abstract-method
 class StaticIterator(Iterator):
     """By default, noglob == True."""
     noglob = True
@@ -113,6 +115,7 @@ FileList = FileIterator
 FileSet = FileIterator
 
 
+# pylint: disable=abstract-method
 class DirList(FileIterator):
     """By default, recurse and return both directory and file pathnames.
 Default params: recurse=True, fileonly=False."""
