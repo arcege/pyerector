@@ -10,7 +10,7 @@ Usage:
     (hash(Variable('name')) == hash('name'))
     (Variable('name').name == 'name')
     (Variable('name').value == 'value')
-    (Variable('name').toString() == Variable('name').name)
+    (Variable('name').toString() == Variable('name').name)  # deprecated
     (Variable('name').value is Variable('name').value)
     (Variable('name').value == str(Variable('name')))
     (V['name'] == Variable('name').value)
@@ -66,7 +66,7 @@ __all__ = [
 ]
 
 
-# pylint: disable=too-foo-public-methods
+# pylint: disable=too-few-public-methods
 class VariableCache(object):
     """Mimic part of the functionality of a dictionary, but keep things
 minimalistic.  And some functionality, like copy(), we don't want."""

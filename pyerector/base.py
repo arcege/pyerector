@@ -177,6 +177,7 @@ the Iterator instance.
             if not isinstance(value, typeval):
                 raise TypeError(value, text)
 
+    # pylint: disable=invalid-name
     def get_kwarg(self, name, typeval=None, noNone=False):
         """Return a item in saved kwargs or an attribute of the name name.
 If noNone, then raise ValueError if the value is None.

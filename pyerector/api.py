@@ -23,11 +23,17 @@ from .helper import Exclusions, normjoin, Subcommand, Timer
 # pylint: disable=unused-import
 from .base import Initer, Iterator, Mapper, Target, Task
 # pylint: disable=unused-import
-from .vcs.base import DVCS_Base, VCS_Base
+from .vcs.base import DVCSBase, VCSBase
+
+# deprecated names
+# pylint: disable=invalid-name
+DVCS_Base = DVCSBase
+# pylint: disable=invalid-name
+VCS_Base = VCSBase
 
 __all__ = [
-    'Abort', 'Arguments', 'Error', 'DVCS_Base', 'get_current_stack',
+    'Abort', 'Arguments', 'Error', 'DVCSBase', 'get_current_stack',
     'Iterator', 'Mapper', 'PyThread', 'Subcommand', 'Target', 'Task',
-    'VCS_Base',
+    'VCSBase',
 ]
 

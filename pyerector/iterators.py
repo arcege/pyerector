@@ -205,7 +205,7 @@ class IdentityMapper(FileMapper):
     def map(self, item):
         return Path('.')  # just use destdir
 
-sequencetypes = (list, tuple, Iterator,
+SequenceTypes = (list, tuple, Iterator,
                  type(iter([])), type((None for i in ())))
 
 
@@ -219,12 +219,12 @@ subclasses."""
     def __call__(self, *args):
         klsname = self.__class__.__name__
         self.logger.debug('%s.__call__(*%s)', klsname, args)
-        sources = self.get_kwarg('sources', sequencetypes)
+        sources = self.get_kwarg('sources', SequenceTypes)
         if isinstance(sources, Iterator):
             srcs = sources
         else:
             srcs = FileIterator(sources)
-        destinations = self.get_kwarg('destinations', sequencetypes)
+        destinations = self.get_kwarg('destinations', SequenceTypes)
         if isinstance(destinations, Iterator):
             dsts = destinations
         else:

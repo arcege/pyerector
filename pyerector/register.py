@@ -66,4 +66,5 @@ Target subclasses."""
                         clscache[name] = kls
                 return clscache
 
+# pylint: disable=invalid-name
 registry = Register()

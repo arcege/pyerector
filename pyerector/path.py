@@ -445,5 +445,7 @@ create it, if it is not a file, return an exception."""
             raise TypeError('entry exists')
         self.refresh()
 
+# pylint: disable=invalid-name
 homedir = Path(os.environ['HOME'])
+# pylint: disable=invalid-name
 rootdir = Path(Path.sep)

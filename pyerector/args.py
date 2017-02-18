@@ -216,6 +216,7 @@ assigned as necessary."""
             if default is not None:
                 super(Arguments.Keyword, self).check_type(default)
             self.default = default
+            # pylint: disable=invalid-name
             self.noNone = noNone
 
         def check_type(self, value):

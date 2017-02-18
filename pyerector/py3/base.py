@@ -7,6 +7,7 @@ Python 3.x."""
 
 from ..metaclass import IniterMetaClass
 
+# pylint: disable=syntax-error
 class Base(metaclass = IniterMetaClass):
     """Baseclass with metaclass declaration."""
     pass

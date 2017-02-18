@@ -52,8 +52,10 @@ class State(object):
         """Change state to False."""
         self.state = False
 
+# pylint: disable=invalid-name
 noop = State()
 
 # display timing information, changed in pyerector.main.PyErector
+# pylint: disable=invalid-name
 noTimer = State()
 

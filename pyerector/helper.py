@@ -369,9 +369,9 @@ the main threads (MainThread, PyErector)."""
 instead of traceback.extract_tb; the former adds the class being called.
 """
         from .exception import extract_tb
-        etype, exception, tb = exc_data
+        etype, exception, etb = exc_data
         exc = traceback.format_exception_only(etype, exception)
-        stack = traceback.format_list(extract_tb(tb))
+        stack = traceback.format_list(extract_tb(etb))
         return ''.join(stack + exc)
 
 
@@ -424,8 +424,13 @@ set warnings to be captured by the logging module.
 DISPLAY = logging.ERROR + 5
 InitLogging()
 
+# these are deprecated
+# pylint: disable=invalid-name
 display = Verbose(None, 'DISPLAY')
+# pylint: disable=invalid-name
 warn = Verbose(None, 'ERROR')
+# pylint: disable=invalid-name
 verbose = Verbose(None, 'INFO')
+# pylint: disable=invalid-name
 debug = Verbose(None, 'DEBUG')
 

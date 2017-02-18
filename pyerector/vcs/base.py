@@ -58,7 +58,7 @@ attribute is None, use that subclass as default."""
         pass
 
 
-class VCS_Base(Base):
+class VCSBase(Base):
     """Base class for VCS classes (e.g. Subversion)."""
     prog = None
 
@@ -90,7 +90,7 @@ class VCS_Base(Base):
             raise Error(self, 'error %d: %s' % (abs(proc.returncode), errput))
 
 
-class DVCS_Base(Base):
+class DVCSBase(Base):
     """Base class for DVCS classes (e.g. Mercurial)."""
     prog = None
 

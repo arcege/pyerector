@@ -5,7 +5,7 @@
 import os
 
 from ..helper import Subcommand
-from .base import DVCS_Base
+from .base import DVCSBase
 from ..variables import Variable
 
 __all__ = [
@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 
-class Git(DVCS_Base):
+class Git(DVCSBase):
     """Version control class for Git."""
     name = 'git'
     prog = 'git'
@@ -62,6 +62,5 @@ class Git(DVCS_Base):
                     Variable('git.tag', gitout.strip())
 
 # this is used by the package to get the primary class
-VCS_class = Git
 Git.register()
 

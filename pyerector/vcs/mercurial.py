@@ -5,7 +5,7 @@
 import os
 
 from ..helper import Subcommand
-from .base import DVCS_Base
+from .base import DVCSBase
 from ..variables import Variable
 
 __all__ = [
@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 
-class Mercurial(DVCS_Base):
+class Mercurial(DVCSBase):
     """Version control class for Mercurial."""
     name = 'mercurial'
     prog = 'hg'

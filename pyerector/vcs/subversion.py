@@ -4,7 +4,7 @@
 
 import os
 
-from .base import VCS_Base
+from .base import VCSBase
 from ..helper import Subcommand
 from ..variables import Variable
 
@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 
-class Subversion(VCS_Base):
+class Subversion(VCSBase):
     """Version control class for Subversion."""
     name = 'subversion'
     prog = 'svn'

@@ -27,7 +27,7 @@ class Error(Exception):
 # basically reproducing the extract_tb call but with conditionally
 # prepending the class name to the function/method name if the class
 # is a subclass of Target or Task (handled externally)
-# pylint: disable=dangerous-default-value
+# pylint: disable=dangerous-default-value,invalid-name
 def extract_tb(tb, limit=None, last_object=[None], valid_classes=()):
     """Return a list of the traceback objects, just as
 traceback.extract_tb(), but the function/method name would be augmented
@@ -36,9 +36,9 @@ with the class name if a subclass of one of the valid_class entries."""
         if hasattr(sys, 'tracebacklimit'):
             limit = getattr(sys, 'tracebacklimit')
     flist = []
-    n = 0
+    level = 0
     fself = None
-    while tb is not None and (limit is None or n < limit):
+    while tb is not None and (limit is None or level < limit):
         frame = tb.tb_frame
         lineno = frame.f_lineno
         code = frame.f_code
@@ -65,7 +65,7 @@ with the class name if a subclass of one of the valid_class entries."""
             name = '%s.%s' % (fself.__class__.__name__, name)
         flist.append((filename, lineno, name, line))
         tb = tb.tb_next
-        n += 1
+        level += 1
     del flist[:1]  # first should be handle_error, unfortunately
     return flist
 
