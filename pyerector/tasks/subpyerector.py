@@ -6,7 +6,8 @@ import logging
 from ._base import Base
 from ..args import Arguments
 from ..path import Path
-from ..base import Initer, Iterator, Task
+from ..exception import Error
+from ..base import Task
 from ..helper import Subcommand
 from ..config import noTimer
 

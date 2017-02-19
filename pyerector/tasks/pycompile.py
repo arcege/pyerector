@@ -4,8 +4,10 @@
 from ._base import Base
 from ..args import Arguments
 from ..path import Path
+from ..exception import Error
 from ..base import Initer, Iterator, Task
 from ..iterators import FileIterator
+from ..helper import Subcommand
 
 class PyCompile(Task, Base):
     """Compile Python source files.
@@ -41,6 +43,7 @@ PyCompile(*files, dest=<DIR>, version='2')"""
 
     def compile_file_ext(self, fname, python):
         """Compile a file or files in a directory."""
+        import sys
         if fname.isdir:
             files = tuple(fn for fn in fname if fn.isfile)
             subdirs = tuple(fn for fn in fname if fn.isdir)

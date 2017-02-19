@@ -5,6 +5,7 @@ import os
 
 from ._base import Base
 from ..path import Path
+from ..exception import Error
 from .zip import Zip
 
 class Egg(Zip, Base):

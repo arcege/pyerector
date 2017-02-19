@@ -4,9 +4,10 @@
 import os
 
 from ._base import Base
-from ..args import Arguments
+from ..path import Path
 from ..exception import Error
 from ..base import Task
+from ..helper import Subcommand
 
 class Java(Task, Base):
     """Call a Java routine.
@@ -22,8 +23,8 @@ Java(jar=<JAR>, java_home=<$JAVA_HOME>, classpath=(), properties=[])"""
     del environ
     jar = None
 
-    def __init__(self):
-        Task.__init__(self)
+    def __init__(self, *args, **kwargs):
+        super(Java, self).__init__(*args, **kwargs)
         if self.java_home and os.path.exists(str(self.java_home)):
             self.java_prog = os.path.join(str(self.java_home), 'bin', 'java')
         elif os.path.exists(os.path.expanduser(os.path.join('~', 'java'))):

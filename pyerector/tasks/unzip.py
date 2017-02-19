@@ -3,7 +3,6 @@
 
 from ._base import Base
 from ._container import Uncontainer
-from ..path import Path
 
 class Unzip(Uncontainer, Base):
     """Extract a 'zip' archive file.

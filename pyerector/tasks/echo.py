@@ -2,8 +2,6 @@
 """Tasks plugin for Chmod."""
 
 from ._base import Base
-from ..args import Arguments
-from ..path import Path
 from ..base import Task
 from ..helper import DISPLAY
 

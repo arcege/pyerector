@@ -4,6 +4,7 @@
 from ._base import Base
 from ..args import Arguments
 from ..path import Path
+from ..exception import Error
 from ..base import Iterator, Task
 from ..iterators import FileIterator, FileMapper, StaticIterator
 from ..variables import VariableSet
@@ -24,6 +25,7 @@ Tokenize(*files, dest=None, tokenmap=VariableSet())"""
 
     def run(self):
         """Replace tokens found in tokenmap with their associated values."""
+        import sys
         files = self.get_files()
         # pylint: disable=no-member
         dest = self.args.dest

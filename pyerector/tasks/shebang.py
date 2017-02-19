@@ -4,7 +4,7 @@
 from ._base import Base
 from ..args import Arguments
 from ..path import Path
-from ..base import Iterator, Task
+from ..base import Iterator
 from ..iterators import FileIterator, FileMapper
 from .copy import Copy
 
@@ -21,6 +21,8 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
     )
     def run(self):
         """Replace the shebang string with a specific pathname."""
+        import os
+        import shutil
         self.logger.info('starting Shebang')
         # pylint: disable=no-member
         program = self.args.program

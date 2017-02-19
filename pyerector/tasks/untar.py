@@ -3,7 +3,6 @@
 
 from ._base import Base
 from ._container import Uncontainer
-from ..path import Path
 
 class Untar(Uncontainer, Base):
     """Extract a 'tar' archive file.

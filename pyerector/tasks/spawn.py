@@ -4,6 +4,7 @@
 from ._base import Base
 from ..args import Arguments
 from ..path import Path
+from ..exception import Error
 from ..base import Task
 from ..helper import Subcommand
 

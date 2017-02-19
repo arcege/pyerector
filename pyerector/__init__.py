@@ -73,6 +73,9 @@ from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
                        IdentityMapper, Uptodate
 from .variables import FileVariable, V, Variable, VariableSet
 
+import pyerector.tasks
+del pyerector
+
 # With the addition of pyerector.api, some of the lower-level objects, like
 # Target, Sequential, etc. should be removed in the future
 __all__ = [
@@ -149,12 +152,10 @@ __all__ = [
     'Uptodate',
 ]
 
-import tasks
-
 Initialization.start()
 
+# pylint: disable=wrong-import-position
 from .tasks import Chmod, Copy, CopyTree, Echo, Egg, EncodeVar, HashGen, \
                    Java, Mkdir, PyCompile, Remove, Scp, Shebang, Spawn, \
                    SubPyErector, Ssh, Symlink, Tar, Tokenize, Touch, \
                    Unittest, Untar, Unzip, Zip
-del tasks

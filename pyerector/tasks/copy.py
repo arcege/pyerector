@@ -39,7 +39,7 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
                     dstfile.remove()
                 # create the directory
                 if not dstfile.exists:
-                    distfile.mkdir()
+                    dstfile.mkdir()
             elif dstfile.isfile and fmap.checkpair(srcfile, dstfile):
                 self.logger.debug('uptodate: %s', dstfile)
             else:

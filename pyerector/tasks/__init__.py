@@ -13,8 +13,6 @@ __all__ = [
 
 def load_plugins():
     """Find modules in pyerector.tasks and load them."""
-    global __all__
-    from sys import modules
     curdir = Path(__file__).dirname
     names = [
         fname.basename.delext().value for fname in curdir
@@ -40,11 +38,11 @@ class InitTasks(Initialization):
         except RuntimeError:
             logger.exception('Cannot load task plugins.')
         else:
-            me = sys.modules[__name__]
+            this = sys.modules[__name__]
             names = []
             for cls in Base.registered():
                 name = cls.__name__
-                setattr(me, name, cls)
+                setattr(this, name, cls)
                 if name not in __all__:
                     __all__.append(name)
                 names.append(name)
