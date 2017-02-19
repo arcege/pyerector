@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for CopyTree."""
 
 from ._base import Base

@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Base class for registering tasks."""
 
 import os

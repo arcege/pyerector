@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for HashGen."""
 
 from ._base import Base

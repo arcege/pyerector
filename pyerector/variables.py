@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# Copyright @ 2013-2017 Michael P. Reilly. All rights reserved.
 """
 Usage:
     Variable('name', 'value')

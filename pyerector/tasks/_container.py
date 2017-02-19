@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Superclasses for Tar/Untar, Zip/Unzip and Egg tasks."""
 
 import os
