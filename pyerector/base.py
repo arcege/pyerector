@@ -60,6 +60,10 @@ handling.
     exclude = ()
 
     def __init__(self, *args, **kwargs):
+        self.has_arguments = (
+            hasattr(self.__class__, 'arguments') and
+            isinstance(self.__class__.arguments, Arguments)
+        )
         self.logger = logging.getLogger('pyerector.execute')
         #self.logger.debug('%s.__init__(*%s, **%s)',
         #                  self.__class__.__name__, args, kwargs)
@@ -73,10 +77,6 @@ handling.
             del kwargs['curdir']
         except KeyError:
             pass
-        self.has_arguments = (
-            hasattr(self, 'arguments') and isinstance(self.arguments, Arguments)
-        )
-        #self.has_arguments = False
         if self.has_arguments:
             self.baseargs = self.arguments.process(args, kwargs)
         else:
@@ -87,6 +87,20 @@ handling.
                     setattr(self, key, kwargs[key])
         if basedir is not None:
             V['basedir'] = Path(basedir)
+
+    # __getattr__ was added to allow for users of older
+    # releases that have not moved to using args.Arguments
+    def __getattr__(self, attr):
+        """Simulate pre-1.3.0 interface where arguments were members."""
+        from warnings import warn
+        if self.has_arguments and hasattr(self.args, attr):
+            warn('use Arguments object instead of attributes')
+            return getattr(self.args, attr)
+        elif not self.has_arguments and hasattr(self, attr):
+            warn('use Arguments object instead of attributes')
+            return self.__dict__[attr]
+        else:
+            raise AttributeError(attr)
 
     # pylint: disable=too-many-branches
     def get_files(self, files=None, arg='files'):
