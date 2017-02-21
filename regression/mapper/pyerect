@@ -1,0 +1,28 @@
+#!/usr/bin/python
+
+from pyerector import *
+from pyerector.api import *
+
+f = Path('file1')
+d = Path('dist')
+
+class CheckMapper(Target):
+    def run(self):
+        correct_results = [(f, d + f)]
+        m = FileMapper(f, destdir=d)
+        if list(m) != correct_results:
+            raise Error('FileMapper not returning pair.')
+
+class CheckIteratorMapper(Target):
+    def run(self):
+        correct_results = [(f, d + f)]
+        i = FileIterator(FileMapper(f, destdir=d))
+        if list(i) != correct_results:
+            raise Error('FileIterator not returning results of Mapper')
+
+Test.dependencies = (
+    CheckMapper,
+    CheckIteratorMapper,
+)
+
+PyErector()
