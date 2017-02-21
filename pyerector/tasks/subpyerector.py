@@ -9,6 +9,7 @@ from ..path import Path
 from ..base import Initer, Iterator, Task
 from ..helper import Subcommand
 from ..config import noTimer
+from ..variables import V
 
 class SubPyErector(Task, Base):
     """Call a PyErector program in a different directory.
@@ -44,11 +45,17 @@ Adds PYERECTOR_PREFIX environment variable."""
             options.append('--quiet')
         if noTimer:
             options.append('--timer')
-        relprog = Path() + prog.basename
-        cmd = (str(relprog),) + tuple(options) + targets
+        if wdir:
+            progtouse = (wdir + prog).abs
+        else:
+            progtouse = (V['basedir'] + prog).abs
+        cmd = (str(progtouse),) + tuple(options) + targets
         from os import environ
         evname = 'PYERECTOR_PREFIX'
-        nevname = Path(wdir).basename
+        if wdir is not None:
+            nevname = Path(wdir).basename
+        else:
+            nevname = V['basedir'].basename
         if evname in environ and environ[evname]:
             env[evname] = '%s: %s' % (environ[evname], str(nevname))
         else:

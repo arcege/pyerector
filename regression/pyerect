@@ -4,21 +4,20 @@ import os
 import sys
 if 'PYERECTOR_PATH' in os.environ and \
         os.path.isdir(os.environ['PYERECTOR_PATH']):
-    for i, p in enumerate(sys.path):
-        if p.find('pyerector') != -1:
-            sys.path[i] = os.environ['PYERECTOR_PATH']
+    pyerector_path = os.environ['PYERECTOR_PATH']
+    sys.path.insert(0, pyerector_path)
 import release
 from pyerector import *
 
 #from pyerector.tasks import Symlink
 # try to use ../build/pyerector-{relno}/pyerector
 bname = '%s-%s' % (release.product, release.number)
-builddir = os.path.join(os.pardir, 'build', bname, 'pyerector')
-if os.path.isdir(builddir):
-    libdir = os.path.realpath(builddir)
+builddir = Path(os.pardir, 'build', bname)
+if builddir.isdir:
+    libdir = builddir.real
 else:
     import pyerector
-    libdir = os.path.dirname(pyerector.__file__)
+    libdir = Path(pyerector.__file__).dirname
     del pyerector
 
 
