@@ -23,6 +23,8 @@ from .helper import Exclusions, normjoin, Subcommand, Timer
 # pylint: disable=unused-import
 from .base import Initer, Iterator, Mapper, Target, Task
 # pylint: disable=unused-import
+from .base import IteratorTask, MapperTask
+# pylint: disable=unused-import
 from .vcs.base import DVCSBase, VCSBase
 
 # deprecated names
@@ -33,7 +35,7 @@ VCS_Base = VCSBase
 
 __all__ = [
     'Abort', 'Arguments', 'Error', 'DVCSBase', 'get_current_stack',
-    'Iterator', 'Mapper', 'PyThread', 'Subcommand', 'Target', 'Task',
-    'VCSBase',
+    'Iterator', 'IteratorTask', 'Mapper', 'MapperTask', 'PyThread',
+    'Subcommand', 'Target', 'Task', 'VCSBase',
 ]
 

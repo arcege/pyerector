@@ -5,10 +5,11 @@
 from ._base import Base
 from ..args import Arguments
 from ..path import Path
-from ..base import Initer, Iterator, Task
+from ..base import Initer, Iterator, MapperTask
 from ..iterators import FileIterator, FileMapper
+from ..helper import newer
 
-class Copy(Task, Base):
+class Copy(MapperTask, Base):
     """Copy files to a destination directory, Exclude standard
 hidden files.
 constructor arguments:
@@ -18,35 +19,24 @@ Copy(*files, dest=<destdir>, exclude=<defaults>)"""
         Arguments.Keyword('dest', types=(Path, str)),
     ) + Initer.basearguments
 
-    def run(self):
-        """Copy files to a destination directory."""
-        self.logger.debug('Copy.run: args=%s', self.args)
-        # pylint: disable=no-member
-        dest = self.args.dest
-        files = self.get_files()
-        # pylint: disable=no-member
-        excludes = self.args.exclude
-        self.logger.debug('Copy.run: files=%s; dest=%s',
-                          repr(files), repr(dest))
-        fmap = FileMapper(files, destdir=dest, exclude=excludes)
-        self.logger.debug('Copy.fmap = %s', vars(fmap))
-        for (sname, dname) in fmap:
-            self.logger.debug('sname = %s; dname = %s', sname, dname)
-            srcfile = self.join(sname)
-            dstfile = self.join(dname)
-            if srcfile.isdir:
-                # remove whatever is there
-                if dstfile.exists and not dstfile.isdir:
-                    dstfile.remove()
-                # create the directory
-                if not dstfile.exists:
-                    dstfile.mkdir()
-            elif dstfile.isfile and fmap.checkpair(srcfile, dstfile):
-                self.logger.debug('uptodate: %s', dstfile)
-            else:
-                if not dstfile.dirname.isdir:
-                    dstfile.dirname.mkdir()
-                self.logger.info('copy2(%s,%s)', sname, dname)
-                srcfile.copy(dstfile)
+    # pylint: disable=unused-argument
+    def dojob(self, sname, dname, context):
+        self.logger.debug('sname = %s; dname = %s', sname, dname)
+        srcfile = self.join(sname)
+        dstfile = self.join(dname)
+        if srcfile.isdir:
+            # remove whatever is there
+            if dstfile.exists and not dstfile.isdir:
+                dstfile.remove()
+            # create the directory
+            if not dstfile.exists:
+                dstfile.mkdir()
+        elif srcfile.isfile and newer(srcfile, dstfile, logger=self.logger):
+            self.logger.debug('uptodate: %s', dstfile)
+        else:
+            if not dstfile.dirname.isdir:
+                dstfile.dirname.mkdir()
+            self.logger.info('copy2(%s,%s)', sname, dname)
+            srcfile.copy(dstfile)
 
 Copy.register()

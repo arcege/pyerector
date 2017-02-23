@@ -140,31 +140,14 @@ This would map each py file in src to a pyc file in build:
 
     def checkpair(self, src, dst):
         """Return True if destination is newer than source."""
+        from .helper import newer
         sfile = self.join(src)
         dfile = self.join(dst)
         if self.exclusion.match(sfile):
             return True
-        try:
-            if sfile.exists:
-                srctime = round(sfile.mtime, 4)
-            else:
-                raise ValueError('no source:', src)
-        except OSError:
-            raise ValueError('no source:', src)
-        try:
-            if dfile.exists:
-                dsttime = round(dfile.mtime, 4)
-            else:
-                self.logger.debug('%s not found', dst)
-                return False
-        except OSError:
-            self.logger.debug('%s not found', dst)
-            return False
-        self.logger.debug('%s(%0.4f) %s %s(%0.4f)',
-                          src, srctime,
-                          (srctime > dsttime and '>' or '<='),
-                          dst, dsttime)
-        return srctime <= dsttime
+        if not sfile.exists:
+            raise OSError('no source:', src)
+        return newer(sfile, dfile, logger=self.logger)
 
     def checktree(self, src, dst):
         """Recursively check the files in both src and dst for their

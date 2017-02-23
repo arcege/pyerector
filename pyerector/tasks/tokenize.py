@@ -2,65 +2,72 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Copy."""
 
+import re
+
 from ._base import Base
 from ..args import Arguments
 from ..path import Path
 from ..exception import Error
-from ..base import Iterator, Task
+from ..base import Iterator, MapperTask
 from ..iterators import FileIterator, FileMapper, StaticIterator
 from ..variables import VariableSet
 
-class Tokenize(Task, Base):
+class Tokenize(MapperTask, Base):
     """Replace tokens found in tokenmap with their associated values in
 each file.
 constructor arguments:
 Tokenize(*files, dest=None, tokenmap=VariableSet())"""
     arguments = Arguments(
-        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
-        Arguments.Keyword('dest', types=(Path, str), cast=Path),
         Arguments.Keyword('tokenmap', types=VariableSet, default=VariableSet()),
-    )
+    ) + MapperTask.arguments
 
-    def update_tokenmap(self):
+    def update_tokenmap(self, tokenmap):
         """To be overridden."""
 
-    def run(self):
-        """Replace tokens found in tokenmap with their associated values."""
-        import sys
-        files = self.get_files()
-        # pylint: disable=no-member
-        dest = self.args.dest
+    def setup(self):
+        """Update tokens and create regexp."""
         # pylint: disable=no-member
         tokenmap = self.args.tokenmap
-        self.update_tokenmap()
-        import re
-
-        def repltoken(match, tmap=tokenmap):
+        self.update_tokenmap(tokenmap)
+        # we need the closure to properly pass the tokenmap
+        def repltoken(match):
             """Replace."""
-            self.logger.debug('found %s', match.group(0))
-            result = tmap.get(match.group(0))
+            self.logger.debug('repltoken found %s', match.group(0))
+            result = tokenmap.get(match.group(0))
             return result is not None and str(result) or ''
-
-        def quote(string):
-            """Quote special characters."""
-            return string.replace('\\', r'\\').replace('.', r'\.')\
-                         .replace('$', r'\$').replace('(', r'\(')\
-                         .replace(')', r'\)').replace('|', r'\|')
-        tokens = re.compile(
-            r'(%s)' % '|'.join([quote(k) for k in tokenmap]),
-            re.MULTILINE
-        )
+        tokens = gen_token_re(tokenmap)
         self.logger.debug('Tokenize.patt = %s', str(tokens.pattern))
-        for (sname, dname) in FileMapper(files, destdir=dest,
-                                         iteratorClass=StaticIterator):
-            try:
-                realcontents = self.join(sname).open('rt').read()
-            except TypeError:
-                raise Error('%s: %s' % (sname, sys.exc_info()[1]))
-            alteredcontents = tokens.sub(repltoken, realcontents)
-            if alteredcontents != realcontents:
-                self.join(dname).open('wt').write(alteredcontents)
-            else:
-                self.logger.info("Tokenize: no change to %s", dname)
+        return {
+            'repltoken': repltoken,
+            'tokenmap': tokenmap,
+            'tokens': tokens,
+        }
+
+    def dojob(self, sname, dname, context):
+        """Perform the task against the src/dst files."""
+        try:
+            realcontents = sname.open('rt').read()
+        except TypeError:
+            raise Error('%s: %s' % (sname, sys.exc_info()[1]))
+        alteredcontents = context['tokens'].sub(
+            context['repltoken'], realcontents
+        )
+        if alteredcontents != realcontents:
+            dname.open('wt').write(alteredcontents)
+        else:
+            self.logger.info("Tokenize: no change to %s", dname)
+
+def quote(string):
+    """Quote the regexp special characters."""
+    return string.replace('\\', r'\\').replace('.', r'\.')\
+                 .replace('$', r'\$').replace('(', r'\(')\
+                 .replace(')', r'\)').replace('|', r'\|')
+
+def gen_token_re(tokenmap):
+    """Generate a regular expression for the tokenmap keys."""
+    return re.compile(
+        r'(%s)' % '|'.join(quote(k) for k in tokenmap),
+        re.MULTILINE
+    )
 
 Tokenize.register()

@@ -812,3 +812,61 @@ class Parallel(Sequential):
                 raise Abort
         del threads
 
+class IteratorTask(Task):
+    """Perform operations on a iterator of files."""
+
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=Iterator),
+    ) + Initer.basearguments
+    def setup(self):
+        """Return a context (dict) with anything that needs to be set up
+before the iterator is called."""
+        return {}
+
+    def run(self):
+        """Call the job for each file in the arguments."""
+        if self.has_arguments:
+            files = self.get_files()
+        else:
+            files = self.get_files(arg='args')
+        context = self.setup()
+        for name in files:
+            self.logger.debug('%s: calling dojob with %s', self.__class__.__name__, name)
+            self.dojob(name, context)
+
+    def dojob(self, name, context=None):
+        """To be overridden."""
+
+
+class MapperTask(Task):
+    """Perform operations on a mapper of files."""
+    arguments = Arguments(
+        Arguments.List('files', types=(Iterator, Path, str), cast=Iterator),
+        Arguments.Keyword('dest', types=(Path, str), cast=Path),
+    ) + Initer.basearguments
+
+    mapperclass = None
+
+    def setup(self):
+        """Return a context (dict) with anything that needs to be set up
+before the iterator is called."""
+        return {}
+
+    def run(self):
+        """Call the job for each file and dest in the arguments."""
+        # we need to include inside the function since iterators wouldn't have loaded yet
+        from .iterators import FileMapper
+        if self.mapperclass is None:
+            mapcls = FileMapper
+        elif isinstance(mapcls, Iterator):
+            mapcls = self.mapperclass
+        else:
+            raise Error('expecting Iterator or Mapper for mapperclass')
+        context = self.setup()
+        fmap = mapcls(self.get_files(), destdir=self.args.dest)
+        for (sname, dname) in fmap:
+            self.dojob(sname, dname, context)
+
+    def dojob(self, sname, dname, context):
+        """To be overridden."""
+

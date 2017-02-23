@@ -30,6 +30,7 @@ __all__ = [
     'Exclusions',
     'normjoin',
     'Subcommand',
+    'newer',
 ]
 
 # helper routines
@@ -40,6 +41,20 @@ def normjoin(*args):
     if not args:
         args = ('',)
     return Path(*args)
+
+
+def newer(file1, file2, logger=None):
+    """Return true if file2 is newer than file1.  Return True if
+file1 does not exist, return False is file2 does not exist."""
+    time1, time2 = Path(file1).mtime, Path(file2).mtime
+    if logger:
+        logger.debug('newer(%s, %s) => (%s, %s)', file1, file2, time1, time2)
+    if time1 is None:
+        return True
+    elif time2 is None:
+        return False
+    else:
+        return time1 <= time2
 
 
 class Exclusions(set):
