@@ -118,4 +118,3 @@ class Uncontainer(Task):
         """To be overridden."""
         return None
 
-
