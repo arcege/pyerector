@@ -3,27 +3,18 @@
 """Tasks plugin for Mkdir."""
 
 from ._base import Base
-from ..args import Arguments
 from ..path import Path
-from ..base import Initer, Iterator, Task
-from ..iterators import FileIterator
+from ..base import IteratorTask
 
-class Mkdir(Task, Base):
+class Mkdir(IteratorTask, Base):
     """Recursively create directories.
 constructor arguments:
 Mkdir(*files)"""
-    arguments = Arguments(
-        Arguments.List('files', types=(Path, str, Iterator), cast=FileIterator),
-    ) + Initer.basearguments
 
-    def run(self):
+    def dojob(self, name, context):
         """Make directories."""
-        files = self.get_files()
-        self.logger.debug('files = %s: %s', repr(files), vars(files))
-        for arg in files:
-            self.logger.debug('arg = %s', repr(arg))
-            self.asserttype(arg, (Path, str), 'files')
-            self.mkdir(self.join(arg))
+        self.logger.debug('mkdir.name = %s', repr(name))
+        self.mkdir(name)
 
     @classmethod
     def mkdir(cls, path):

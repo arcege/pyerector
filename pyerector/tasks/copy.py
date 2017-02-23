@@ -3,10 +3,7 @@
 """Tasks plugin for Copy."""
 
 from ._base import Base
-from ..args import Arguments
-from ..path import Path
-from ..base import Initer, Iterator, MapperTask
-from ..iterators import FileIterator, FileMapper
+from ..base import MapperTask
 from ..helper import newer
 
 class Copy(MapperTask, Base):
@@ -14,10 +11,6 @@ class Copy(MapperTask, Base):
 hidden files.
 constructor arguments:
 Copy(*files, dest=<destdir>, exclude=<defaults>)"""
-    arguments = Arguments(
-        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
-        Arguments.Keyword('dest', types=(Path, str)),
-    ) + Initer.basearguments
 
     # pylint: disable=unused-argument
     def dojob(self, sname, dname, context):

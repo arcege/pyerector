@@ -6,10 +6,8 @@ import re
 
 from ._base import Base
 from ..args import Arguments
-from ..path import Path
 from ..exception import Error
-from ..base import Iterator, MapperTask
-from ..iterators import FileIterator, FileMapper, StaticIterator
+from ..base import MapperTask
 from ..variables import VariableSet
 
 class Tokenize(MapperTask, Base):
