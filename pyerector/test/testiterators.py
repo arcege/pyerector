@@ -19,6 +19,13 @@ PyVersionCheck()
 
 from pyerector.iterators import *
 
+class TestIterator(TestCase):
+    pass
+
+
+class TestMapper(TestCase):
+    pass
+
 
 class TestStaticIterator(TestCase):
     pass
