@@ -7,9 +7,9 @@ import threading
 from .helper import Timer, DISPLAY
 from .register import registry
 from .execute import get_current_stack, PyThread
-from .base import Initer, Iterator, Sequential, Parallel
+from .base import Initer, Sequential, Parallel
 from .config import noTimer
-from .iterators import StaticIterator
+from .iterators import Iterator, StaticIterator
 from .variables import V, Variable
 
 __all__ = [

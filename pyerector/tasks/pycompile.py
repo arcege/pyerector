@@ -5,10 +5,10 @@
 from ..args import Arguments
 from ..path import Path
 from ..exception import Error
-from ..base import Initer, Iterator
-from ._base import Task
-from ..iterators import FileIterator
+from ..base import Initer
+from ..iterators import Iterator, FileIterator
 from ..helper import Subcommand
+from ._base import Task
 
 class PyCompile(Task):
     """Compile Python source files.

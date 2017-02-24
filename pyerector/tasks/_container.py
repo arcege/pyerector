@@ -6,8 +6,8 @@ import os
 
 from ..args import Arguments
 from ..path import Path
-from ..base import Initer, Iterator
-from ..iterators import FileIterator
+from ..base import Initer
+from ..iterators import Iterator, FileIterator
 from ._base import Task
 
 class Container(Task):
