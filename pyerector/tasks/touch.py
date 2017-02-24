@@ -5,28 +5,16 @@
 from ._base import Base
 from ..args import Arguments
 from ..path import Path
-from ..base import Iterator, Task
+from ..base import Iterator, MapperTask
 from ..iterators import FileIterator
 
-class Touch(Task, Base):
+class Touch(MapperTask, Base):
     """Create file if it didn't exist already.
 constructor arguments:
 Touch(*files, dest=None)"""
-    arguments = Arguments(
-        Arguments.List('files', types=(Iterator, Path, str), cast=FileIterator),
-        Arguments.Keyword('dest', types=(Path, str), cast=Path),
-    )
 
-    def run(self):
-        """Create files, unless they already exist."""
-        files = self.get_files()
-        # pylint: disable=no-member
-        dest = self.args.dest
-        for fname in files:
-            #self.asserttype(fname, (Path, str), 'files')
-            if dest is not None:
-                fname = dest + fname
-            self.logger.info('touch(%s)', fname)
-            self.join(fname).open('a')
+    def dojob(self, sname, dname, context):
+        self.logger.info('touch(%s)', dname)
+        dname.open('a')
 
 Touch.register()
