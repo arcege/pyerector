@@ -32,7 +32,11 @@ Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
                 wsp = first.find(' ')
             else:
                 wsp = first.find(os.linesep)
-            first = first.replace(first[len(self.token):wsp], program)
+            first = first.replace(
+                first[len(self.token):wsp],
+                # pylint: disable=no-member
+                self.args.program
+            )
             outf.write(first)
         else:
             outf.write(first)

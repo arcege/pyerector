@@ -3,6 +3,7 @@
 """Tasks plugin for Copy."""
 
 import re
+import sys
 
 from ..args import Arguments
 from ..exception import Error

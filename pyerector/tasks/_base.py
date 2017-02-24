@@ -3,7 +3,6 @@
 """Base class for registering tasks."""
 
 import logging
-import os
 
 from ..execute import get_current_stack
 from ..args import Arguments
@@ -93,6 +92,8 @@ class IteratorTask(Task):
     arguments = Arguments(
         Arguments.List('files', types=(Iterator, Path, str), cast=Iterator),
     ) + Initer.basearguments
+
+    # pylint: disable=no-self-use
     def setup(self):
         """Return a context (dict) with anything that needs to be set up
 before the iterator is called."""
@@ -122,6 +123,7 @@ class MapperTask(Task):
 
     mapperclass = None
 
+    # pylint: disable=no-self-use
     def setup(self):
         """Return a context (dict) with anything that needs to be set up
 before the iterator is called."""
@@ -137,6 +139,7 @@ before the iterator is called."""
         else:
             raise Error('expecting Iterator or Mapper for mapperclass')
         context = self.setup()
+        # pylint: disable=no-member
         fmap = mapcls(self.get_files(), destdir=self.args.dest)
         for (sname, dname) in fmap:
             self.dojob(sname, dname, context)

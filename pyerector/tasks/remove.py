@@ -9,7 +9,7 @@ class Remove(IteratorTask):
 constructor arguments:
 Remove(*files)"""
 
-    def dojob(self, name, context):
+    def dojob(self, name, context=None):
         self.logger.info('remove(%s)', name)
         name.remove()
 

@@ -10,7 +10,7 @@ class Mkdir(IteratorTask):
 constructor arguments:
 Mkdir(*files)"""
 
-    def dojob(self, name, context):
+    def dojob(self, name, context=None):
         """Make directories."""
         self.logger.debug('mkdir.name = %s', repr(name))
         self.mkdir(name)

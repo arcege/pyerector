@@ -27,7 +27,7 @@ from .path import Path
 from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
-from .config import Config, noop, noTimer
+from .config import Config, noTimer
 from .variables import V, Variable
 
 __all__ = [
@@ -60,6 +60,7 @@ handling.
     exclude = ()
 
     def __init__(self, *args, **kwargs):
+        # pylint: disable=no-member
         self.has_arguments = (
             hasattr(self.__class__, 'arguments') and
             isinstance(self.__class__.arguments, Arguments)

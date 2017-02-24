@@ -104,18 +104,13 @@ class Uncontainer(Task):
             self.extract_members(contfile, fileset, root)
             contfile.close()
 
-    # pylint: disable=unused-argument,no-self-use
     def get_file(self, name):
         """To be overridden."""
-        return None
 
-    # pylint: disable=unused-argument
     def extract_members(self, contfile, fileset, root):
         """To be overridden."""
 
     @staticmethod
-    # pylint: disable=unused-argument
     def retrieve_members(contfile, files):
         """To be overridden."""
-        return None
 

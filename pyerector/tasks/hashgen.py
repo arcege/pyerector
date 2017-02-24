@@ -26,10 +26,12 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
 
     def get_files(self, files=None, arg='files'):
         """Split the iterator into up to two mappers based on the hashs."""
-        files = super(MapperTask, self).get_files(files=files, arg=arg)
+        files = super(HashGen, self).get_files(files=files, arg=arg)
         fmap = FileIterator()
+        # pylint: disable=no-member
         if 'md5' in self.args.hashs:
             fmap.append(FileMapper(files, mapper=lambda x: x.addext('.md5')))
+        # pylint: disable=no-member
         if 'sha1' in self.args.hashs:
             fmap.append(FileMapper(files, mapper=lambda x: x.addext('.sha1')))
         return fmap
@@ -41,6 +43,7 @@ HashGen(*files, hashs=('md5', 'sha1'))"""
         if dname.ext == '.md5':
             hashval = md5()
         elif dname.ext == '.sha1':
+            # pylint: disable=redefined-variable-type
             hashval = sha1()
         else:
             self.logger.info('invalid extension on %s', dname)
