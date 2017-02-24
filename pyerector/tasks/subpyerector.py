@@ -4,16 +4,15 @@
 
 import logging
 
-from ._base import Base
 from ..args import Arguments
 from ..path import Path
 from ..exception import Error
-from ..base import Task
 from ..helper import Subcommand
 from ..config import noTimer
 from ..variables import V
+from ._base import Task
 
-class SubPyErector(Task, Base):
+class SubPyErector(Task):
     """Call a PyErector program in a different directory.
 constructor arguments:
 SubPyErector(*targets, wdir=None, prog='pyerect', env={})

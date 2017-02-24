@@ -7,22 +7,19 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from ._base import Base
 from ..args import Arguments
 from ..path import Path
-from ..base import MapperTask
-from ..iterators import FileIterator, FileMapper
 from .copy import Copy
 
 # is the Base unnecessary given that Copy is also a subclass?
-class Shebang(Copy, Base):
+class Shebang(Copy):
     """Replace the shebang string with a specific pathname.
 constructor arguments:
 Shebang(*files, dest=<DIR>, token='#!', program=<FILE>)"""
     token = '#!'
     arguments = Arguments(
         Arguments.Keyword('program', types=(Path, str), noNone=True),
-    ) + MapperTask.arguments
+    ) + Copy.arguments
 
     def dojob(self, sname, dname, context):
         import os

@@ -2,15 +2,15 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for PyCompile."""
 
-from ._base import Base
 from ..args import Arguments
 from ..path import Path
 from ..exception import Error
-from ..base import Initer, Iterator, Task
+from ..base import Initer, Iterator
+from ._base import Task
 from ..iterators import FileIterator
 from ..helper import Subcommand
 
-class PyCompile(Task, Base):
+class PyCompile(Task):
     """Compile Python source files.
 constructor arguments:
 PyCompile(*files, dest=<DIR>, version='2')"""

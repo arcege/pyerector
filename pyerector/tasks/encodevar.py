@@ -2,12 +2,11 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for EncodeVar."""
 
-from ._base import Base
 from ..args import Arguments
 from ..variables import V
-from ..base import Task
+from ._base import Task
 
-class EncodeVar(Task, Base):
+class EncodeVar(Task):
     """Encode a Variable using zlib and base64.
 To Decode, use:
 def Decode(data):

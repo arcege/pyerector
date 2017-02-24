@@ -2,12 +2,11 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Tar."""
 
-from ._base import Base
-from ._container import Container
 from ..path import Path
+from ._container import Container
 
 
-class Tar(Container, Base):
+class Tar(Container):
     """Generate a 'tar' archive file.
 Constructure arguments:
 Tar(*files, name=None, root=os.curdir, exclude=(defaults)."""

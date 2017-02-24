@@ -2,12 +2,11 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Chmod."""
 
-from ._base import Base
 from ..args import Arguments
 from ..path import Path
-from ..base import IteratorTask
+from ._base import IteratorTask
 
-class Chmod(IteratorTask, Base):
+class Chmod(IteratorTask):
     """Change file permissions.
 constructor arguments:
 Chmod(*files, mod=0666)"""

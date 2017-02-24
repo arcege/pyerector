@@ -2,15 +2,15 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Untar."""
 
-from ._base import Base
+import tarfile
+
 from ._container import Uncontainer
 
-class Untar(Uncontainer, Base):
+class Untar(Uncontainer):
     """Extract a 'tar' archive file.
 Untar(*files, name=<tarfilename>, root=None)"""
     def get_file(self, fname):
         """Open the container."""
-        import tarfile
         return tarfile.open(str(self.join(fname)), 'r:gz')
 
     @staticmethod

@@ -2,15 +2,10 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Symlink."""
 
-from ._base import Base
-from ..args import Arguments
-from ..path import Path
-from ..exception import Error
-from ..base import Initer, Iterator, Mapper, MapperTask
-from ..iterators import FileIterator, FileMapper
 from ..helper import newer
+from ._base import MapperTask
 
-class Symlink(MapperTask, Base):
+class Symlink(MapperTask):
     """Generate a symbolic link.
 constructor arguments:
 Symlink(*files, dest=<dest>, exclude=<defaults>)"""

@@ -6,8 +6,9 @@ import os
 
 from ..args import Arguments
 from ..path import Path
-from ..base import Initer, Iterator, Task
+from ..base import Initer, Iterator
 from ..iterators import FileIterator
+from ._base import Task
 
 class Container(Task):
     """An internal task for subclassing standard classes Tar and Zip."""

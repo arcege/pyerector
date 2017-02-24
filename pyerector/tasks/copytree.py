@@ -2,13 +2,12 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for CopyTree."""
 
-from ._base import Base
 from ..args import Arguments
 from ..path import Path
-from ..base import Task
+from ._base import Task
 from .copy import Copy
 
-class CopyTree(Task, Base):
+class CopyTree(Task):
     """Copy directory truee. Exclude standard hidden files.
 constructor arguments:
 CopyTree(srcdir=<DIR>, dstdir=<DIR>, exclude=<defaults>)"""

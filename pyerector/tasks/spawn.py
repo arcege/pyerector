@@ -2,14 +2,13 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Spawn."""
 
-from ._base import Base
 from ..args import Arguments
 from ..path import Path
 from ..exception import Error
-from ..base import Task
 from ..helper import Subcommand
+from ._base import Task
 
-class Spawn(Task, Base):
+class Spawn(Task):
     """Spawn a command.
 constructor arguments:
 Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""

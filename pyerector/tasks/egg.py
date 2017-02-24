@@ -4,12 +4,11 @@
 
 import os
 
-from ._base import Base
 from ..path import Path
 from ..exception import Error
 from .zip import Zip
 
-class Egg(Zip, Base):
+class Egg(Zip):
     """Generate an egg file for Python deployments.
 Egg(*files, name=<eggfilename>, root=os.curdir, exclude=(defaults))"""
     def manifest(self, name, root, toadd):

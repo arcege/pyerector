@@ -4,13 +4,12 @@
 
 import os
 
-from ._base import Base
 from ..path import Path
 from ..exception import Error
-from ..base import Task
 from ..helper import Subcommand
+from ._base import Task
 
-class Java(Task, Base):
+class Java(Task):
     """Call a Java routine.
 constructor arguments:
 Java(jar=<JAR>, java_home=<$JAVA_HOME>, classpath=(), properties=[])"""

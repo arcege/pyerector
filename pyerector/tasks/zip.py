@@ -2,15 +2,15 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Zip."""
 
-from ._base import Base
+from zipfile import ZipFile
+
 from ._container import Container
 
-class Zip(Container, Base):
+class Zip(Container):
     """Generate a 'zip' archive file.
 Zip(*files, name=(containername), root=os.curdir, exclude=(defaults)."""
     def contain(self, name, root, toadd):
         """Add the files to the container."""
-        from zipfile import ZipFile
         try:
             self.logger.debug('Zip.contain(name=%s, root=%s, toadd=%s)',
                               repr(name), repr(root), repr(toadd))

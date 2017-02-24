@@ -4,13 +4,12 @@
 
 import re
 
-from ._base import Base
 from ..args import Arguments
 from ..exception import Error
-from ..base import MapperTask
 from ..variables import VariableSet
+from ._base import MapperTask
 
-class Tokenize(MapperTask, Base):
+class Tokenize(MapperTask):
     """Replace tokens found in tokenmap with their associated values in
 each file.
 constructor arguments:

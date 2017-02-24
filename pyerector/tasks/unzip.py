@@ -2,15 +2,15 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Unzip."""
 
-from ._base import Base
+from zipfile import ZipFile
+
 from ._container import Uncontainer
 
-class Unzip(Uncontainer, Base):
+class Unzip(Uncontainer):
     """Extract a 'zip' archive file.
 Unzip(*files, name=<tarfilename>, root=None)"""
     def get_file(self, fname):
         """Open the container."""
-        from zipfile import ZipFile
         return ZipFile(str(self.join(fname)), 'r')
 
     @staticmethod

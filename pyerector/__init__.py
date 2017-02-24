@@ -65,7 +65,7 @@ from .execute import Initialization
 from .version import Version
 from .main import PyErector, pymain
 from .vcs import VCS
-from .base import Target, Task, Sequential, Parallel
+from .base import Target, Sequential, Parallel
 from .targets import All, Build, Clean, Compile, Default, Dist, Help, \
                      Init, InitDirs, InitVCS, Packaging, Test, Testonly
 from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
@@ -155,7 +155,10 @@ __all__ = [
 Initialization.start()
 
 # pylint: disable=wrong-import-position
+from .tasks import Task
+# pylint: disable=wrong-import-position
 from .tasks import Chmod, Copy, CopyTree, Echo, Egg, EncodeVar, HashGen, \
                    Java, Mkdir, PyCompile, Remove, Scp, Shebang, Spawn, \
                    SubPyErector, Ssh, Symlink, Tar, Tokenize, Touch, \
                    Unittest, Untar, Unzip, Zip
+

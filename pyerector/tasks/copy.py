@@ -2,11 +2,10 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Copy."""
 
-from ._base import Base
-from ..base import MapperTask
 from ..helper import newer
+from ._base import MapperTask
 
-class Copy(MapperTask, Base):
+class Copy(MapperTask):
     """Copy files to a destination directory, Exclude standard
 hidden files.
 constructor arguments:

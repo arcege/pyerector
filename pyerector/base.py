@@ -31,7 +31,7 @@ from .config import Config, noop, noTimer
 from .variables import V, Variable
 
 __all__ = [
-    'Target', 'Task', 'Sequential', 'Parallel',
+    'Target', 'Sequential', 'Parallel',
 ]
 
 # the base class to set up the others
@@ -397,68 +397,6 @@ instances."""
         self.logger.warning(msg)
 
 
-# Tasks
-class Task(Initer):
-    """A representation of a unit of work.  Generally performs Python code
-directly, either as one of the standard tasks or through the API.  The
-run() method is meant to be overridden.
-"""
-    args = []
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __call__(self, *args, **kwargs):
-        myname = self.__class__.__name__
-        self.logger.debug('%s.__call__(*%s, **%s)', myname, args, kwargs)
-        stack = get_current_stack()
-        stack.push(self)  # push me onto the execution stack
-        try:
-            if self.has_arguments:
-                self.args = self.arguments.process(
-                    args, kwargs, existing=self.baseargs
-                )
-            else:
-                self.handle_args(args, kwargs)
-            if noop:
-                self.logger.warning('Calling %s(*%s, **%s)',
-                                    myname, args, kwargs)
-                return
-            try:
-                returncode = self.run()
-            except (KeyError, ValueError, TypeError,
-                    RuntimeError, AttributeError):
-                raise
-            except Abort:
-                raise  # reraise
-            except Error:
-                self.logger.exception('Exception in %s.run', myname)
-                raise Abort
-            except Exception:
-                logging.getLogger('pyerector').exception('Exception')
-                raise Abort
-        finally:
-            stack.pop()
-        if returncode:
-            raise Error(str(self), 'return error = %s' % returncode)
-        else:
-            self.logger.info('%s: done.', myname)
-
-    def run(self):
-        """To be overridden."""
-
-    def handle_args(self, args, kwargs):
-        """Put the arguments into their proper places."""
-        if (hasattr(self, 'args') and not self.args) or args:
-            if len(args) == 1 and isinstance(args[0], Iterator):
-                self.args = args[0]
-            else:
-                self.args = tuple(args)
-        if kwargs:
-            # pylint: disable=attribute-defined-outside-init
-            self.kwargs = dict(kwargs)
-
-
 class Iterator(Initer):
     """The base class for Iterators and Mappers.  Processes arguments as
 sequences of files.
@@ -752,6 +690,7 @@ Otherwise log an exception and raise Abort error.
     @staticmethod
     def get_exception_message(obj, parent):
         """Generate the appropriate exception message."""
+        from .tasks import Task
         if isinstance(obj, Target):
             return 'Exception in %s.dependencies: %s' % (parent, obj)
         elif isinstance(obj, Task):
@@ -811,62 +750,4 @@ class Parallel(Sequential):
             if thread.exception:
                 raise Abort
         del threads
-
-class IteratorTask(Task):
-    """Perform operations on a iterator of files."""
-
-    arguments = Arguments(
-        Arguments.List('files', types=(Iterator, Path, str), cast=Iterator),
-    ) + Initer.basearguments
-    def setup(self):
-        """Return a context (dict) with anything that needs to be set up
-before the iterator is called."""
-        return {}
-
-    def run(self):
-        """Call the job for each file in the arguments."""
-        if self.has_arguments:
-            files = self.get_files()
-        else:
-            files = self.get_files(arg='args')
-        context = self.setup()
-        for name in files:
-            self.logger.debug('%s: calling dojob with %s', self.__class__.__name__, name)
-            self.dojob(name, context)
-
-    def dojob(self, name, context=None):
-        """To be overridden."""
-
-
-class MapperTask(Task):
-    """Perform operations on a mapper of files."""
-    arguments = Arguments(
-        Arguments.List('files', types=(Iterator, Path, str), cast=Iterator),
-        Arguments.Keyword('dest', types=(Path, str), cast=Path),
-    ) + Initer.basearguments
-
-    mapperclass = None
-
-    def setup(self):
-        """Return a context (dict) with anything that needs to be set up
-before the iterator is called."""
-        return {}
-
-    def run(self):
-        """Call the job for each file and dest in the arguments."""
-        # we need to include inside the function since iterators wouldn't have loaded yet
-        from .iterators import FileMapper
-        if self.mapperclass is None:
-            mapcls = FileMapper
-        elif isinstance(mapcls, Iterator):
-            mapcls = self.mapperclass
-        else:
-            raise Error('expecting Iterator or Mapper for mapperclass')
-        context = self.setup()
-        fmap = mapcls(self.get_files(), destdir=self.args.dest)
-        for (sname, dname) in fmap:
-            self.dojob(sname, dname, context)
-
-    def dojob(self, sname, dname, context):
-        """To be overridden."""
 

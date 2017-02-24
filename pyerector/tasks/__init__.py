@@ -7,7 +7,7 @@ import sys
 from ..execute import Initialization
 from ..path import Path
 from ..variables import V
-from ._base import Base
+from ._base import Task, IteratorTask, MapperTask
 
 __all__ = [
 ]
@@ -41,7 +41,7 @@ class InitTasks(Initialization):
         else:
             this = sys.modules[__name__]
             names = []
-            for cls in Base.registered():
+            for cls in Task.registered():
                 name = cls.__name__
                 setattr(this, name, cls)
                 if name not in __all__:

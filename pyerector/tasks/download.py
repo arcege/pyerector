@@ -2,12 +2,11 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Download."""
 
-from ._base import Base
 from ..args import Arguments
 from ..path import Path
-from ..base import Task
+from ._base import Task
 
-class Download(Task, Base):
+class Download(Task):
     """Retrieve contents of URLs.
 constructor arguments:
 Download(*urls, destdir=DIR)"""

@@ -2,9 +2,8 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for HashGen."""
 
-from ._base import Base
 from ..args import Arguments
-from ..base import MapperTask
+from ._base import MapperTask
 from ..iterators import FileIterator, FileMapper
 
 def cast(value):
@@ -14,7 +13,7 @@ def cast(value):
     else:
         return (str(value),)
 
-class HashGen(MapperTask, Base):
+class HashGen(MapperTask):
     """Generate file(s) containing md5 or sha1 hash string.
 For example, generates foobar.txt.md5 and foobar.txt.sha1 for the
 contents of foobar.txt.  By default, generates for both md5 and sha1.

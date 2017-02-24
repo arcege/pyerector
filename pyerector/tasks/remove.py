@@ -2,11 +2,9 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Copy."""
 
-from ._base import Base
-from ..base import Iterator, IteratorTask
-from ..iterators import FileIterator
+from ._base import IteratorTask
 
-class Remove(IteratorTask, Base):
+class Remove(IteratorTask):
     """Remove a file or directory tree.
 constructor arguments:
 Remove(*files)"""

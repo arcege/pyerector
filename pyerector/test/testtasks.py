@@ -20,9 +20,68 @@ except ValueError:
 PyVersionCheck()
 
 from pyerector.path import Path
-from pyerector.helper import normjoin
-from pyerector.iterators import FileList
+from pyerector.config import noop
+from pyerector.exception import Error
 from pyerector.tasks import *
+from pyerector.tasks import Task, IteratorTask, MapperTask
+
+
+class TestTask(TestCase):
+    def test_instantiation(self):
+        obj = Task()
+        self.assertEqual(str(obj), Task.__name__)
+        self.assertIsNone(obj('foobar', 'xyzzy', widget=True))
+        # after calling __call__()
+        self.assertEqual(obj.args, ('foobar', 'xyzzy'))
+        self.assertEqual(obj.kwargs, {'widget': True})
+
+    def test_failure(self):
+
+        class SuccessTask(Task):
+            def run(self):
+                return 0
+
+        class FailureTask(Task):
+            def run(self):
+                return 255
+        self.assertIsNone(SuccessTask()())
+        self.assertRaises(Error, FailureTask())
+
+    def test_exception(self):
+        class TypeErrorTask(Task):
+            def run(self):
+                raise TypeError
+
+        class ValueErrorTask(Task):
+            def run(self):
+                raise ValueError
+        self.assertRaises(TypeError, TypeErrorTask())
+        self.assertRaises(ValueError, ValueErrorTask())
+
+    def test_noop(self):
+        old_noop = noop.state
+        try:
+            noop.on()
+            self.assertTrue(bool(noop))
+
+            class NoopTask(Task):
+                foobar = False
+
+                def run(self):
+                    self.foobar = True
+            obj = NoopTask()
+            obj()
+            self.assertFalse(obj.foobar)
+        finally:
+            noop.state = old_noop
+
+
+class TestIteratorTask(TestCase):
+    pass
+
+
+class TestMapperTask(TestCase):
+    pass
 
 
 class TestChmod(TestCase):
@@ -94,7 +153,7 @@ class TestCopy(TestCase):
         self.fulldest.remove()
 
     def testfile2dir(self):
-        src = normjoin('a')
+        src = Path('a')
         Copy(src, dest=self.dest)()
         self.assertTrue(os.path.exists(os.path.join(self.dest, 'a')))
         self.assertEqual('hi\n', open(os.path.join(self.dest, 'a')).read())

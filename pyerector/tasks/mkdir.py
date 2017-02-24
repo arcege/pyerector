@@ -2,11 +2,10 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Mkdir."""
 
-from ._base import Base
 from ..path import Path
-from ..base import IteratorTask
+from ._base import IteratorTask
 
-class Mkdir(IteratorTask, Base):
+class Mkdir(IteratorTask):
     """Recursively create directories.
 constructor arguments:
 Mkdir(*files)"""

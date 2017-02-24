@@ -2,12 +2,11 @@
 # Copyright @ 2017 Michael P. Reilly. All rights reserved.
 """Tasks plugin for Scp and Ssh."""
 
-from ._base import Base
 from ..args import Arguments
 from ..path import Path
 from ..exception import Error
-from ..base import Task
 from ..helper import Subcommand
+from ._base import Task
 
 class SshEngine(Task):
     """Superclass for Scp and Ssh since there is the same basic logic."""
@@ -59,7 +58,7 @@ class SshEngine(Task):
         else:
             return proc.stdout.read().rstrip()
 
-class Scp(SshEngine, Base):
+class Scp(SshEngine):
     """Spawn an scp command.
 constructor arguments:
 Scp(*files, dest=<dir>, host=<hostname>, user=<username>, identfile=<filename>,
@@ -95,7 +94,7 @@ Scp(*files, dest=<dir>, host=<hostname>, user=<username>, identfile=<filename>,
         self.logger.info('%s%s', self, filelst)
         self._run(cmd + filelst)
 
-class Ssh(SshEngine, Base):
+class Ssh(SshEngine):
     """Spawn an ssh command and display the response in verbose mode.
 constructor arguments:
 Ssh(*cmd, host=<hostname>, user=<username>, identfile=<filename>)
