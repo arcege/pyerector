@@ -65,8 +65,8 @@ from .execute import Initialization
 from .version import Version
 from .main import PyErector, pymain
 from .vcs import VCS
-from .base import Target, Sequential, Parallel
-from .targets import All, Build, Clean, Compile, Default, Dist, Help, \
+from .base import Sequential, Parallel
+from .targets import Target, All, Build, Clean, Compile, Default, Dist, Help, \
                      Init, InitDirs, InitVCS, Packaging, Test, Testonly
 from .iterators import FileSet, StaticIterator, FileIterator, FileList, \
                        DirList, FileMapper, BasenameMapper, MergeMapper, \

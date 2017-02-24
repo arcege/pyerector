@@ -16,7 +16,7 @@ from .helper import Timer
 from .execute import PyThread, Initialization
 from .config import noop, noTimer
 from .register import registry
-from .base import Target
+from .targets import Target
 from .version import Version
 from .variables import V
 

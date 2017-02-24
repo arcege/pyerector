@@ -21,7 +21,9 @@ from .variables import V, Variable, VariableSet
 # pylint: disable=unused-import
 from .helper import Exclusions, normjoin, Subcommand, Timer
 # pylint: disable=unused-import
-from .base import Initer, Iterator, Mapper, Target
+from .base import Initer, Iterator, Mapper
+# pylint: disable=unused-import
+from .targets import Target
 # pylint: disable=unused-import
 from .tasks import Task, IteratorTask, MapperTask
 # pylint: disable=unused-import
