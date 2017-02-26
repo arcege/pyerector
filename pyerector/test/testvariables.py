@@ -293,7 +293,3 @@ class TestVariableSet(TestCase):
     def _test_update(self):
         pass
 
-if __name__ == '__main__':
-    import logging, unittest
-    logging.getLogger('pyerector').level = logging.ERROR
-    unittest.main()

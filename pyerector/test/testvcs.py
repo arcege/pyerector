@@ -164,7 +164,3 @@ class TestVCS(TestCase):
             #self.assertEqual(Variable('svn.date').value, self.when)
 
 
-if __name__ == '__main__':
-    import logging, unittest
-    logging.getLogger('pyerector').level = logging.ERROR
-    unittest.main()

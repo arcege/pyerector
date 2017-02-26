@@ -25,7 +25,3 @@ class TestError(TestCase):
 class Test_extract_tb(TestCase):
     pass
 
-if __name__ == '__main__':
-    import logging, unittest
-    logging.getLogger('pyerector').level = logging.ERROR
-    unittest.main()

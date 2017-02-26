@@ -94,7 +94,3 @@ class TestGlobals(TestCase):
         self.assertIsInstance(noTimer, State)
         self.assertFalse(noTimer)  # default value
 
-if __name__ == '__main__':
-    import logging, unittest
-    logging.getLogger('pyerector').level = logging.ERROR
-    unittest.main()

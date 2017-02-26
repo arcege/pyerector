@@ -26,8 +26,6 @@ from pyerector.exception import Error
 from pyerector.base import Initer, Sequential
 from pyerector.targets import Target
 from pyerector.tasks import Task
-#from pyerector.targets import *
-#from pyerector.tasks import *
 from pyerector.iterators import Uptodate
 from pyerector.variables import V
 
@@ -157,7 +155,3 @@ class TestSequential(TestCase):
         s = Sequential(1, 2, 3, 4)
         self.assertSequenceEqual(tuple(s), (1, 2, 3, 4))
 
-if __name__ == '__main__':
-    import logging, unittest
-    logging.getLogger('pyerector').level = logging.ERROR
-    unittest.main()

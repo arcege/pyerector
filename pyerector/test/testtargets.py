@@ -274,7 +274,3 @@ With three very lovely girls.
         finally:
             Remove()(tmpdir)
 
-if __name__ == '__main__':
-    import logging, unittest
-    logging.getLogger('pyerector').level = logging.ERROR
-    unittest.main()

@@ -60,7 +60,3 @@ class TestPyErectorThread(TestCase):
         # it is sufficient to check that the thread is not 'MainThread'
         self.assertEqual(Variable('thread.name').value, 'PyErector')
 
-if __name__ == '__main__':
-    import logging, unittest
-    logging.getLogger('pyerector').level = logging.ERROR
-    unittest.main()

@@ -382,7 +382,3 @@ class TestSubcommand(TestCase):
         self.assertIsNone(proc.stdout)
         self.assertIsNone(proc.stderr)
 
-if __name__ == '__main__':
-    import logging, unittest
-    logging.getLogger('pyerector').level = logging.ERROR
-    unittest.main()

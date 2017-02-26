@@ -30,7 +30,3 @@ class TestSettings(TestCase):
         self.assertTrue(hasattr(pyerector, 'V'))
         self.assertIsInstance(pyerector.V, pyerector.variables.VariableCache)
 
-if __name__ == '__main__':
-    import logging, unittest
-    logging.getLogger('pyerector').level = logging.ERROR
-    unittest.main()
