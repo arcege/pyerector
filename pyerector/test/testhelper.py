@@ -20,8 +20,9 @@ except ValueError:
 
 PyVersionCheck()
 
+from pyerector.exception import Error
 from pyerector.path import Path
-from pyerector.helper import normjoin, Exclusions, Subcommand
+from pyerector.helper import normjoin, Exclusions, Subcommand, newer, Timer
 
 try:
     from io import StringIO
@@ -79,11 +80,65 @@ class Testnormjoin(TestCase):
         )
 
 
+class Testnewer(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import time
+        super(Testnewer, cls).setUpClass()
+        cls.file0 = cls.dir + 'file0'  # do not create
+        cls.file1 = cls.dir + 'file1'
+        cls.file2 = cls.dir + 'file2'
+        cls.file3 = cls.dir + 'file3'
+        cls.file1.open()
+        cls.file2.open()
+        cls.file3.open()
+        now = time.time()
+        cls.file1.utime(now, now)
+        cls.file2.utime(now, now - 1000)
+        cls.file3.utime(now, now - 3000)
+
+    def test_nofiles(self):
+        self.assertTrue(newer(self.file0, self.file0))
+        self.assertTrue(newer(self.file0, self.file1))
+        self.assertFalse(newer(self.file1, self.file0))
+
+    def test_older(self):
+        self.assertFalse(newer(self.file1, self.file2))
+        self.assertFalse(newer(self.file2, self.file3))
+        self.assertFalse(newer(self.file1, self.file3))
+    def test_newer(self):
+        self.assertTrue(newer(self.file2, self.file1))
+        self.assertTrue(newer(self.file3, self.file2))
+        self.assertTrue(newer(self.file3, self.file1))
+
+
+
 class TestExclusions(TestCase):
     def setUp(self):
         from ..vcs import VCS
         self.defaults = Exclusions.defaults.copy()
         self.vcsdir = VCS().directory
+
+    def test_init_(self):
+        e = Exclusions(('src', 'bin'))
+        self.assertSetEqual(e, set(('src', 'bin')))
+        self.assertTrue(e.usedefaults)
+        f = Exclusions(('back', 'there'), usedefaults=False)
+        self.assertSetEqual(f, set(('back', 'there')))
+        self.assertFalse(f.usedefaults)
+        g = Exclusions(('up', 'here'), usedefaults=None)
+        self.assertSetEqual(g, set(('up', 'here')))
+        self.assertIsNone(g.usedefaults)
+        h = Exclusions('str')
+        self.assertSetEqual(h, set(('str',)))
+        with self.assertRaises(TypeError):
+            Exclusions(45)
+            Exclusions({})
+        f = Exclusions(e)
+        self.assertSetEqual(f, set(('src', 'bin')))
+        self.assertTrue(e.usedefaults)
+        h = Exclusions(g)
+        self.assertIsNone(h.usedefaults)
 
     def test_no_items(self):
         e = Exclusions()
@@ -105,7 +160,7 @@ class TestExclusions(TestCase):
         if self.vcsdir is not None:
             self.assertTrue(e.match(self.vcsdir))
 
-    def test_items_nodefaults(self):
+    def test_items_no_defaults(self):
         e = Exclusions(('1', '2', '3'), usedefaults=False)
         self.assertSetEqual(e, set(('1', '2', '3')))
         self.assertTrue(e.match(Path('1')))
@@ -113,7 +168,7 @@ class TestExclusions(TestCase):
         if self.vcsdir is not None:
             self.assertTrue(e.match(self.vcsdir))
 
-    def test_items_nonedefaults(self):
+    def test_items_none_defaults(self):
         e = Exclusions(('1', '2', '3'), usedefaults=None)
         self.assertSetEqual(e, set(('1', '2', '3')))
         self.assertTrue(e.match(Path('1')))
@@ -129,6 +184,9 @@ class TestExclusions(TestCase):
     def test_setdefaults(self):
         e = Exclusions()
         self.assertFalse(hasattr(Exclusions, 'real_defaults'))
+        # call reset without setting the defaults first
+        e.set_defaults(reset=True)
+        self.assertFalse(hasattr(Exclusions, 'real_defaults'))
         e.set_defaults((Path('1'), Path('2'), Path('3')))
         self.assertSetEqual(e, set())
         self.assertTrue(hasattr(Exclusions, 'real_defaults'))
@@ -143,6 +201,8 @@ class TestExclusions(TestCase):
         self.assertFalse(hasattr(Exclusions, 'real_defaults'))
         self.assertFalse(e.match(Path('1')))
         self.assertFalse(e.match(Path('4')))
+        with self.assertRaises(TypeError):
+            f.set_defaults(items='badtype')
 
 
 class TestSubcommand(TestCase):
@@ -156,6 +216,13 @@ class TestSubcommand(TestCase):
             (sys.executable, '-c', Commands.fail),
         )
         self.assertEqual(proc.returncode, 1)
+        proc.close()
+
+    def test_subsequence(self):
+        proc = Subcommand(
+            ((sys.executable, '-c', Commands.succeed),),
+        )
+        self.assertEqual(proc.cmd, (sys.executable, '-c', Commands.succeed))
         proc.close()
 
     def test_wrongcmd(self):
@@ -204,6 +271,14 @@ class TestSubcommand(TestCase):
         finally:
             proc.close()
             inf.close()
+        proc = Subcommand(
+            (sys.executable, '-c', Commands.succeed),
+            stdin=Subcommand.PIPE, stdout=Subcommand.PIPE
+        )
+        try:
+            self.assertEqual(proc.stdin, proc.proc.stdin)
+        finally:
+            proc.close()
 
     def test_stdout(self):
         contents = 'abcdefghijklmnopqrstuvwxyz0123456789\n'
@@ -237,7 +312,7 @@ class TestSubcommand(TestCase):
         errfile = self.dir + 'stderr.stderr.txt'
         nonfile = self.dir + 'stderr.does-not-exist'
         proc = Subcommand(
-            (sys.executable, '-c', Commands.cat, str(nonfile)),
+            (sys.executable, '-c', Commands.cat, nonfile),
             stderr=str(errfile)
         )
         errmsg = 'no such file or directory\n'
@@ -258,6 +333,13 @@ class TestSubcommand(TestCase):
             self.assertEqual(errf.read(), errmsg)
         finally:
             errf.close()
+            proc.close()
+        proc = Subcommand(
+            (sys.executable, '-c', Commands.succeed),
+            stderr=Subcommand.PIPE)
+        try:
+            self.assertEqual(proc.stderr, proc.proc.stderr)
+        finally:
             proc.close()
 
     def test_signal(self):
@@ -381,4 +463,68 @@ class TestSubcommand(TestCase):
         self.assertIsNone(proc.stdin)
         self.assertIsNone(proc.stdout)
         self.assertIsNone(proc.stderr)
+
+    def test_exceptions(self):
+        with self.assertRaises(Error):
+            Subcommand(('/bin/programdoesnotexist',))
+
+
+class TestTimer(TestCase):
+    def test_init_(self):
+        t = Timer()
+        self.assertIsNone(t.starttime)
+        self.assertIsNone(t.duration)
+
+    def testnow(self):
+        import time
+        now, rightnow = Timer.now(), time.time()
+        self.assertEqual(round(now, 2), round(rightnow, 2))
+
+    def teststart(self):
+        t = Timer()
+        t.start()
+        self.assertIsInstance(t.starttime, float)
+        with self.assertRaises(RuntimeError):
+            t.start()
+
+    def teststop(self):
+        t = Timer()
+        with self.assertRaises(RuntimeError):
+            t.stop()
+        t.start()
+        t.stop()
+        self.assertIsInstance(t.duration, float)
+        self.assertIsNone(t.starttime)
+
+    def test_context(self):
+        """Use of a timer as a context manager to handle start/stop implicitly."""
+        t = Timer()
+        self.assertIsNone(t.starttime)
+        self.assertIsNone(t.duration)
+        with t:
+            self.assertIsInstance(t.starttime, float)
+            self.assertIsNone(t.duration)
+        self.assertIsNone(t.starttime)
+        self.assertIsInstance(t.duration, float)
+
+    def test_repr_(self):
+        t = Timer()
+        self.assertEqual(repr(t), '<Timer unstarted>')
+        t.starttime = 6.0
+        self.assertEqual(repr(t), '<Timer started>')
+        t.starttime = None
+        t.duration = 5.0
+        self.assertEqual(repr(t), '<Timer duration: 5.000>')
+
+    def test_float_(self):
+        t = Timer()
+        self.assertEqual(float(t), 0.0)
+        t.duration = 5.25
+        self.assertEqual(float(t), 5.25)
+
+    def test_int_(self):
+        t = Timer()
+        self.assertEqual(int(t), 0)
+        t.duration = 5.25
+        self.assertEqual(int(t), 5)
 
