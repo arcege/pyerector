@@ -219,13 +219,13 @@ if applicable."""
         """Return a file object based on what type the file argument is."""
         if alt is not None and afile == alt:
             return alt
-        elif hasattr(afile, methodname):
+        elif hasattr(afile, methodname):  # file-line object
             return afile
-        elif afile == self.PIPE:
+        elif afile == self.PIPE:  # sentinal
             return self.PIPE
-        elif isinstance(afile, Path):
+        elif isinstance(afile, Path):  # Path
             return afile.open(mode)
-        elif hasattr(afile, 'lower'):
+        elif hasattr(afile, 'lower'):  # str
             return open(str(afile), mode)
         else:
             return None
