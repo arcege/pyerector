@@ -14,7 +14,6 @@ from .exception import Abort, Error
 from .path import Path
 from .helper import Timer
 from .execute import PyThread, Initialization
-from .config import noop, noTimer
 from .register import registry
 from .targets import Target
 from .version import Version
@@ -141,7 +140,7 @@ or optparse, so handle both.
         """Process the options."""
         # check --verbose before --version
         if args.notimer:
-            noTimer.on()
+            V['pyerector.notimer'] = True
         if args.verbose:
             logging.getLogger().setLevel(logging.INFO)
         if args.DEBUG:
@@ -150,7 +149,7 @@ or optparse, so handle both.
         if args.quiet:
             logging.getLogger().setLevel(logging.ERROR)
         if args.noop:
-            noop.on()
+            V['pyerector.noop'] = True
         if args.version:
             if logging.getLogger().isEnabledFor(logging.INFO):
                 self.logger.log(logging.getLevelName('DISPLAY'),
@@ -195,7 +194,7 @@ Target, validate all Uptodate values and all Task values.
                 self.logger.exception(self.__class__.__name__)
             else:
                 failed = False
-        if noTimer:
+        if V['pyerector.notimer']:
             time = ''
         else:
             time = ' (%0.3f)' % timer

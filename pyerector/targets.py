@@ -10,7 +10,6 @@ from .helper import Timer
 from .register import registry
 from .execute import get_current_stack
 from .base import Initer, Sequential, Parallel
-from .config import noTimer
 from .iterators import Iterator, StaticIterator
 from .variables import V, Variable
 
@@ -160,7 +159,7 @@ instances."""
                 except Exception:
                     logging.getLogger('pyerector').exception('Exception')
                     raise Abort
-            if noTimer:
+            if V['pyerector.notimer']:
                 self.verbose('done.')
             else:
                 self.verbose('done. (%0.3f)' % timer)

@@ -36,8 +36,18 @@ class Config(object):
 
 class State(object):
     """Create a mutable boolean object."""
-    def __init__(self, initial=False):
+    def __init__(self, name, initial=False):
+        self.name = name
         self.state = initial
+
+    @property
+    def state(self):
+        warn("use '%s' variable instead." % self.name, DeprecationWarning)
+        return V[self.name]
+    @state.setter
+    def state(self, value):
+        warn("use '%s' variable instead." % self.name, DeprecationWarning)
+        V[self.name] = value
 
     def __bool__(self):
         return self.state
@@ -46,16 +56,18 @@ class State(object):
     # pylint: disable=invalid-name
     def on(self):
         """Change state to True."""
+        warn("use '%s' variable instead." % self.name, DeprecationWarning)
         self.state = True
 
     def off(self):
         """Change state to False."""
+        warn("use '%s' variable instead." % self.name, DeprecationWarning)
         self.state = False
 
 # pylint: disable=invalid-name
-noop = State()
+noop = State('pyerector.noop')
 
 # display timing information, changed in pyerector.main.PyErector
 # pylint: disable=invalid-name
-noTimer = State()
+noTimer = State('pyerector.notimer')
 

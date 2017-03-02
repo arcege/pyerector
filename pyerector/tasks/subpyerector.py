@@ -8,7 +8,6 @@ from ..args import Arguments
 from ..path import Path
 from ..exception import Error
 from ..helper import Subcommand
-from ..config import noTimer
 from ..variables import V
 from ._base import Task
 
@@ -44,7 +43,7 @@ Adds PYERECTOR_PREFIX environment variable."""
             options.append('--verbose')
         elif logger.isEnabledFor(logging.ERROR):
             options.append('--quiet')
-        if noTimer:
+        if V['pyerector.notimer']:
             options.append('--timer')
         if wdir:
             progtouse = (wdir + prog).abs

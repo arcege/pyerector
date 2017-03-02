@@ -19,7 +19,7 @@ except ValueError:
 
 PyVersionCheck()
 
-from pyerector.config import Config, State, noop, noTimer
+from pyerector.config import Config, State
 from pyerector.variables import V
 
 
@@ -52,45 +52,48 @@ class TestConfig(TestCase):
 
 class TestState(TestCase):
     def test__init_(self):
-        s = State()
-        self.assertFalse(s.state)
-        s = State(True)
-        self.assertTrue(s.state)
-        s = State(False)
-        self.assertFalse(s.state)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            s = State('test_init_1')
+            self.assertFalse(s.state)
+            s = State('test_init_2', True)
+            self.assertTrue(s.state)
+            s = State('test_init_3', False)
+            self.assertFalse(s.state)
 
     def test__bool_(self):
-        s = State()
-        self.assertFalse(s)
-        s = State(True)
-        self.assertTrue(s)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            s = State('test_bool_1')
+            self.assertFalse(s)
+            s = State('test_bool_2', True)
+            self.assertTrue(s)
 
     def test_on(self):
-        s = State()
-        self.assertFalse(s)
-        s.on()
-        self.assertTrue(s)
-        s = State(True)
-        self.assertTrue(s)
-        s.on()
-        self.assertTrue(s)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            s = State('test_on_1')
+            self.assertFalse(s)
+            s.on()
+            self.assertTrue(s)
+            s = State('test_on_2', True)
+            self.assertTrue(s)
+            s.on()
+            self.assertTrue(s)
 
     def test_off(self):
-        s = State(True)
-        self.assertTrue(s)
-        s.off()
-        self.assertFalse(s)
-        s = State()
-        self.assertFalse(s)
-        s.off()
-        self.assertFalse(s)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            s = State('test_off_1', True)
+            self.assertTrue(s)
+            s.off()
+            self.assertFalse(s)
+            s = State('test_off_2')
+            self.assertFalse(s)
+            s.off()
+            self.assertFalse(s)
 
 class TestGlobals(TestCase):
-    def test_noop(self):
-        self.assertIsInstance(noop, State)
-        self.assertFalse(noop)  # default value
-
-    def test_noTimer(self):
-        self.assertIsInstance(noTimer, State)
-        self.assertFalse(noTimer)  # default value
+    """The noop and noTimer global instances are not deprecated,
+so stop testing."""
 

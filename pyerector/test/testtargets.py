@@ -24,7 +24,6 @@ except ValueError:
 
 PyVersionCheck()
 
-from pyerector.config import noop
 from pyerector.path import Path
 from pyerector.variables import V
 from pyerector.iterators import Uptodate
@@ -185,11 +184,11 @@ All: done.
 """
 
     def setUp(self):
-        self.noop_state = noop.state
-        noop.on()
+        self.noop_state = V['pyerector.noop']
+        V['pyerector.noop'] = True
 
     def tearDown(self):
-        noop.state = self.noop_state
+        V['pyerector.noop'] = self.noop_state
 
     #@unittest.skip("not working on reillym-lt")
     def _test_all(self):

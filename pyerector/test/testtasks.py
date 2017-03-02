@@ -20,8 +20,8 @@ except ValueError:
 PyVersionCheck()
 
 from pyerector.path import Path
-from pyerector.config import noop
 from pyerector.exception import Error
+from pyerector.variables import V
 from pyerector.tasks import *
 from pyerector.tasks import Task, IteratorTask, MapperTask
 
@@ -59,10 +59,9 @@ class TestTask(TestCase):
         self.assertRaises(ValueError, ValueErrorTask())
 
     def test_noop(self):
-        old_noop = noop.state
+        old_noop = V['pyerector.noop']
         try:
-            noop.on()
-            self.assertTrue(bool(noop))
+            V['pyerector.noop'] = True
 
             class NoopTask(Task):
                 foobar = False
@@ -73,7 +72,7 @@ class TestTask(TestCase):
             obj()
             self.assertFalse(obj.foobar)
         finally:
-            noop.state = old_noop
+            V['pyerector.noop'] = old_noop
 
 
 class TestIteratorTask(TestCase):

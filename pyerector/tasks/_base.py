@@ -9,7 +9,7 @@ from ..args import Arguments
 from ..exception import Abort, Error
 from ..path import Path
 from ..register import Register
-from ..config import noop
+from ..variables import V
 from ..base import Initer
 from ..iterators import FileMapper, Iterator
 
@@ -47,7 +47,7 @@ run() method is meant to be overridden.
                 )
             else:
                 self.handle_args(args, kwargs)
-            if noop:
+            if V['pyerector.noop']:
                 self.logger.warning('Calling %s(*%s, **%s)',
                                     myname, args, kwargs)
                 return
