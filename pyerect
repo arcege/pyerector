@@ -147,6 +147,15 @@ class Localtest(Target):
     )
     dependencies = (Dist,)
 
+class Pushpypi(Target):
+    """Push to pypi.python.org."""
+    tasks = (
+        Spawn(
+            './setup.py', '-n', 'bdist_wheel', 'install',
+            wdir=Path('build', distfile),
+        ),
+    )
+
 class Syntaxcheck(Target):
     """Run syntax checks."""
     def run(self):
