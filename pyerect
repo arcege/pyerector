@@ -153,8 +153,6 @@ class Syntaxcheck(Target):
         from pyerector.api import Subcommand, Error
         cmd = Subcommand(
             ('pylint',
-             '--disable=locally-disabled',
-             '--ignore=test',
              V['basedir'] + Path('pyerector')
             )
         )
