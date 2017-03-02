@@ -17,7 +17,7 @@ Installation
 
 Using pip
 ---------
-Run ``pip pyerector`` to install inthe Python's distribution from pypi.
+Run ``pip install pyerector`` to install inthe Python's distribution from pypi.
 
 Using file copy
 ---------------
