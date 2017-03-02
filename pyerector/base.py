@@ -6,8 +6,6 @@ Initer (base class), Sequential, Parallel.
 
 import logging
 from sys import version
-import sys
-import threading
 try:
     reduce
 except NameError:
@@ -18,13 +16,13 @@ if version[0] > '2':  # python 3+
     from .py3.base import Base
 else:
     from .py2.base import Base
-from .helper import Exclusions, Timer, DISPLAY
+from .helper import Exclusions, DISPLAY
 from .args import Arguments
 from .path import Path
 from .execute import get_current_stack, PyThread
 from .register import registry
 from .exception import Abort, Error
-from .config import Config, noTimer
+from .config import Config
 from .variables import V, Variable
 
 __all__ = [

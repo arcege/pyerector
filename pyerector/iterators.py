@@ -27,6 +27,7 @@ item, accumulating the result."""
 
 import os
 import re
+import sys
 
 from .path import Path
 from .variables import V
