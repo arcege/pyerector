@@ -17,6 +17,7 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
         Arguments.Keyword('infile', types=(Path, str)),
         Arguments.Keyword('outfile', types=(Path, str)),
         Arguments.Keyword('errfile', types=(Path, str)),
+        Arguments.Keyword('wdir', types=(Path, str)),
         Arguments.Keyword('env', types=(tuple, dict), default={}, cast=dict),
     )
 
@@ -32,10 +33,12 @@ Spawn(*cmd, infile=None, outfile=None, errfile=None, env={})"""
         errfile = self.args.errfile
         # pylint: disable=no-member
         env = self.args.env
+        # pylint: disable=no-member
+        wdir = self.args.wdir
         infile = infile and self.join(infile) or None
         outfile = outfile and self.join(outfile) or None
         errfile = errfile and self.join(errfile) or None
-        proc = Subcommand(cmd, env=env,
+        proc = Subcommand(cmd, env=env, wdir=wdir,
                           stdin=infile, stdout=outfile, stderr=errfile,
                          )
         if proc.returncode < 0:
