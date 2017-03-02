@@ -15,11 +15,13 @@ except ValueError:
     )
     from base import *
 
+import unittest
+
 from ..exception import Error
 
 PyVersionCheck()
 
-from pyerector.variables import V, VariableCache, Variable, VariableSet
+from pyerector.variables import V, VariableCache, Variable, FileVariable, VariableSet
 
 
 class TestVariableCache(TestCase):
@@ -33,6 +35,13 @@ class TestVariableCache(TestCase):
 
     def test_init_(self):
         self.assertEqual(self.vc.cache, {})
+
+    def test_delitem_(self):
+        with self.assertRaises(Error):
+            del self.vc['doesnotexist']
+
+    def test_repr_(self):
+        self.assertEqual(repr(self.vc), 'VariableCache(%s)' % repr(self.vc.cache))
 
     def test_cache(self):
         class A:
@@ -183,6 +192,13 @@ class TestVariable(TestCase):
         self.assertNotIn('property.C', v.cache)
         self.assertEqual(v.value, '')
 
+    def test_add_(self):
+        v1 = Variable('add.A', 'spam')
+        v2 = Variable('add.B', 'eggs')
+        self.assertEqual(v1 + v2, 'spameggs')
+        self.assertEqual(v1 + 'toast', 'spamtoast')
+        self.assertEqual('toast' + v2, 'toasteggs')
+
     def test_strrepr(self):
         v = Variable('strrepr.A', 'spam')
         self.assertEqual(str(v), 'spam')
@@ -200,6 +216,10 @@ class TestVariable(TestCase):
         self.assertEqual(w.value, v)
         self.assertEqual(str(w), 'spam')
 
+    def testlist(self):
+        items = tuple(sorted(V))
+        listitems = tuple(sorted(Variable.list()))
+        self.assertEqual(listitems, items)
 
 class TestVariableSet(TestCase):
     def test_new_(self):
@@ -292,4 +312,63 @@ class TestVariableSet(TestCase):
 
     def _test_update(self):
         pass
+
+class TestFileVariable(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(TestFileVariable, cls).setUpClass()
+        cls.file1 = (cls.dir + 'file1')
+        cls.file2 = (cls.dir + 'file2')
+        cls.file3 = (cls.dir + 'file3')
+        cls.file1.open('w').write('This is a test.\n')
+        cls.file2.open('w').write('Let me out of this file!\n')
+        FileVariable('file1', cls.file1)
+        FileVariable('file2', cls.file2)
+        FileVariable('file3', cls.file3)
+        FileVariable('file4', cls.file1)
+
+    @unittest.skip('fix Variable vs FileVariable on __call__')
+    def test_init_(self):
+        self.assertIsInstance(V('file1'), FileVariable)
+        self.assertIsInstance(V('file2'), FileVariable)
+        self.assertIsInstance(V('file3'), FileVariable)
+        self.assertIsInstance(V('file4'), FileVariable)
+
+    def testencode(self):
+        data = FileVariable.encode('this string')
+        self.assertIsInstance(data, str)
+        self.assertEqual(data, 'this string')
+        data = FileVariable.encode(u'this string')
+        self.assertIsInstance(data, str)
+        self.assertEqual(data, 'this string')
+
+    def testdecode(self):
+        data = FileVariable.decode('this string')
+        self.assertIsInstance(data, unicode)
+        self.assertEqual(data, u'this string')
+        data = FileVariable.decode(u'this string')
+        self.assertIsInstance(data, unicode)
+        self.assertEqual(data, u'this string')
+
+    def testread(self):
+        data = FileVariable.read(self.file1.open('rt'))
+        self.assertEqual(data, 'This is a test.\n')
+
+    def testwrite(self):
+        FileVariable.write(self.file3.open(), 'Now let me in.\n')
+        self.assertEqual(self.file3.open().read(), 'Now let me in.\n')
+
+    @unittest.skip('fix Variable vs FileVariable on __call__')
+    def testfilename(self):
+        self.assertEqual(V('file1').filename, self.file1)
+        self.assertEqual(V('file2').filename, self.file2)
+        self.assertEqual(V('file3').filename, self.file3)
+        V('file3').filename = self.file2
+        self.assertEqual(V('file3').filename, self.file2)
+
+    @unittest.skip('fix FileVariable.value returning Path')
+    def testvalue(self):
+        self.assertEqual(V('file4').value, 'This is a test.\n')
+        V('file4').filename = self.file2
+        self.assertEqual(V('file4').value, 'Let me out of this file!\n')
 

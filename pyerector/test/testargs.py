@@ -17,6 +17,7 @@ except ValueError:
 
 PyVersionCheck()
 
+from pyerector.path import Path
 from pyerector.args import Arguments, ArgumentSet
 
 class TestArguments(TestCase):
@@ -37,6 +38,23 @@ class TestArguments(TestCase):
         h = Arguments(ak1, ak2)
         self.assertIsNone(h.list)
         self.assertEqual(h.map, {'foo': ak1, 'bar': ak2})
+
+    def test_dups(self):
+        with self.assertRaises(TypeError):
+            Arguments(
+                Arguments.List('foo'),
+                Arguments.List('bar'),
+            )
+        with self.assertRaises(TypeError):
+            Arguments(
+                Arguments.Keyword('name'),
+                Arguments.Keyword('name'),
+            )
+        with self.assertRaises(TypeError):
+            Arguments(
+                Arguments.List('name'),
+                Arguments.Keyword('name'),
+            )
 
     def test__add_(self):
         al1 = Arguments.List('xyzzy')
@@ -103,6 +121,16 @@ class TestArguments(TestCase):
         b = h.process(('d', 'e'), {'ni': 'arcege'}, existing=a)
         self.assertItemsEqual(b.list, ('d', 'e'))
         self.assertItemsEqual(b.map, {'ni': 'arcege', 'bar': ('8', '9', '10'), 'foo': 5, 'xyzzy': ('d', 'e')})
+        h = Arguments(
+            Arguments.Keyword('foo', types=Path, default=Path('hi')),
+            Arguments.Keyword('bar'),
+        )
+        a = h.process((), {})
+        self.assertIsInstance(a.foo, Path)
+        self.assertEqual(a.foo.value, 'hi')
+        self.assertIsNone(a.bar)
+        with self.assertRaises(ValueError):
+            h.process((), {'xyzzy': 'hi'})
 
 class TestArguments_Type(TestCase):
     def test_init_(self):
@@ -120,7 +148,9 @@ class TestArguments_Type(TestCase):
         self.assertEqual(t.typenames, 'str, int')
         with self.assertRaises(TypeError):
             Arguments.Type('', types='str')  # must pass type or sequence of types
+        with self.assertRaises(TypeError):
             Arguments.Type('', types=(str, 'int'))
+        with self.assertRaises(TypeError):
             Arguments.Type('', cast='str')
         t = Arguments.Type('', types=(float, int, str))
         self.assertEqual(t.cast, None)
@@ -214,7 +244,7 @@ class TestArgumentsExclusions(TestCase):
         e = Arguments.Exclusions('')
         self.assertIsNone(e.check_type(None))
         self.assertIsNone(e.check_type(''))
-        self.assertIsNone(e.check_type(set()))
+        self.assertIsNone(e.check_type(set('foo')))
         with self.assertRaises(TypeError):
             e.check_type(5)
 
@@ -236,7 +266,12 @@ class TestArgumentSet(TestCase):
         self.assertIs(a.map, k)
         with self.assertRaises(AssertionError):
             ArgumentSet([], {})  # must pass tuple
+        with self.assertRaises(AssertionError):
             ArgumentSet((), [])  # must pass dict
+
+    def test_repr_(self):
+        a = ArgumentSet((), {})
+        self.assertEqual(repr(a), '<ArgumentSet {}>')
 
     def test_getattr_(self):
         a = ArgumentSet((), {'foo': 'bar'})
