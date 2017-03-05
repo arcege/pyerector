@@ -131,6 +131,8 @@ then prepend the directory's contents to the pool (not the curset).
         self.logger.debug('next item from pool is %s', repr(item))
         if isinstance(item, Iterator):
             items = item
+        elif isinstance(item, MapperPair):
+            items = [item]
         elif isinstance(item, (tuple, list)):
             items = [
                 i for subitems in [self.adjust(i) for i in item]
@@ -148,7 +150,7 @@ then prepend the directory's contents to the pool (not the curset).
             path.extend(item)
         elif isinstance(item, (tuple, list)):
             path.extend([Path(i) for i in item])
-        elif isinstance(item, Path):
+        elif isinstance(item, (MapperPair, Path)):
             path.append(item)
         else:
             path.append(Path(item))
@@ -158,7 +160,7 @@ then prepend the directory's contents to the pool (not the curset).
         """Add a string or sequence to the beginning of the pool."""
         if isinstance(item, str):
             item = [Path(item)]
-        elif isinstance(item, Path):
+        elif isinstance(item, (MapperPair, Path)):
             item = [item]
         else:
             item = [Path(i) for i in item]
@@ -186,6 +188,16 @@ if there is no pattern.  To be overridden."""
         else:
             return candidate.match(pattern)
 
+
+class MapperPair(tuple):
+    def __new__(self, src, dst):
+        return super(MapperPair, self).__new__(self, (src, dst))
+    @property
+    def src(self):
+        return self[0]
+    @property
+    def dst(self):
+        return self[1]
 
 class Mapper(Iterator):
     """Maps source files to destination files, using a base path, destdir.
@@ -243,7 +255,7 @@ This would map each py file in src to a pyc file in build:
             'map() must return a str or Path'
         result = destdir + mapped #normjoin(destdir, mapped)
         self.logger.debug('mapper yields (%s, %s)', item, result)
-        return item, result
+        return MapperPair(item, result)
 
     # pylint: disable=no-self-use
     def map(self, item):
