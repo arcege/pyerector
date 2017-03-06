@@ -222,11 +222,6 @@ If noNone, then raise ValueError if the value is None.
         self.asserttype(value, (tuple, list, Iterator), name)
         return value
 
-    @classmethod
-    def validate_tree(cls):
-        """To be overridden in subclasses."""
-        pass  # do nothing, Target will do something with this
-
     def display(self, msg, *args, **kwargs):
         """Display a message at the DISPLAY log level, which should
 be above the level that the --quiet option would set."""

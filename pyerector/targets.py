@@ -101,7 +101,8 @@ instances."""
                     raise ValueError(
                         '%s: invalid %s: %s' % (kobj, ktname, name)
                     )
-                obj.validate_tree()
+                if hasattr(obj, 'validate_tree'):
+                    obj.validate_tree()
         validate_class(cls.__name__, cls.dependencies, 'Target', 'dependency')
         validate_class(cls.__name__, cls.uptodates, 'Mapper', 'uptodate')
         validate_class(cls.__name__, cls.tasks, 'Task', 'task')
