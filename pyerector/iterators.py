@@ -60,18 +60,15 @@ Examples:
 
     def __init__(self, *path, **kwargs):
         super(Iterator, self).__init__(*path, **kwargs)
-        self.pool = None
-        self.curset = None
-        exclude = self.get_kwarg(
-            'exclude', (Exclusions, set, str, tuple, list, type(None))
-        )
-        if isinstance(exclude, Exclusions):
-            self.exclusion = exclude
-        elif isinstance(exclude, (set, tuple, list)):
-            self.exclusion = Exclusions(exclude)
-        elif isinstance(exclude, str):
-            self.exclusion = Exclusions((exclude,))
-        self.path = None
+        self.logger.debug('%s%s', self.__class__.__name__, vars(self))
+        if self.has_arguments:
+            self.sequence = list(self.args)
+        elif hasattr(self, 'args'):
+            self.sequence = list(self.args)
+        else:
+            self.sequence = []
+        self.queue = None
+        self.started = False
 
     def __repr__(self):
         if hasattr(self, 'args') and isinstance(self.args, tuple):
@@ -84,88 +81,106 @@ Examples:
 Sequentials."""
         raise NotImplementedError
 
-    def __iter__(self):
+    def start(self):
+        if self.started:
+            raise ValueError('already iterating')
         # this is a list so we can modify it later, if necessary
-        self.pool = list(self.get_args('path'))
-        self.curset = iter([])
+        self.queue = self.sequence[:]
+        self.started = True
+    def stop(self):
+        if self.started:
+            self.queue = None
+            self.started = False
+
+    def __iter__(self):
+        self.start()
         return self
 
     def __next__(self):
+        """For Python 3 compatibility."""
         return self.next()
 
-    def next(self):
-        """Cycle through the curset, returning strings that would "match".
-Matching strings are not in the exclusions, if a pattern is set, would
-match the pattern, and if recursive and a directory.  If it is a directory,
-then prepend the directory's contents to the pool (not the curset).
-"""
-        while True:
-            try:
-                candidate = next(self.curset)
-            except StopIteration:
-                #self.logger.debug('caught StopIteration on next()')
-                self.getnextset()  # can raise StopIteration
-                try:
-                    candidate = next(self.curset)  # can raise StopIteration
-                except TypeError:
-                    exc = sys.exc_info()[1]
-                    raise TypeError(self.curset, exc)
-            if isinstance(candidate, tuple) and len(candidate) == 2:
-                break
-            if not isinstance(candidate, Path):
-                candidate = Path(candidate)
-            if self.exclusion.match(candidate):
-                continue
-            self.logger.debug('candidate = %s', repr(candidate))
-            if self.check_candidate(candidate):
-                break
-        assert isinstance(candidate, (Path, str, tuple)), candidate
-        return self.post_process_candidate(candidate)
+    @staticmethod
+    def _checkiter(i):
+        """Return True if the object is follows Python's iter protocol."""
+        if isinstance(i, Iterator) and not i.started:
+            raise ValueError('Iterator not initialized')
+        return hasattr(i, 'next') or hasattr(i, '__next__')
 
-    def getnextset(self):
-        """Set state to the next item in the set."""
-        if not self.pool:
-            self.logger.debug('nothing left')
-            raise StopIteration
-        item = self.pool.pop(0)
-        self.logger.debug('next item from pool is %s', repr(item))
-        if isinstance(item, Iterator):
-            items = item
-        elif isinstance(item, MapperPair):
-            items = [item]
-        elif isinstance(item, (tuple, list)):
-            items = [
-                i for subitems in [self.adjust(i) for i in item]
-                for i in subitems
-            ]
-        elif isinstance(item, (Path, str)):
-            items = self.adjust(item)
-        self.curset = iter(items)
-        #self.logger.debug('curset = %s', repr(self.curset))
+    def next(self):
+        """Start with a queue of that is a copy of the initial sequence.
+While there are items on the queue, pop the first item.  If it is iterable,
+get the next candidate from the iterable, push the iterable back into the stack
+(the next iteration).  If the iterable raised StopIteration, then continue in
+the loop.  If the first item is not iterable, it becomes the candidate and exit
+the loop."""
+        if self.queue is None:
+            raise ValueError('not iterating, call iter() first')
+        else:
+            candidate = item = None
+            while self.queue:
+                item = self.queue.pop(0)
+                # we do not want to change the sequences, so use
+                # iter appropriately
+                if isinstance(item, Iterator) and not item.started:
+                    item.start()
+                elif isinstance(item, MapperPair):
+                    pass
+                elif isinstance(item, (list, tuple, set)):
+                    item = iter(item)
+                if isinstance(item, MapperPair):
+                    candidate = item
+                elif isinstance(item, Iterator):
+                    try:
+                        candidate = next(item)
+                    except StopIteration:
+                        continue
+                    else:
+                        if not self.queue or self.queue[0] is not item:
+                            self.queue.insert(0, item)
+                        else:
+                            raise Abort
+                elif self._checkiter(item):
+                    try:
+                        candidate = next(item)
+                    except StopIteration:
+                        continue
+                    else:
+                        self.queue.insert(0, item)
+                elif item is not None and not isinstance(item, Path):
+                    candidate = Path(item)
+                else:
+                    candidate = item
+                if isinstance(candidate, (list, tuple, set, Iterator)):
+                    self.queue.insert(0, candidate)
+                elif candidate is None or self.check_candidate(candidate):
+                    break
+            # finish up the iteration
+            if candidate is None and not self.queue:
+                self.stop()
+                raise StopIteration
+            else:
+                assert isinstance(candidate, (Path, MapperPair, str, tuple)), repr(candidate)
+                return self.post_process_candidate(candidate)
+        assert True, "We should not get here"
 
     def append(self, item):
         """Add an item to the end of the pool."""
-        path = list(self.get_args('path'))
-        if isinstance(item, Iterator):
-            path.extend(item)
-        elif isinstance(item, (tuple, list)):
-            path.extend([Path(i) for i in item])
-        elif isinstance(item, (MapperPair, Path)):
-            path.append(item)
+        if isinstance(item, (tuple, list)):
+            self.sequence.append(list(item))
+        elif isinstance(item, (Iterator, MapperPair, Path)):
+            self.sequence.append(item)
         else:
-            path.append(Path(item))
-        self.path = tuple(path)
+            self.sequence.append(Path(item))
 
     def _prepend(self, item):
         """Add a string or sequence to the beginning of the pool."""
-        if isinstance(item, str):
-            item = [Path(item)]
-        elif isinstance(item, (MapperPair, Path)):
-            item = [item]
+        if isinstance(item, (tuple, list)):
+            self.queue.insert(0, list(item))
+        elif isinstance(item, (Iterator, MapperPair, Path)):
+            self.queue.insert(0, item)
         else:
-            item = [Path(i) for i in item]
-        self.pool[:0] = item
-        self.logger.debug('adding to pool: %s', repr(item))
+            self.queue.insert(0, Path(item))
 
     # text based
     # pylint: disable=no-self-use
@@ -183,10 +198,14 @@ To be overridden."""
         """Return true if the candidate matches the pattern or
 if there is no pattern.  To be overridden."""
         pattern = self.get_kwarg('pattern', str)
-        if not pattern:
-            return True
-        else:
-            return candidate.match(pattern)
+        exclude = self.get_kwarg('exclude')
+        if isinstance(exclude, Exclusions):
+            excluded = not exclude.match(candidate)
+        elif isinstance(exclude, (set, tuple, list)):
+            excluded = not Exclusions(exclude).match(candidate)
+        elif isinstance(exclude, str):
+            excluded = not Exclusions((exclude,)).match(candidate)
+        return not excluded and (not pattern or candidate.match(pattern))
 
 
 class MapperPair(tuple):
