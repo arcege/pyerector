@@ -171,6 +171,8 @@ the Iterator instance.
         """Assert that the value is a value type."""
         if isinstance(typeval, type):
             typename = typeval.__name__
+        elif typeval is None:
+            typename = 'None'
         else:
             typename = ' or '.join(t.__name__ for t in typeval)
         text = "Must supply %s to '%s' in '%s'" % (
@@ -184,7 +186,7 @@ the Iterator instance.
                 raise TypeError(value, text)
         else:
             #assert isinstance(value, typeval), text
-            if not isinstance(value, typeval):
+            if typeval and not isinstance(value, typeval):
                 raise TypeError(value, text)
 
     # pylint: disable=invalid-name
